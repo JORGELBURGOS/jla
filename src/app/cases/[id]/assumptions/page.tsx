@@ -32,9 +32,12 @@ export default function AssumptionsPage({ params }: { params: { id: string } }) 
       .then(({ data }) => setRisks((data ?? []) as Risk[]))
   }, [caseId])
 
-  const riesgosDeEste = useCallback((label: string) =>
-    risks.filter(r => r.supuesto_dependiente && label.split(" ").some(w => w.length > 4 && r.supuesto_dependiente!.toLowerCase().includes(w.toLowerCase())))
-  , [risks])
+  const riesgosDeEste = useCallback((label: string) => {
+    // Primeros 18 chars del label como clave unica — evita falsos positivos
+    // por palabras comunes como "periodo", "vigente" que aparecen en multiples supuesto_dependiente
+    const clave = label.slice(0, 18).toLowerCase()
+    return risks.filter(r => r.supuesto_dependiente && r.supuesto_dependiente.toLowerCase().includes(clave))
+  }, [risks])
 
   const save = useCallback(async (a: Assumption) => {
     const valor = editing[a.id] !== undefined ? editing[a.id] : (a.valor ?? "")
