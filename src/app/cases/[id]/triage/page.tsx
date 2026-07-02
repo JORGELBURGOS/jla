@@ -290,7 +290,7 @@ export default function TriagePage({ params }: { params: Promise<{ id: string }>
               <div><b>EBITDA base:</b> {borradorEBITDA.ebitda_base!=null?`USD ${(borradorEBITDA.ebitda_base as number).toLocaleString("es-AR")}`:"Sin dato"}</div>
               {(borradorEBITDA.ajustes as Array<{descripcion:string;signo:string;cuantificado:boolean;monto_usd:number;sin_dato_razon:string}>)?.map((a, i) => (
                 <div key={i} className={a.cuantificado?"text-gray-700":"text-gray-400"}>
-                  {a.signo} {a.descripcion}: {a.cuantificado?`USD ${Math.abs(a.monto_usd).toLocaleString("es-AR")`:"SIN DATO — "+a.sin_dato_razon}
+                  {a.signo} {a.descripcion}: {a.cuantificado?`USD ${Math.abs(a.monto_usd).toLocaleString("es-AR")}`:"SIN DATO — "+a.sin_dato_razon}
                 </div>
               ))}
               {borradorEBITDA.ebitda_normalizado_tentativo!=null && (
