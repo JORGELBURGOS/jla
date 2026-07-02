@@ -32,15 +32,44 @@ export default function AssumptionsPage({ params }: { params: { id: string } }) 
       .then(({ data }) => setRisks((data ?? []) as Risk[]))
   }, [caseId])
 
+  const [recalcResult, setRecalcResult] = useState<{riesgo:string;impacto_anterior:number;impacto_nuevo:number}[]>([])
+
   async function save(a: Assumption) {
     const valor = editing[a.id] !== undefined ? editing[a.id] : (a.valor ?? "")
     setSaving(a.id)
+
+    // 1. Guardar el supuesto en Supabase
     await db.from("dd_case_assumptions").update({
       valor, estado: valor ? "CARGADO" : "PENDIENTE",
       fecha_carga: new Date().toISOString().split("T")[0],
       updated_at: new Date().toISOString()
     }).eq("id", a.id)
-    setAssumptions(prev => prev.map(x => x.id === a.id ? { ...x, valor, estado: valor ? "CARGADO" : "PENDIENTE", fecha_carga: new Date().toISOString().split("T")[0] } : x))
+    setAssumptions(prev => prev.map(x => x.id === a.id
+      ? { ...x, valor, estado: valor ? "CARGADO" : "PENDIENTE", fecha_carga: new Date().toISOString().split("T")[0] }
+      : x
+    ))
+
+    // 2. Si es categórico o acumulativo, recalcular riesgos dinámicos relacionados
+    if ((a.tipo === "categorico" || a.tipo === "acumulativo") && valor !== "") {
+      try {
+        const res = await fetch("/api/recalculate-risks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ caseId, assumptionLabel: a.label, newValue: valor })
+        })
+        const data = await res.json()
+        if (data.actualizados?.length) {
+          setRecalcResult(data.actualizados)
+          // Recargar riesgos para reflejar los nuevos impactos
+          db.from("dd_case_risks")
+            .select("id,riesgo,impacto,supuesto_dependiente,es_dinamico")
+            .eq("case_id", caseId).eq("es_dinamico", true)
+            .then(({ data: rk }) => setRisks((rk ?? []) as Risk[]))
+          setTimeout(() => setRecalcResult([]), 8000)
+        }
+      } catch { /* silencioso — el guardado ya se hizo */ }
+    }
+
     setSaving(null)
     setEditing(prev => { const n = { ...prev }; delete n[a.id]; return n })
   }
@@ -153,5 +182,17 @@ export default function AssumptionsPage({ params }: { params: { id: string } }) 
         </div>
       )}
     </div>
+
+    {/* Toast de recálculo automático */}
+    {recalcResult.length > 0 && (
+      <div className="fixed bottom-6 right-6 bg-[#1a2744] text-white px-4 py-3 rounded-xl shadow-lg max-w-sm z-50">
+        <div className="font-bold text-sm mb-1">⚡ Riesgos actualizados automáticamente</div>
+        {recalcResult.map((r, i) => (
+          <div key={i} className="text-xs opacity-90">
+            {r.riesgo.slice(0, 50)}...: <span className="line-through opacity-60">USD {Math.abs(r.impacto_anterior).toLocaleString("es-AR")}</span> → <span className="font-bold">{r.impacto_nuevo === 0 ? "USD 0 (resuelto ✓)" : "USD " + Math.abs(r.impacto_nuevo).toLocaleString("es-AR")}</span>
+          </div>
+        ))}
+      </div>
+    )}
   )
 }
