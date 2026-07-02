@@ -6,38 +6,38 @@ interface EnvRow {
   resolucion: string | null; estado: string; notas: string | null; orden: number
 }
 
-const ESTADO_BADGE: Record<string, string> = {
-  "VIGENTE":        "bg-green-100 text-green-800 border-green-300",
-  "VENCIDO":        "bg-red-100 text-red-800 border-red-300",
-  "ALERTA":         "bg-orange-100 text-orange-800 border-orange-300",
-  "CRÍTICO":        "bg-red-200 text-red-900 border-red-500 font-black",
-  "EN TRÁMITE":     "bg-blue-100 text-blue-800 border-blue-300",
-  "NO PRESENTADO":  "bg-gray-100 text-gray-600 border-gray-300",
-}
-const ESTADO_ICONO: Record<string, string> = {
-  "VIGENTE":"✅","VENCIDO":"❌","ALERTA":"⚠️","CRÍTICO":"🚨","EN TRÁMITE":"🔄","NO PRESENTADO":"⏸",
+const ESTADO_STYLE: Record<string, { bg: string; text: string; border: string; dot: string }> = {
+  "VIGENTE":        { bg:"bg-green-50",   text:"text-green-800",  border:"border-green-200", dot:"bg-green-500" },
+  "VENCIDO":        { bg:"bg-red-50",     text:"text-red-800",    border:"border-red-300",   dot:"bg-red-500" },
+  "ALERTA":         { bg:"bg-orange-50",  text:"text-orange-800", border:"border-orange-300",dot:"bg-orange-500" },
+  "ALERTA: VENCE EN 2 MESES": { bg:"bg-red-50", text:"text-red-800", border:"border-red-300", dot:"bg-red-500" },
+  "CRÍTICO":        { bg:"bg-red-100",    text:"text-red-900",    border:"border-red-400",   dot:"bg-red-600" },
+  "EN TRÁMITE":     { bg:"bg-blue-50",    text:"text-blue-800",   border:"border-blue-200",  dot:"bg-blue-500" },
+  "NO PRESENTADO":  { bg:"bg-gray-50",    text:"text-gray-600",   border:"border-gray-200",  dot:"bg-gray-400" },
 }
 
-function getBadge(e: string) {
-  const k = Object.keys(ESTADO_BADGE).find(k => e.toUpperCase().includes(k)) ?? ""
-  return ESTADO_BADGE[k] ?? "bg-gray-100 text-gray-600 border-gray-300"
-}
-function getIcono(e: string) {
-  const k = Object.keys(ESTADO_ICONO).find(k => e.toUpperCase().includes(k)) ?? ""
-  return ESTADO_ICONO[k] ?? "⏸"
+function getStyle(estado: string) {
+  const key = Object.keys(ESTADO_STYLE).find(k => estado.toUpperCase().startsWith(k.toUpperCase()))
+  return ESTADO_STYLE[key ?? ""] ?? { bg:"bg-gray-50", text:"text-gray-600", border:"border-gray-200", dot:"bg-gray-400" }
 }
 
-// Derivar cobertura de corrientes desde estado y notas (específico Alfa Service)
-function getCoverage(clave: string, notas: string | null): Record<string, boolean|null> {
-  const n = (notas ?? "").toLowerCase()
-  const vigente = (notas ?? "").includes("Cobertura completa") || ["Y8","Y9","Y12","Y48"].includes(clave)
-  const alerta  = ["Y11","Y18","Y31","Y36"].includes(clave)
-  return {
-    caa_operador: true,               // todas están en el CAA operador
-    caa_transporte: null,             // corrientes no aplican a transporte
-    iso_sgi: vigente ? true : false,
-    dia_2015: vigente ? true : false,
-  }
+// Cobertura de cada corriente Y en cada certificado (específico Alfa Service)
+const COBERTURA: Record<string, { caa_op: boolean; caa_tr: boolean; iso: boolean; dia: boolean }> = {
+  "Y8":  { caa_op:true,  caa_tr:false, iso:true,  dia:true },
+  "Y9":  { caa_op:true,  caa_tr:false, iso:true,  dia:true },
+  "Y12": { caa_op:true,  caa_tr:false, iso:true,  dia:true },
+  "Y48": { caa_op:true,  caa_tr:false, iso:true,  dia:true },
+  "Y11": { caa_op:true,  caa_tr:false, iso:false, dia:false },
+  "Y18": { caa_op:true,  caa_tr:false, iso:false, dia:false },
+  "Y31": { caa_op:true,  caa_tr:false, iso:false, dia:false },
+  "Y36": { caa_op:true,  caa_tr:false, iso:false, dia:false },
+}
+
+function Check({ ok, na = false }: { ok: boolean; na?: boolean }) {
+  if (na) return <span className="text-xs text-gray-300 font-medium">N/A</span>
+  return ok
+    ? <span className="text-green-600 font-bold text-sm">✓</span>
+    : <span className="text-red-500 font-bold text-sm">✗</span>
 }
 
 export default async function EnvironmentalPage({ params }: { params: Promise<{ id: string }> }) {
@@ -45,105 +45,146 @@ export default async function EnvironmentalPage({ params }: { params: Promise<{ 
   const db = await createClient()
   const { data } = await db.from("dd_case_environmental").select("*").eq("case_id", id).order("orden")
   const rows = (data ?? []) as EnvRow[]
-  const certs = rows.filter(r=>r.tipo==="certificado")
-  const corrientes = rows.filter(r=>r.tipo==="corriente")
-  const vigentes = rows.filter(r=>r.estado==="VIGENTE").length
-  const alertas  = rows.filter(r=>r.estado.toUpperCase().includes("ALERTA")||r.estado==="EN TRÁMITE").length
-  const criticos = rows.filter(r=>r.estado==="CRÍTICO"||r.estado==="VENCIDO").length
+  const certs = rows.filter(r => r.tipo === "certificado")
+  const corrientes = rows.filter(r => r.tipo === "corriente")
+
+  const vigentes  = rows.filter(r => r.estado === "VIGENTE").length
+  const alertas   = rows.filter(r => r.estado !== "VIGENTE" && r.estado !== "PENDIENTE").length
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex items-start justify-between mb-5">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Síntesis Ambiental</h1>
-          <p className="text-sm text-gray-500">Certificados, habilitaciones y corrientes de residuos peligrosos</p>
+          <p className="text-sm text-gray-500">Habilitaciones, certificaciones y corrientes de residuos peligrosos</p>
         </div>
         <div className="flex gap-3">
-          <div className="card p-3 text-center"><div className="text-xl font-black text-green-700">{vigentes}</div><div className="text-xs text-gray-500">Vigentes</div></div>
-          <div className="card p-3 text-center"><div className="text-xl font-black text-amber-600">{alertas}</div><div className="text-xs text-gray-500">Alertas</div></div>
-          <div className="card p-3 text-center"><div className="text-xl font-black text-red-700">{criticos}</div><div className="text-xs text-gray-500">Críticos</div></div>
+          <div className="card p-3 text-center">
+            <div className="text-xl font-black text-green-700">{vigentes}</div>
+            <div className="text-xs text-gray-500">Vigentes</div>
+          </div>
+          <div className="card p-3 text-center">
+            <div className="text-xl font-black text-red-700">{alertas}</div>
+            <div className="text-xs text-gray-500">Con alerta</div>
+          </div>
         </div>
       </div>
 
       {/* CERTIFICADOS */}
-      {certs.length>0 && (
+      {certs.length > 0 && (
         <div className="card mb-5">
-          <div className="card-title mb-3">Certificados y Habilitaciones</div>
-          {/* Header */}
-          <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-gray-50 rounded-lg mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-            <div className="col-span-3">Certificado</div>
-            <div className="col-span-1">N°</div>
-            <div className="col-span-2">Categoría</div>
-            <div className="col-span-1">Emisión</div>
-            <div className="col-span-2">Vencimiento</div>
-            <div className="col-span-2">Resolución</div>
-            <div className="col-span-1">Estado</div>
-          </div>
-          <div className="space-y-1.5">
-            {certs.map(item => (
-              <div key={item.id} className="border border-gray-100 rounded-xl overflow-hidden">
-                <div className="grid grid-cols-12 gap-2 px-3 py-3 items-center hover:bg-gray-50">
-                  <div className="col-span-3 font-bold text-xs text-gray-900 flex items-center gap-1.5">
-                    {getIcono(item.estado)} {item.clave}
-                  </div>
-                  <div className="col-span-1 text-xs font-mono text-gray-600">{item.numero||"—"}</div>
-                  <div className="col-span-2 text-xs text-gray-600">{item.categoria||"—"}</div>
-                  <div className="col-span-1 text-xs text-gray-600">{item.emision||"—"}</div>
-                  <div className={"col-span-2 text-xs font-medium "+(item.estado==="VENCIDO"||item.estado.includes("ALERTA")?"text-red-700 font-bold":"text-gray-700")}>{item.vencimiento||"—"}</div>
-                  <div className="col-span-2 text-xs text-gray-500">{item.resolucion||"—"}</div>
-                  <div className="col-span-1">
-                    <span className={"text-xs px-2 py-0.5 rounded-full border font-bold "+getBadge(item.estado)}>{item.estado}</span>
-                  </div>
-                </div>
-                {item.notas && (
-                  <div className={"px-3 py-2 border-t text-xs "+(item.estado.includes("ALERTA")||item.estado==="VENCIDO"?"bg-amber-50 border-amber-200 text-amber-800":"bg-gray-50 border-gray-100 text-gray-600")}>
-                    {item.notas}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* CORRIENTES Y */}
-      {corrientes.length>0 && (
-        <div className="card">
-          <div className="card-title mb-3">Corrientes de Residuos Peligrosos (Ley 24.051)</div>
-          <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-gray-50 rounded-lg mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-            <div className="col-span-1">Corriente</div>
-            <div className="col-span-3">Descripción general</div>
-            <div className="col-span-1 text-center">CAA Operador</div>
-            <div className="col-span-1 text-center">CAA Transporte</div>
-            <div className="col-span-1 text-center">ISO SGI</div>
-            <div className="col-span-1 text-center">DIA 2015</div>
-            <div className="col-span-1">Estado</div>
-            <div className="col-span-3">Observación</div>
-          </div>
-          <div className="space-y-1">
-            {corrientes.map(item => {
-              const cov = getCoverage(item.clave, item.notas)
-              const isAlert = item.estado==="ALERTA"||item.estado==="CRÍTICO"||item.estado==="VENCIDO"
+          <div className="card-title">Certificados y Habilitaciones</div>
+          <div className="space-y-3">
+            {certs.map(item => {
+              const s = getStyle(item.estado)
+              const isAlert = item.estado !== "VIGENTE"
               return (
-                <div key={item.id} className={"border rounded-lg overflow-hidden "+(isAlert?"border-orange-200":"border-gray-100")}>
-                  <div className={"grid grid-cols-12 gap-2 px-3 py-2.5 items-center "+(isAlert?"bg-orange-50":"hover:bg-gray-50")}>
-                    <div className="col-span-1 font-bold text-xs font-mono text-gray-900">{item.clave}</div>
-                    <div className="col-span-3 text-xs text-gray-700">{item.categoria||"—"}</div>
-                    <div className="col-span-1 text-center text-sm">{cov.caa_operador===true?"✅":cov.caa_operador===false?"❌":"—"}</div>
-                    <div className="col-span-1 text-center text-sm">{cov.caa_transporte===true?"✅":cov.caa_transporte===null?"N/A":"❌"}</div>
-                    <div className="col-span-1 text-center text-sm">{cov.iso_sgi===true?"✅":"❌"}</div>
-                    <div className="col-span-1 text-center text-sm">{cov.dia_2015===true?"✅":"❌"}</div>
-                    <div className="col-span-1">
-                      <span className={"text-xs px-1.5 py-0.5 rounded-full border font-bold "+getBadge(item.estado)}>{getIcono(item.estado)} {item.estado}</span>
+                <div key={item.id} className={`rounded-xl border p-4 ${s.bg} ${s.border}`}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      {/* Nombre + badge */}
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${s.dot}`}/>
+                        <span className="font-bold text-sm text-gray-900">{item.clave}</span>
+                        {item.numero && (
+                          <span className="text-xs bg-white border border-gray-200 rounded px-2 py-0.5 font-mono text-gray-600">{item.numero}</span>
+                        )}
+                        <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${s.bg} ${s.text} ${s.border}`}>
+                          {item.estado}
+                        </span>
+                      </div>
+                      {/* Grid de campos */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">
+                        {item.categoria && (
+                          <div>
+                            <span className="font-semibold text-gray-500 block">Categoría</span>
+                            <span className="text-gray-800">{item.categoria}</span>
+                          </div>
+                        )}
+                        {item.emision && (
+                          <div>
+                            <span className="font-semibold text-gray-500 block">Emisión</span>
+                            <span className="text-gray-800">{item.emision}</span>
+                          </div>
+                        )}
+                        {item.vencimiento && (
+                          <div>
+                            <span className="font-semibold text-gray-500 block">Vencimiento</span>
+                            <span className={`font-medium ${isAlert ? "text-red-700 font-bold" : "text-gray-800"}`}>
+                              {item.vencimiento}
+                            </span>
+                          </div>
+                        )}
+                        {item.resolucion && (
+                          <div>
+                            <span className="font-semibold text-gray-500 block">Resolución</span>
+                            <span className="text-gray-700">{item.resolucion}</span>
+                          </div>
+                        )}
+                      </div>
+                      {/* Nota */}
+                      {item.notas && (
+                        <div className={`mt-2 text-xs rounded px-2.5 py-1.5 ${isAlert ? "bg-red-100 text-red-800" : "bg-white text-gray-600"} border ${s.border}`}>
+                          {item.notas}
+                        </div>
+                      )}
                     </div>
-                    <div className="col-span-3 text-xs text-gray-600">{item.notas||"—"}</div>
                   </div>
                 </div>
               )
             })}
           </div>
-          <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
-            <strong>⚠ Corrientes con cobertura incompleta:</strong> Y11, Y18, Y31 (habilitadas en CAA Operador pero sin ISO SGI ni DIA específica). Y36 (Amianto/Asbesto): extrema peligrosidad — verificar protocolo y cobertura DIA urgente.
+        </div>
+      )}
+
+      {/* CORRIENTES Y */}
+      {corrientes.length > 0 && (
+        <div className="card">
+          <div className="card-title mb-1">Corrientes de Residuos Peligrosos — Ley 24.051</div>
+          <p className="text-xs text-gray-400 mb-3">Matriz de cobertura: qué habilitaciones alcanza cada corriente</p>
+          {/* Header */}
+          <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-gray-50 rounded-lg mb-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <div className="col-span-1">Código</div>
+            <div className="col-span-3">Descripción general</div>
+            <div className="col-span-1 text-center">CAA Operador</div>
+            <div className="col-span-1 text-center">CAA Transporte</div>
+            <div className="col-span-1 text-center">ISO SGI</div>
+            <div className="col-span-1 text-center">DIA 2015</div>
+            <div className="col-span-2">Estado</div>
+            <div className="col-span-2">Observación</div>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {corrientes.map(item => {
+              const cov = COBERTURA[item.clave] ?? { caa_op:false, caa_tr:false, iso:false, dia:false }
+              const s = getStyle(item.estado)
+              const isCrit = item.estado === "CRÍTICO" || item.estado === "ALERTA"
+              return (
+                <div key={item.id} className={`grid grid-cols-12 gap-2 px-3 py-2.5 items-center ${isCrit ? "bg-red-50" : "hover:bg-gray-50"} transition-colors`}>
+                  <div className="col-span-1 font-mono font-bold text-xs text-gray-900">{item.clave}</div>
+                  <div className="col-span-3 text-xs text-gray-700">{item.categoria ?? "—"}</div>
+                  <div className="col-span-1 text-center"><Check ok={cov.caa_op}/></div>
+                  <div className="col-span-1 text-center"><Check ok={cov.caa_tr} na={true}/></div>
+                  <div className="col-span-1 text-center"><Check ok={cov.iso}/></div>
+                  <div className="col-span-1 text-center"><Check ok={cov.dia}/></div>
+                  <div className="col-span-2">
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${s.bg} ${s.text} ${s.border}`}>
+                      {item.estado}
+                    </span>
+                  </div>
+                  <div className="col-span-2 text-xs text-gray-500 leading-tight">{item.notas ?? "—"}</div>
+                </div>
+              )
+            })}
+          </div>
+          {/* Advertencia */}
+          <div className="mt-3 border border-red-200 bg-red-50 rounded-xl px-4 py-3">
+            <p className="text-xs font-bold text-red-800 mb-1">⚠ Corrientes con cobertura incompleta</p>
+            <p className="text-xs text-red-700">
+              <strong>Y11, Y18, Y31:</strong> habilitadas en CAA Operador pero sin ISO SGI ni DIA específica — riesgo regulatorio verificado (Nivel 1 del Mapa de Riesgos).
+            </p>
+            <p className="text-xs text-red-700 mt-1">
+              <strong>Y36 (Amianto/Asbesto):</strong> CRÍTICO — extrema peligrosidad. Sin ISO ni DIA. Verificar protocolo de manipulación y cobertura urgente.
+            </p>
           </div>
         </div>
       )}
