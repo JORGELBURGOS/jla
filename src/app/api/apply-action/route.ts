@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
         else query = query.ilike('clave', `%${a.clave ?? ''}%`)
         const { data: rows } = await query.limit(1)
         if (!rows?.length) { resultados.push({ ok: false, error: `No se encontró "${a.clave}"` }); continue }
-        const row = rows[0] as Record<string, unknown>
+        const row = rows[0] as unknown as Record<string, unknown>
         const previo = String(row[col] ?? '')
         const valorFinal = ACUMULAR_COLS.has(col)
           ? (previo ? previo + '\n' : '') + `(${fechaLeg} — ${arch}): ${a.valor ?? a.nota}`
