@@ -11,7 +11,7 @@ function compromisoSena(notas: string | null) {
   return m ? 0 : 2
 }
 
-export default function RequirementsPage({ params }: { params: Promise<{ id: string }> }) {
+export default function RequirementsPage({ params }: { params: { id: string } }) {
   const [caseId, setCaseId] = useState("")
   const [items, setItems] = useState<Record<string,unknown>[]>([])
   const [tab, setTab] = useState<"interna"|"vendedor">("interna")
@@ -20,13 +20,11 @@ export default function RequirementsPage({ params }: { params: Promise<{ id: str
   const db = createClient()
 
   useEffect(() => {
-    params.then(p => {
-      setCaseId(p.id)
-      db.from("dd_case_requirements").select("*").eq("case_id", p.id)
-        .order("seccion_orden").order("n_item")
-        .then(({ data }) => setItems(data as Record<string,unknown>[] ?? []))
-    })
-  }, [params])
+    setCaseId(params.id)
+    db.from("dd_case_requirements").select("*").eq("case_id", params.id)
+      .order("seccion_orden").order("n_item")
+      .then(({ data }) => setItems(data as Record<string,unknown>[] ?? []))
+  }, [])
 
   const toggleExpand = (id: string) => setExpanded(prev => { const n = new Set(prev); n.has(id)?n.delete(id):n.add(id); return n })
 

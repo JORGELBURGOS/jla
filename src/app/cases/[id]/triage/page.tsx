@@ -31,8 +31,8 @@ function fmtUSD(n: number): string {
   return (n < 0 ? "-" : "") + "USD " + Math.abs(n).toLocaleString("es-AR")
 }
 
-export default function TriagePage({ params }: { params: Promise<{ id: string }> }) {
-  const [caseId, setCaseId] = useState("")
+export default function TriagePage({ params }: { params: { id: string } }) {
+  const caseId = params.id
   const [files, setFiles] = useState<FileItem[]>([])
   const [analyzing, setAnalyzing] = useState(false)
   const [applying, setApplying] = useState(false)
@@ -46,7 +46,6 @@ export default function TriagePage({ params }: { params: Promise<{ id: string }>
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => { params.then(p => setCaseId(p.id)) }, [params])
 
   function showToast(msg: string, ok = true) {
     setToast({ msg, ok })

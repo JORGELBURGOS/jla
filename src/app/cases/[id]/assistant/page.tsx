@@ -22,8 +22,8 @@ const SUGERENCIAS = [
   "¿El precio pedido está justificado con los datos que tenemos?",
 ]
 
-export default function AssistantPage({ params }: { params: Promise<{ id: string }> }) {
-  const [caseId, setCaseId] = useState("")
+export default function AssistantPage({ params }: { params: { id: string } }) {
+  const caseId = params.id
   const [messages, setMessages] = useState<Message[]>([
     { role: "assistant", content: "Hola! Soy tu asistente de due diligence. Tengo acceso completo al estado del caso: requerimientos, riesgos, supuestos, síntesis ambiental y validación del plan.\n\nPuedo responder preguntas, analizar el estado del caso, y proponer actualizaciones en cualquier hoja. Si querés que modifique algo, decime y te muestro la acción para que la aprobés." }
   ])
@@ -33,7 +33,6 @@ export default function AssistantPage({ params }: { params: Promise<{ id: string
   const [toast, setToast] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => { params.then(p => setCaseId(p.id)) }, [params])
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }) }, [messages])
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(null), 3500) }
