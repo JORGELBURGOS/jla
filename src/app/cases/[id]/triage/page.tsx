@@ -35,8 +35,9 @@ export default function TriagePage({ params }: { params: { id: string } }) {
     const n = new Set(set); n.has(val) ? n.delete(val) : n.add(val); return n
   }
 
-  const MAX_FILES = 5
-  const MAX_MB_TOTAL = 20
+  const MAX_FILES = 4
+  const MAX_MB_TOTAL = 3      // Vercel Hobby limit es 4.5MB; 3MB es seguro con overhead base64
+  const MAX_MB_PER_FILE = 1
 
   const readFiles = useCallback(async (fileList: FileList) => {
     const nuevos = Array.from(fileList)
@@ -57,13 +58,19 @@ export default function TriagePage({ params }: { params: { id: string } }) {
       if (ext === "pdf") mime = "application/pdf"
       else if (ext === "png") mime = "image/png"
       else if (ext === "jpg" || ext === "jpeg") mime = "image/jpeg"
+      // Verificar tamaño por archivo
+      const sizeMB = (b64.length * 0.75) / 1024 / 1024
+      if (sizeMB > MAX_MB_PER_FILE) {
+        showToast(`"${f.name}" pesa ${sizeMB.toFixed(1)}MB — máximo 1MB por archivo. Comprimí el PDF antes de subir.`, false)
+        return
+      }
       items.push({ file: f, base64: b64, mediaType: mime })
     }
     // Verificar tamaño total
     const totalB64Chars = [...files, ...items].reduce((s, fi) => s + fi.base64.length, 0)
     const totalMB = (totalB64Chars * 0.75) / 1024 / 1024
     if (totalMB > MAX_MB_TOTAL) {
-      showToast(`Los archivos pesan ${totalMB.toFixed(0)}MB — máximo ${MAX_MB_TOTAL}MB por análisis`, false)
+      showToast(`Total ${totalMB.toFixed(1)}MB supera el límite de ${MAX_MB_TOTAL}MB — Vercel rechaza requests grandes. Usá menos archivos o más livianos.`, false)
       return
     }
     setFiles(prev => [...prev, ...items])
@@ -73,10 +80,23 @@ export default function TriagePage({ params }: { params: { id: string } }) {
     if (!files.length || !caseId) return
     setAnalyzing(true); setResultado(null)
     try {
+      const body = JSON.stringify({ caseId, files: files.map(f => ({ name: f.file.name, base64: f.base64, mediaType: f.mediaType })) })
+      // Verificar tamaño antes de enviar (4.5MB = límite Vercel Hobby)
+      if (body.length > 4000000) {
+        showToast(`Request demasiado grande (${(body.length/1024/1024).toFixed(1)}MB). Reducí la cantidad de archivos o usá PDFs más chicos.`, false)
+        setAnalyzing(false); return
+      }
       const res = await fetch("/api/triage", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ caseId, files: files.map(f => ({ name: f.file.name, base64: f.base64, mediaType: f.mediaType })) })
+        body
       })
+      // Manejar respuestas no-JSON de Vercel (413, 500, etc.)
+      if (!res.ok && res.headers.get("content-type")?.includes("application/json") === false) {
+        const txt = await res.text()
+        if (res.status === 413) showToast("Archivos demasiado grandes para el servidor. Usá máximo 3 PDFs livianos.", false)
+        else showToast(`Error del servidor (${res.status}): ${txt.slice(0, 100)}`, false)
+        setAnalyzing(false); return
+      }
       const data = await res.json()
       if (data.ok) {
         const r: TriajeResultado = data.resultado
@@ -157,8 +177,8 @@ export default function TriagePage({ params }: { params: { id: string } }) {
         <div className="text-center py-6">
           <Upload size={28} className="mx-auto text-gray-400 mb-2"/>
           <p className="text-sm font-medium text-gray-700">Arrastra archivos o haz clic para seleccionar</p>
-          <p className="text-xs text-gray-500 mt-1">PDF multimodal · Imágenes · XLSX · DOCX · máximo 5 archivos / 20MB por análisis</p>
-          <p className="text-xs text-orange-500 mt-1 font-medium">Si tenés muchos archivos, analizalos en tandas de 4-5</p>
+          <p className="text-xs text-gray-500 mt-1">PDF · Imágenes · XLSX · máx. 4 archivos · máx. 1MB por archivo · máx. 3MB total</p>
+          <p className="text-xs text-orange-500 mt-1 font-medium">Con muchos documentos: analizalos en tandas de 3-4 a la vez</p>
         </div>
         <input ref={inputRef} type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.xlsx,.csv,.docx,.txt" className="hidden" onChange={e => e.target.files && readFiles(e.target.files)}/>
       </div>
