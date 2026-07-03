@@ -137,8 +137,13 @@ export default function AssistantPage({ params }: { params: { id: string } }) {
       )
     }))
 
-    if (aplicados > 0) showToast(`✓ ${aplicados} cambio${aplicados > 1 ? "s" : ""} guardado${aplicados > 1 ? "s" : ""} en la base de datos`)
-    if (errores.length) showToast(`${errores.length} error${errores.length > 1 ? "es" : ""}: ${errores[0]}`, false)
+    if (aplicados > 0 && errores.length === 0) {
+      showToast(`✓ ${aplicados} cambio${aplicados > 1 ? "s" : ""} guardado${aplicados > 1 ? "s" : ""} en la base de datos`)
+    } else if (aplicados > 0 && errores.length > 0) {
+      showToast(`✓ ${aplicados} guardados · ✗ ${errores.length} con error: ${errores[0]}`, false)
+    } else if (errores.length > 0) {
+      showToast(`No se pudo guardar: ${errores[0]}`, false)
+    }
     setSeleccion(new Set())
     setApplying(false)
   }
