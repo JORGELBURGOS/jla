@@ -120,21 +120,35 @@ NO te limites a los más obvios. Sé exhaustivo.
 - Notas SIEMPRE se acumulan
 
 ════ FORMATO DE PROPUESTAS ════
-Después de tu análisis, agregá al final (el usuario NO ve esto como código — aparece como cards con botón Guardar):
+Después de tu análisis, agregá al final. El usuario VE cada acción como un card con botón "Guardar", no como código.
 
 ACCIONES_JSON:[
-  {"tipo":"actualizar_item","n_item":N,"campo":"Estado|Cobertura|Faltantes|Alertas|Notas","valor":"...","descripcion":"texto legible para el usuario — qué cambia y por qué"},
-  {"tipo":"actualizar_supuesto","label":"label EXACTO","valor":"nuevo valor o acumulado","descripcion":"texto legible"},
-  {"tipo":"actualizar_riesgo","riesgo_existente":"texto EXACTO del riesgo","nuevo_impacto":-100000,"nueva_probabilidad":"ALTA","descripcion":"texto legible"},
-  {"tipo":"actualizar_hoja","hoja":"Síntesis Ambiental","clave":"Y11","campo":"Estado","valor":"VIGENTE","justificacion":"texto legible"},
-  {"tipo":"actualizar_hoja","hoja":"Síntesis Ambiental","clave":"Y11","campo":"Observacion","nota":"texto","justificacion":"texto legible"},
-  {"tipo":"actualizar_hoja","hoja":"Validación Plan de Negocios","clave":"concepto","campo":"Estado","valor":"Validado","justificacion":"texto legible"},
-  {"tipo":"nota_analista","hoja":"Análisis Fiscal","nota":"texto","descripcion":"texto legible"}
+  {"tipo":"actualizar_item","n_item":N,"campo":"Estado|Cobertura|Faltantes|Alertas|Notas","valor":"...","descripcion":"texto claro para el usuario"},
+  {"tipo":"actualizar_supuesto","label":"label EXACTO","valor":"valor nuevo","descripcion":"texto claro"},
+  {"tipo":"actualizar_riesgo","riesgo_existente":"texto EXACTO del riesgo","nuevo_impacto":-100000,"nueva_probabilidad":"ALTA","descripcion":"texto claro"},
+  {"tipo":"nuevo_riesgo","riesgo":"descripcion del riesgo","area":"Legal|Financiero|Operativo|Comercial|Ambiental","probabilidad":"ALTA|MEDIA|BAJA","impacto":-100000,"prioridad":"ALTA|MEDIA","accion_requerida":"qué hacer","descripcion":"texto claro"},
+  {"tipo":"nuevo_item","seccion":"18. Requerimientos Adicionales","seccion_orden":18,"documento":"nombre del documento","como_cumplimentar":"instrucciones","prioridad":"Alta|Media","antes_sena":false,"descripcion":"texto claro"},
+  {"tipo":"actualizar_hoja","hoja":"Sintesis Ambiental","clave":"Y11","campo":"Estado","valor":"VIGENTE","justificacion":"texto claro"},
+  {"tipo":"actualizar_hoja","hoja":"Sintesis Ambiental","clave":"Y11","campo":"Observacion","nota":"texto","justificacion":"texto claro"},
+  {"tipo":"nota_analista","hoja":"Analisis Fiscal","nota":"texto","descripcion":"texto claro"},
+  {"tipo":"actualizar_caso","campo":"precio_pedido","valor":4500000,"descripcion":"Actualizar precio pedido a USD 4.500.000"},
+  {"tipo":"actualizar_caso","campo":"estado","valor":"En negociacion","descripcion":"texto claro"}
 ]
 
-IMPORTANTE sobre descripciones: el campo "descripcion" o "justificacion" es lo que VE el usuario en los cards. Escribilo en lenguaje claro, máximo 100 caracteres, sin jerga técnica.
+CUÁNDO USAR CADA TIPO:
+- actualizar_item: modificar estado, cobertura, faltantes, alertas o notas de un item EXISTENTE
+- nuevo_item: el usuario identifica algo que NO está en el tracker todavía → crear item nuevo
+- actualizar_riesgo: cambiar impacto, probabilidad o notas de un riesgo YA existente
+- nuevo_riesgo: el usuario identifica un riesgo que NO está en el mapa → crear riesgo nuevo
+- actualizar_caso: editar precio_pedido, nombre o estado del proceso
+- actualizar_supuesto: cargar o actualizar valor de un supuesto
 
-════ CASO ACTUAL ════
+REGLAS: "descripcion" es lo que VE el usuario. Lenguaje claro, máx 100 caracteres.
+Si el usuario dice "el precio bajó a 4,5M" → actualizar_caso campo:precio_pedido valor:4500000
+Si el usuario dice "hay un riesgo nuevo de X" → nuevo_riesgo con todos los campos
+Si el usuario dice "necesitamos pedir también Y" → nuevo_item con el documento Escribilo en lenguaje claro, máximo 100 caracteres, sin jerga técnica.
+
+════ CASO ACTUAL (campos editables con actualizar_caso) ════
 ${caseD?.nombre} | CUIT: ${caseD?.cuit ?? 'N/D'}
 Industria: ${caseD?.industry?.nombre ?? '—'} — ${caseD?.sub_sector?.nombre ?? '—'}
 Precio pedido: ${fmtUSD(Number(caseD?.precio_pedido))}
