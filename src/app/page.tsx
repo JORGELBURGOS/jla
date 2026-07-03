@@ -27,11 +27,11 @@ export default async function HomePage() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-navy rounded-lg flex items-center justify-center">
+          <div className="w-9 h-9 bg-[#1a2744] rounded-lg flex items-center justify-center">
             <span className="text-white font-black text-sm">JL</span>
           </div>
           <div>
-            <h1 className="font-bold text-navy text-lg leading-none">JL Advisory</h1>
+            <h1 className="font-bold text-[#1a2744] text-lg leading-none">JL Advisory</h1>
             <p className="text-xs text-gray-500">Due Diligence · M&A · Argentina</p>
           </div>
         </div>
@@ -59,7 +59,7 @@ export default async function HomePage() {
                     <div className="flex items-start gap-3 flex-1 min-w-0">
                       <span className="text-3xl flex-shrink-0">{cc.industry?.icono ?? "🏭"}</span>
                       <div className="min-w-0">
-                        <h3 className="font-bold text-gray-900 group-hover:text-navy truncate">{cc.nombre as string}</h3>
+                        <h3 className="font-bold text-gray-900 group-hover:text-[#1a2744] truncate">{cc.nombre as string}</h3>
                         {cc.cuit && <p className="text-xs text-gray-500">CUIT {cc.cuit as string}</p>}
                         <div className="flex gap-2 mt-1 flex-wrap">
                           {cc.industry && <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{cc.industry.nombre}</span>}
@@ -68,7 +68,7 @@ export default async function HomePage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-5 flex-shrink-0 text-center">
-                      <div><div className="text-lg font-black text-navy">{cc.avance as number}%</div><div className="text-xs text-gray-500">avance</div></div>
+                      <div><div className="text-lg font-black text-[#1a2744]">{cc.avance as number}%</div><div className="text-xs text-gray-500">avance</div></div>
                       <div><div className="text-lg font-black text-red-700">{(cc.totalRiesgo as number) < 0 ? `USD ${(Math.abs(cc.totalRiesgo as number)/1e6).toFixed(1)}M` : "—"}</div><div className="text-xs text-gray-500">riesgo</div></div>
                       <div><div className="text-lg font-black text-gray-900">USD {((cc.precio_pedido as number)/1e6).toFixed(1)}M</div><div className="text-xs text-gray-500">precio</div></div>
                     </div>
@@ -86,4 +86,3 @@ export default async function HomePage() {
     </div>
   )
 }
-

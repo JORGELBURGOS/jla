@@ -113,7 +113,7 @@ export default function NewCasePage() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
       <div className="w-full max-w-2xl">
         <div className="text-center mb-8">
-          <div className="w-12 h-12 bg-navy rounded-xl flex items-center justify-center mx-auto mb-3">
+          <div className="w-12 h-12 bg-[#1a2744] rounded-xl flex items-center justify-center mx-auto mb-3">
             <span className="text-white font-black">JL</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Nuevo caso de due diligence</h1>
@@ -123,7 +123,7 @@ export default function NewCasePage() {
         <div className="card">
           <div className="flex gap-2 mb-6">
             {[1,2,3].map(s => (
-              <div key={s} className={`flex-1 h-1 rounded-full transition-colors ${s<=step?"bg-navy":"bg-gray-200"}`}/>
+              <div key={s} className={`flex-1 h-1 rounded-full transition-colors ${s<=step?"bg-[#1a2744]":"bg-gray-200"}`}/>
             ))}
           </div>
 
@@ -199,4 +199,3 @@ export default function NewCasePage() {
     </div>
   )
 }
-

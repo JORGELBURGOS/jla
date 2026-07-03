@@ -3,19 +3,19 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 
 const NAV = [
-  ["",               "Dashboard"],
-  ["/requirements",  "Requerimientos"],
-  ["/risks",         "Mapa de Riesgos"],
-  ["/assumptions",   "Supuestos"],
-  ["/ebitda",        "Borrador EBITDA"],
-  ["/financial",     "Modelo Financiero"],
-  ["/valuation",     "Valuación"],
-  ["/triage",        "Triage de Docs"],
-  ["/assistant",     "Asistente IA"],
-  ["/fiscal",        "Análisis Fiscal"],
-  ["/environmental", "Síntesis Ambiental"],
-  ["/validation",    "Validación Plan"],
-  ["/log",           "Log Auditoría"],
+  [""          , "Dashboard"],
+  ["/requirements","Requerimientos"],
+  ["/risks"    , "Mapa de Riesgos"],
+  ["/assumptions","Supuestos"],
+  ["/ebitda"   , "Borrador EBITDA"],
+  ["/financial", "Modelo Financiero"],
+  ["/valuation", "Valuación"],
+  ["/triage"   , "Triage de Docs"],
+  ["/assistant", "Asistente IA"],
+  ["/fiscal"   , "Análisis Fiscal"],
+  ["/environmental","Síntesis Ambiental"],
+  ["/validation","Validación Plan"],
+  ["/log"      , "Log Auditoría"],
 ]
 
 export default function CaseShell({ children, caseData, caseId }: {
@@ -34,10 +34,10 @@ export default function CaseShell({ children, caseData, caseId }: {
         <div className="p-4 border-b border-gray-100">
           <Link href="/" className="text-xs text-gray-500 hover:text-gray-700 mb-3 block">← Todos los casos</Link>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{backgroundColor:'#1a2744'}}>
+            <div className="w-7 h-7 bg-[#1a2744] rounded-md flex items-center justify-center">
               <span className="text-white font-black text-xs">JL</span>
             </div>
-            <span className="text-xs font-bold" style={{color:'#1a2744'}}>JL Advisory</span>
+            <span className="text-xs font-bold text-[#1a2744]">JL Advisory</span>
           </div>
         </div>
         <div className="px-4 py-3 border-b border-gray-100">
@@ -52,9 +52,7 @@ export default function CaseShell({ children, caseData, caseId }: {
             return (
               <Link key={href} href={full}
                 className={`flex items-center px-4 py-2 text-xs font-medium transition-colors ${
-                  active
-                    ? "bg-blue-50 border-r-2 border-blue-800 text-blue-900"
-                    : "text-gray-600 hover:bg-gray-50"
+                  active ? "bg-blue-50 text-[#1a2744] border-r-2 border-[#1a2744]" : "text-gray-600 hover:bg-gray-50"
                 }`}>
                 {label}
               </Link>
@@ -63,7 +61,7 @@ export default function CaseShell({ children, caseData, caseId }: {
         </nav>
         <div className="p-4 border-t border-gray-100">
           <div className="text-xs text-gray-500">Precio pedido</div>
-          <div className="text-sm font-bold" style={{color:'#1a2744'}}>
+          <div className="text-sm font-bold text-[#1a2744]">
             USD {((caseData.precio_pedido as number)/1e6).toFixed(1)}M
           </div>
         </div>

@@ -33,7 +33,7 @@ export default async function EBITDAPage({ params }: { params: Promise<{ id: str
             {financ.map((s: Record<string,string>) => (
               <div key={s.label} className="flex justify-between items-center py-1.5 border-b border-gray-50 last:border-0">
                 <span className="text-sm text-gray-700">{s.label}</span>
-                <span className={`text-sm font-bold ${s.valor?"text-navy-DEFAULT":"text-gray-400"}`}>
+                <span className={`text-sm font-bold ${s.valor?"text-[#1a2744]":"text-gray-400"}`}>
                   {s.valor ? "USD " + parseFloat(s.valor).toLocaleString("es-AR") : "(vacío)"}
                 </span>
               </div>
