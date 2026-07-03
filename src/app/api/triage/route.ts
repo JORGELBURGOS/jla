@@ -5,96 +5,186 @@ import Anthropic from '@anthropic-ai/sdk'
 
 const ORG_ID = 'jl-advisory'
 
-// POST — analizar documentos con IA
 export async function POST(req: NextRequest) {
   const { caseId, files } = await req.json()
   if (!caseId || !files?.length) return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
 
   const db = createServiceClient()
-  const [{ data: reqs }, { data: supuestos }, { data: riesgos }, { data: env }, { data: valid }] = await Promise.all([
-    db.from('dd_case_requirements').select('n_item,estado,antes_sena,antes_visita,documento').eq('case_id', caseId).order('n_item'),
-    db.from('dd_case_assumptions').select('label,valor,tipo').eq('case_id', caseId).order('orden'),
-    db.from('dd_case_risks').select('riesgo,area,impacto,estado').eq('case_id', caseId).neq('estado', 'DUPLICADO').order('fila_orden'),
-    db.from('dd_case_environmental').select('clave,estado,tipo').eq('case_id', caseId).order('orden'),
-    db.from('dd_case_validation').select('clave,seccion,estado').eq('case_id', caseId).order('seccion_orden')
+
+  // Cargar TODO el contexto actual de la plataforma
+  const [
+    { data: reqs }, { data: supuestos }, { data: riesgos },
+    { data: env },  { data: valid },    { data: caseData }
+  ] = await Promise.all([
+    db.from('dd_case_requirements')
+      .select('n_item,estado,como_cumplimentar,cobertura,faltantes,alertas,notas,documento,origen')
+      .eq('case_id', caseId).order('n_item'),
+    db.from('dd_case_assumptions').select('*').eq('case_id', caseId).order('orden'),
+    db.from('dd_case_risks').select('*').eq('case_id', caseId).neq('estado','DUPLICADO').order('fila_orden'),
+    db.from('dd_case_environmental').select('*').eq('case_id', caseId).order('orden'),
+    db.from('dd_case_validation').select('*').eq('case_id', caseId).order('seccion_orden'),
+    db.from('dd_cases').select('nombre,precio_pedido').eq('id', caseId).single()
   ])
 
-  const resumenTracker = (reqs ?? []).map((it: Record<string,unknown>) =>
-    `- N°${it.n_item} [${it.estado}]${it.antes_sena ? ' [ANTES SEÑA]' : ''}${it.antes_visita ? ' [ANTES VISITA]' : ''} ${it.documento}`
+  // Nombres de archivos ya analizados (para detectar duplicados)
+  const archivosYaAnalizados = (reqs ?? [])
+    .flatMap((r: Record<string,unknown>) => [
+      String(r.notas ?? ''), String(r.cobertura ?? ''), String(r.alertas ?? '')
+    ])
+    .join(' ')
+
+  const nombresSubidos = files.map((f: Record<string,string>) => f.name)
+  const posibleDuplicado = nombresSubidos.filter((n: string) =>
+    archivosYaAnalizados.toLowerCase().includes(n.toLowerCase().replace('.pdf','').slice(0,20))
+  )
+
+  const supB23 = (supuestos ?? []).find((s: Record<string,unknown>) =>
+    String(s.label).includes('CAA documentado') || String(s.label).includes('B23')
+  )
+  const anosDocumentados = supB23 ? String((supB23 as Record<string,unknown>).valor ?? '') : ''
+
+  // Tracker completo con todo el contexto
+  const trackerCtx = (reqs ?? []).map((it: Record<string,unknown>) => {
+    const pendiente = it.estado !== 'Recibido'
+    return `N°${it.n_item} [${it.estado}] ${it.documento}` +
+      (pendiente && it.como_cumplimentar ? `\n  NECESITA: ${String(it.como_cumplimentar).slice(0,180)}` : '') +
+      (it.cobertura ? `\n  TIENE: ${String(it.cobertura).slice(0,150)}` : '') +
+      (pendiente && it.faltantes ? `\n  FALTA: ${String(it.faltantes).slice(0,150)}` : '') +
+      (it.alertas ? `\n  ALERTA: ${String(it.alertas).slice(0,120)}` : '')
+  }).join('\n\n')
+
+  const supCtx = (supuestos ?? []).map((s: Record<string,unknown>) =>
+    `"${s.label}" = ${s.valor ?? '(vacío)'} [${s.tipo}]` +
+    (s.tipo === 'categorico' && s.opciones ? ` | opciones: ${(s.opciones as string[]).join('/')}` : '')
   ).join('\n')
 
-  const resumenRiesgos = (riesgos ?? []).map((r: Record<string,unknown>) =>
-    `- "${r.riesgo}" | ${r.area} | ${r.estado} | USD ${Math.abs(Number(r.impacto)).toLocaleString('es-AR')}`
+  const riesgosCtx = (riesgos ?? []).map((r: Record<string,unknown>) =>
+    `[${r.estado}${r.es_dinamico ? '/DIN' : ''}] "${r.riesgo}" | ${r.area} | ${r.probabilidad} | USD ${Math.abs(Number(r.impacto)).toLocaleString('es-AR')}` +
+    (r.accion_requerida ? `\n  Acción: ${String(r.accion_requerida).slice(0,120)}` : '') +
+    (r.notas ? `\n  Notas: ${String(r.notas).slice(0,100)}` : '')
+  ).join('\n\n')
+
+  const ambientalCtx = [
+    '=CERTIFICADOS=',
+    ...(env ?? []).filter((e: Record<string,unknown>) => e.tipo === 'certificado').map((e: Record<string,unknown>) =>
+      `${e.clave} | ${e.estado} | vence: ${e.vencimiento ?? 'N/D'} | ${e.notas ?? ''}`
+    ),
+    '=CORRIENTES Y=',
+    ...(env ?? []).filter((e: Record<string,unknown>) => e.tipo === 'corriente').map((e: Record<string,unknown>) =>
+      `${e.clave} [${e.estado}] ${e.categoria ?? ''} | ${e.notas ?? ''}`
+    )
+  ].join('\n')
+
+  const validCtx = (valid ?? []).map((v: Record<string,unknown>) =>
+    `${v.clave}: plan=${v.dato_plan ?? 'N/D'} | real=${v.dato_real ?? '(sin dato)'} | estado=${v.estado} | ${v.observaciones ?? ''}`
   ).join('\n')
 
-  const systemPrompt = `Sos un analista senior de due diligence M&A para ALFA SERVICE (residuos peligrosos, Mendoza).
+  const systemPrompt = `Sos un analista senior de M&A con especialización en residuos peligrosos Argentina.
+Estás analizando documentos de due diligence para ${(caseData as Record<string,unknown>)?.nombre ?? 'ALFA SERVICE'} (USD ${Number((caseData as Record<string,unknown>)?.precio_pedido ?? 5000000).toLocaleString('es-AR')}).
 
-CONTEXTO CRÍTICO — leelo antes de analizar:
-- La plataforma ya procesó documentos anteriores. El TRACKER, RIESGOS y SUPUESTOS que recibís reflejan TODO lo analizado hasta ahora.
-- Los documentos que recibís AHORA son adicionales — no son los únicos. No asumas que lo que falta en estos documentos es una brecha.
-- Si subís un CAA de 2016-2017 y el tracker ya tiene CAA 2025-2026 como Recibido, esto AGREGA años documentados — no crea una brecha del 2017 en adelante.
-- Si el supuesto B23 ya tiene años documentados (ej "2022,2023,2024,2025") y el documento agrega 2016-2021, el nuevo valor de B23 sería "2016,2017,2018,2019,2020,2021,2022,2023,2024,2025" — SIN GAPS entre lo que ya estaba y lo que se agrega.
-- Evaluá SIEMPRE contra el estado actual de la base: si un ítem ya está "Recibido", el nuevo documento puede ampliar la cobertura pero no vuelve el ítem a Pendiente.
-- Los riesgos ya CONFIRMADOS o VERIFICADOS en el tracker solo se modifican si el documento aporta evidencia que los contradice directamente.
+════ MENTALIDAD DE ANÁLISIS ════
+Cuando recibís un documento:
+1. IDENTIFICÁ su tipo (CAA, ISO, DIA, ART, escritura, EECC, manifiestos, poder, etc.)
+2. BUSCÁ en TODA la base de datos qué ítems, supuestos, riesgos, certificados y validaciones aplican
+3. PROPONÉ TODOS los cambios que correspondan — no solo los más obvios
+4. Si el documento aporta evidencia que modifica un riesgo, proponelo
+5. Si el documento confirma algo que estaba en duda, actualizalo
+6. Si el documento contradice algo ya cargado, alertalo
+7. Sé EXHAUSTIVO: mejor proponer de más que de menos
 
-REGLAS DE ANÁLISIS:
-- Extraé solo HECHOS LITERALES del documento. Para supuestos, citá la frase EXACTA del documento.
-- Para acumulativo B23 (años CAA): si el documento cubre un período, sumá esos años a los que ya están en el supuesto — no los reemplaces.
-- Para riesgos: son ESTIMACIONES con justificación. Los riesgos dinámicos se modifican via supuesto, no directamente.
-- Respondés ÚNICAMENTE con JSON válido. Sin texto antes ni después. Sin bloques markdown.`
+════ DOCUMENTOS YA ANALIZADOS (PARA DETECTAR DUPLICADOS) ════
+Si el archivo que recibís ya aparece mencionado en el tracker (en TIENE o NOTAS), indicalo en el resumen y NO repitas propuestas que ya están aplicadas.
+${posibleDuplicado.length ? `POSIBLES DUPLICADOS DETECTADOS: ${posibleDuplicado.join(', ')} — verificá antes de proponer.` : 'Sin duplicados detectados.'}
 
-  // Extraer B23 para mostrarlo prominentemente en el prompt
-  const supB23 = (supuestos ?? []).find((s: Record<string,unknown>) => String(s.label).includes('CAA documentado') || String(s.label).includes('B23'))
-  const anosYaDocumentados = supB23 ? String((supB23 as Record<string,unknown>).valor ?? '') : ''
+════ CONTEXTO TEMPORAL ════
+La base ya tiene documentos previos. Los documentos que recibís SON ADICIONALES.
+Si recibís un CAA histórico (ej 2016-2017) y en la base ya hay CAA 2025-2026 Recibido → el nuevo documento AMPLÍA la cobertura, no crea gaps hacia adelante.
+${anosDocumentados ? `AÑOS CAA YA DOCUMENTADOS EN B23: ${anosDocumentados} → sumá los nuevos a estos, no los reemplaces.` : ''}
 
-  const userPrompt = `TRACKER (${(reqs ?? []).length} items):
-${resumenTracker}
+════ GUÍA TIPO DE DOCUMENTO → ÍTEMS Y CAMPOS ════
+CAA Operador (año histórico) → n_item:23 cobertura/faltantes + supuesto B23 (agregar años)
+CAA Operador (año vigente)   → n_item:19 estado/cobertura + ambiental CAA Operador estado/vencimiento
+CAA Transportista            → n_item:19 + n_item:26 (flota habilitada) + ambiental CAA Transportista + corrientes Y del CAA
+Certificado ISO              → n_item:22 estado/cobertura + ambiental ISO SGI estado/vencimiento
+DIA / EIA                    → n_item:24 estado/cobertura + ambiental DIA estado
+Manifiestos transporte/trat  → n_item:29 estado/cobertura/faltantes
+Póliza ART                   → n_item:18 estado/cobertura/alertas + ambiental ART estado/vencimiento
+Escritura terreno/inmueble   → n_item:20 estado/cobertura/alertas
+F.2051 IVA mensual           → n_item:52 estado/cobertura + n_item:11 (DDJJ) + validación ingresos
+F.2002 IIBB mensual          → n_item:53 estado/cobertura + n_item:12 (DDJJ) + validación ingresos
+VTV / Habilitación vehículo  → n_item:54 estado/cobertura + n_item:21 (inventario flota)
+Poder notarial               → n_item:5 estado/cobertura
+Estatuto / escritura societ  → n_item:1 estado/cobertura + validación estructura societaria
+Libro accionistas            → n_item:2 estado/cobertura
+Nómina / planilla personal   → n_item:13 estado/cobertura/alertas
+EECC estados contables       → n_item:6 estado/cobertura + supuestos financieros (ingresos, EBITDA, deuda, CAPEX, capital de trabajo)
+Seguro ambiental             → n_item:28 estado/cobertura/alertas
+Plan de negocios del vendedor→ n_item:47 + validación proyecciones
+Inventario equipos/flota     → n_item:21 + n_item:25/26 + ambiental corrientes Y
+Solicitud información (xlsx) → múltiples ítems según contenido
 
-SUPUESTOS ACTUALES (valores ya cargados en la base — NO reemplaces, ACUMULÁ):
-${(supuestos ?? []).map((s: Record<string,unknown>) => `"${s.label}": ${s.valor ?? '(vacio)'} [tipo: ${s.tipo}]`).join('\n')}
-${anosYaDocumentados ? `\nAÑOS CAA YA DOCUMENTADOS EN LA BASE: ${anosYaDocumentados}\nSi el documento cubre años adicionales, el nuevo valor debe incluir TODOS (los ya documentados + los nuevos).` : ''}
+Respondés ÚNICAMENTE con JSON válido. Sin texto extra. Sin markdown.`
 
-RIESGOS YA CARGADOS (no duplicar):
-${resumenRiesgos}
+  const userPrompt = `════ TRACKER COMPLETO (${(reqs ?? []).length} ítems) ════
+${trackerCtx}
 
-AMBIENTAL: ${(env ?? []).map((e: Record<string,unknown>) => `${e.clave}=${e.estado}`).join(' | ')}
-VALIDACION: ${(valid ?? []).map((v: Record<string,unknown>) => `${v.clave}=${v.estado}`).join(' | ')}
+════ SUPUESTOS ACTUALES ════
+${supCtx}
 
-Respondé con este JSON exacto:
+════ RIESGOS EXISTENTES ════
+${riesgosCtx}
+
+════ SÍNTESIS AMBIENTAL ACTUAL ════
+${ambientalCtx}
+
+════ VALIDACIÓN PLAN ACTUAL ════
+${validCtx}
+
+════ DOCUMENTOS A ANALIZAR: ${files.map((f: Record<string,string>) => f.name).join(', ')} ════
+
+Analizá cada documento y respondé con este JSON COMPLETO:
 {
-  "resumen": "descripcion 2-3 oraciones del documento",
+  "resumen": "qué documentos recibiste, qué cubren, qué falta aún, si hay duplicados",
   "actualizaciones_items": [
-    {"n_item":6,"nuevo_estado":"Recibido|Parcial","cobertura":"...","faltantes":"...","alertas":"..."}
+    {"n_item":23,"nuevo_estado":"Recibido|Parcial|Pendiente","cobertura":"qué cubre este documento para este ítem","faltantes":"qué sigue faltando para completar el ítem","alertas":"anomalías o inconsistencias encontradas"}
   ],
   "actualizaciones_supuestos": [
-    {"label":"label EXACTO del supuesto","valor_propuesto":1100000,"fuente_textual":"cita textual del documento"}
+    {"label":"label EXACTO del supuesto","valor_propuesto":"valor nuevo o acumulado","fuente_textual":"cita textual del documento"}
   ],
   "riesgos_propuestos": [
-    {"accion":"nuevo","riesgo":"texto nuevo riesgo","area":"Legal|Financiero|Operativo|Comercial|Ambiental","probabilidad":"ALTA|MEDIA|BAJA","impacto_propuesto":-100000,"prioridad":"ALTA|MEDIA|BAJA","justificacion":"..."},
-    {"accion":"modificar","riesgo_existente":"texto EXACTO de riesgo ya cargado","impacto_propuesto":-50000,"probabilidad":"ALTA","prioridad":"ALTA","justificacion":"..."}
+    {"accion":"modificar","riesgo_existente":"texto EXACTO del riesgo existente","impacto_propuesto":-100000,"probabilidad":"ALTA|MEDIA|BAJA","justificacion":"por qué cambia"},
+    {"accion":"nuevo","riesgo":"texto del nuevo riesgo","area":"Ambiental|Legal|Financiero|Operativo|Comercial","probabilidad":"ALTA","impacto_propuesto":-50000,"prioridad":"ALTA","justificacion":"evidencia del documento"}
   ],
   "actualizaciones_hojas": [
-    {"hoja":"Sintesis Ambiental","clave":"CAA Operador Fijo","campo":"Estado","valor":"VIGENTE","justificacion":"..."},
-    {"hoja":"Validacion Plan de Negocios","clave":"Horno Rotativo","campo":"Estado","valor":"Cuestionado","justificacion":"..."},
-    {"hoja":"Analisis Fiscal","clave":"","campo":"nota","nota":"texto nota analista","justificacion":""}
+    {"hoja":"Síntesis Ambiental","clave":"CAA Operador Fijo","campo":"Estado","valor":"VIGENTE","justificacion":"..."},
+    {"hoja":"Síntesis Ambiental","clave":"CAA Operador Fijo","campo":"Observacion","nota":"texto a agregar","justificacion":"..."},
+    {"hoja":"Validación Plan de Negocios","clave":"Ingresos 2024","campo":"Dato real","valor":"USD 660.000","justificacion":"..."},
+    {"hoja":"Validación Plan de Negocios","clave":"Ingresos 2024","campo":"Estado","valor":"Cuestionado","justificacion":"..."}
   ],
-  "alertas_generales": "hallazgos relevantes que no encajan en ningun slot — texto libre o cadena vacia",
-  "items_no_identificados": "contenido del documento que no pudo clasificarse — texto libre o cadena vacia"
+  "alertas_generales": "hallazgos importantes que no encajan en las categorías anteriores — texto libre",
+  "items_no_identificados": "contenido del documento que no pudo clasificarse"
 }`
 
   try {
-    const blocks: Parameters<typeof anthropic.messages.create>[0]['messages'][0]['content'] = []
+    const blocks: Anthropic.MessageParam['content'] = []
     for (const f of files) {
       if (f.mediaType === 'application/pdf') {
         blocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: f.base64 }, title: f.name } as unknown as Anthropic.TextBlockParam)
       } else if (f.mediaType.startsWith('image/')) {
-        blocks.push({ type: 'image', source: { type: 'base64', media_type: f.mediaType, data: f.base64 } } as Anthropic.ImageBlockParam)
+        blocks.push({ type: 'image', source: { type: 'base64', media_type: f.mediaType as 'image/jpeg', data: f.base64 } } as Anthropic.ImageBlockParam)
       } else {
         blocks.push({ type: 'text', text: `[${f.name}]\n${Buffer.from(f.base64, 'base64').toString('utf-8').slice(0, 50000)}` })
       }
     }
     blocks.push({ type: 'text', text: userPrompt })
-    const resp = await anthropic.messages.create({ model: MODEL, max_tokens: MAX_TOKENS_TRIAGE, system: systemPrompt, messages: [{ role: 'user', content: blocks }] })
+
+    const resp = await anthropic.messages.create({
+      model: MODEL,
+      max_tokens: MAX_TOKENS_TRIAGE,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: blocks }]
+    })
+
     const texto = resp.content.filter(b => b.type === 'text').map(b => (b as Anthropic.TextBlock).text).join('')
     const resultado = JSON.parse(texto.replace(/```json|```/g, '').trim())
     await db.from('dd_audit_log').insert({ case_id: caseId, accion: 'Triage documento', detalle: files.map((f: Record<string,string>) => f.name).join(', ').slice(0,200), org_id: ORG_ID })
@@ -104,7 +194,6 @@ Respondé con este JSON exacto:
   }
 }
 
-// PUT — delegar a apply-action
 export async function PUT(req: NextRequest) {
   const body = await req.json()
   const resp = await fetch(`${req.nextUrl.origin}/api/apply-action`, {
