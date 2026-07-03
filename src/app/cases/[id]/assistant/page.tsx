@@ -64,21 +64,24 @@ export default function AssistantPage({ params }: { params: { id: string } }) {
     if (!accion || !caseId) return
     setApplying(accionKey)
     try {
-      const res = await fetch("/api/chat", {
-        method: "PUT",
+      // Llama directo a apply-action — evita fetch interno en Vercel serverless
+      const res = await fetch("/api/apply-action", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ caseId, accion })
+        body: JSON.stringify({ caseId, acciones: [accion], archivo: "Asistente IA" })
       })
       const data = await res.json()
-      if (data.ok) {
-        showToast("✅ Aplicado correctamente")
+      if (data.ok || data.aplicados > 0) {
+        showToast("Aplicado correctamente")
         setMessages(prev => prev.map((m, i) => i !== msgIdx ? m : {
           ...m, acciones: m.acciones?.map((a, j) => j !== accionIdx ? a : { ...a, _aplicado: true })
         }))
       } else {
-        showToast("❌ " + (data.error ?? "Error al aplicar"))
+        showToast("Error: " + (data.errores?.[0] ?? data.error ?? "Error al aplicar"))
       }
-    } catch { showToast("❌ Error de conexión") }
+    } catch (e) {
+      showToast("Error de conexión: " + (e instanceof Error ? e.message : ""))
+    }
     setApplying(null)
   }
 
