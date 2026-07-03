@@ -200,9 +200,7 @@ export default function EnvironmentalPage({ params }: { params: { id: string } }
                       <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${s.bg} ${s.text} ${s.border}`}>
                         {item.estado}
                       </span>
-                      {tieneNotas && !isOpen && (
-                        <span className="ml-2 text-xs text-gray-400 italic">{item.notas!.slice(0, 35)}{item.notas!.length > 35 ? "..." : ""}</span>
-                      )}
+
                     </div>
                   </button>
 
