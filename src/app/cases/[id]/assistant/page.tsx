@@ -92,11 +92,11 @@ export default function AssistantPage({ params }: { params: { id: string } }) {
       <div className="flex-1 overflow-y-auto p-6 space-y-5">
         {messages.map((m, msgIdx) => (
           <div key={msgIdx} className={`flex gap-3 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${m.role === "assistant" ? "bg-navy-DEFAULT" : "bg-gray-200"}`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${m.role === "assistant" ? "bg-[#1a2744]" : "bg-gray-200"}`}>
               {m.role === "assistant" ? <Bot size={15} className="text-white"/> : <User size={15} className="text-gray-600"/>}
             </div>
             <div className="max-w-2xl flex-1 min-w-0">
-              <div className={`rounded-xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${m.role === "user" ? "bg-navy-DEFAULT text-white" : "bg-white border border-gray-200 text-gray-800"}`}>
+              <div className={`rounded-xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${m.role === "user" ? "bg-[#1a2744] text-white" : "bg-white border border-gray-200 text-gray-800"}`}>
                 {m.content}
               </div>
               {m.acciones && m.acciones.length > 0 && (
@@ -111,7 +111,7 @@ export default function AssistantPage({ params }: { params: { id: string } }) {
                           <span className="flex items-center gap-1 text-green-700 font-bold flex-shrink-0"><Check size={12}/> Aplicado</span>
                         ) : (
                           <button onClick={() => applyAccion(msgIdx, ai, key)} disabled={applying === key}
-                            className="flex items-center gap-1 px-3 py-1.5 bg-navy-DEFAULT text-white rounded-lg hover:bg-navy-700 disabled:opacity-50 font-bold flex-shrink-0 text-xs">
+                            className="flex items-center gap-1 px-3 py-1.5 bg-[#1a2744] text-white rounded-lg hover:bg-[#0d1525] disabled:opacity-50 font-bold flex-shrink-0 text-xs">
                             {applying === key ? <RefreshCw size={10} className="animate-spin"/> : null}
                             Aplicar
                           </button>
@@ -126,7 +126,7 @@ export default function AssistantPage({ params }: { params: { id: string } }) {
         ))}
         {loading && (
           <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full bg-navy-DEFAULT flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-full bg-[#1a2744] flex items-center justify-center flex-shrink-0">
               <Bot size={15} className="text-white"/>
             </div>
             <div className="bg-white border border-gray-200 rounded-xl px-4 py-3">
@@ -153,7 +153,7 @@ export default function AssistantPage({ params }: { params: { id: string } }) {
           <textarea value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send() } }}
             placeholder="Escribí tu consulta... (Enter para enviar · Shift+Enter nueva línea)"
-            rows={2} className="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-navy-500"/>
+            rows={2} className="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"/>
           <button onClick={send} disabled={loading || !input.trim()} className="btn-primary self-end flex items-center gap-2 disabled:opacity-50">
             {loading ? <RefreshCw size={14} className="animate-spin"/> : <Send size={14}/>} Enviar
           </button>
