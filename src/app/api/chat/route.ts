@@ -127,15 +127,19 @@ Cuando el usuario te cuente algo nuevo (una declaración verbal, un documento re
 
 Cuando el usuario diga "aplicá todo" o "aplicá A, B y D" o similar, generá SOLO el ACCIONES_JSON sin explicación extra — el usuario ya sabe qué hace cada acción.
 
+IMPORTANTE para no truncar el JSON: mantené las "descripcion" y "justificacion" de cada acción en menos de 100 caracteres. Si tenés muchas acciones, priorizá los tipos más importantes primero (actualizar_riesgo antes que nota_analista).
+
 ACCIONES_JSON:[
-  {"tipo":"actualizar_item","n_item":N,"campo":"Estado|Cobertura|Faltantes|Alertas|Notas","valor":"...","descripcion":"por qué"},
-  {"tipo":"actualizar_supuesto","label":"label EXACTO del supuesto","valor":"TRANSFERIBLE","descripcion":"..."},
-  {"tipo":"actualizar_riesgo","riesgo_existente":"texto EXACTO del riesgo existente","nuevo_impacto":-50000,"nueva_probabilidad":"ALTA","descripcion":"..."},
-  {"tipo":"actualizar_hoja","hoja":"Síntesis Ambiental","clave":"Y11","campo":"Estado","valor":"ALERTA-CONDICIONAL","justificacion":"..."},
-  {"tipo":"actualizar_hoja","hoja":"Síntesis Ambiental","clave":"Y11","campo":"Observacion","nota":"texto acumulativo","justificacion":"..."},
-  {"tipo":"actualizar_hoja","hoja":"Validación Plan de Negocios","clave":"nombre concepto","campo":"Estado","valor":"Validado","justificacion":"..."},
-  {"tipo":"nota_analista","hoja":"Análisis Fiscal","nota":"texto"}
+  {"tipo":"actualizar_item","n_item":N,"campo":"Estado|Cobertura|Faltantes|Alertas|Notas","valor":"...","descripcion":"TEXTO EN LENGUAJE NATURAL para mostrar al usuario, ej: 'Actualizar estado del ítem 29 a Parcial — recibimos los manifiestos'"},
+  {"tipo":"actualizar_supuesto","label":"label EXACTO del supuesto","valor":"TRANSFERIBLE","descripcion":"TEXTO LEGIBLE ej: 'Registrar que la transferibilidad está confirmada como REQUIERE TRÁMITE'"},
+  {"tipo":"actualizar_riesgo","riesgo_existente":"texto EXACTO del riesgo","nuevo_impacto":-50000,"nueva_probabilidad":"ALTA","descripcion":"TEXTO LEGIBLE ej: 'Bajar el riesgo de la DIA de -USD 500.000 a -USD 100.000 por declaración Troncoso'"},
+  {"tipo":"actualizar_hoja","hoja":"Síntesis Ambiental","clave":"Y11","campo":"Estado","valor":"ALERTA-CONDICIONAL","justificacion":"TEXTO LEGIBLE ej: 'Cambiar Y11 de ALERTA a ALERTA-CONDICIONAL — Troncoso dice que solo se transporta'"},
+  {"tipo":"actualizar_hoja","hoja":"Síntesis Ambiental","clave":"Y11","campo":"Observacion","nota":"texto a agregar","justificacion":"TEXTO LEGIBLE ej: 'Agregar nota en Y11 con la declaración de Troncoso'"},
+  {"tipo":"actualizar_hoja","hoja":"Validación Plan de Negocios","clave":"Horno Rotativo","campo":"Estado","valor":"Cuestionado","justificacion":"TEXTO LEGIBLE"},
+  {"tipo":"nota_analista","hoja":"Análisis Fiscal","nota":"texto","descripcion":"TEXTO LEGIBLE ej: 'Agregar nota en Análisis Fiscal sobre las DDJJ tardías'"}
 ]
+
+CRÍTICO: El campo "descripcion" o "justificacion" es lo que VE EL USUARIO. Escribilo en español rioplatense, claro y concreto, sin términos técnicos. Max 80 caracteres.
 
 REGLAS CRÍTICAS:
 - Para corrientes Y: "actualizar_hoja" con hoja="Síntesis Ambiental", clave=código (ej "Y11"), campo="Estado" o "Observacion"
@@ -196,12 +200,30 @@ ${ctxValidacion}`
 
     let respuesta = raw
     let acciones: Record<string, unknown>[] = []
-    const m = raw.match(/ACCIONES_JSON:\s*(\[[\s\S]*?\])\s*$/)
-    if (m) {
+    // Buscar ACCIONES_JSON aunque el array esté incompleto (truncado por token limit)
+    const idx = raw.indexOf('ACCIONES_JSON:')
+    if (idx !== -1) {
+      respuesta = raw.slice(0, idx).trim()
+      const jsonStr = raw.slice(idx + 'ACCIONES_JSON:'.length).trim()
+      // Intentar parsear — si está truncado, completar el array
+      let toParse = jsonStr
+      if (!toParse.trimEnd().endsWith(']')) {
+        // Cortar el último objeto incompleto y cerrar el array
+        const lastComma = toParse.lastIndexOf('},')
+        const lastClose = toParse.lastIndexOf('}')
+        if (lastClose > lastComma) toParse = toParse.slice(0, lastClose + 1) + ']'
+        else if (lastComma !== -1) toParse = toParse.slice(0, lastComma + 1).trimEnd().slice(0, -1) + ']'
+        else toParse = '[]'
+      }
       try {
-        acciones = JSON.parse(m[1])
-        respuesta = raw.replace(/ACCIONES_JSON:[\s\S]*$/, '').trim()
-      } catch { /* si falla el parse, mostramos la respuesta completa */ }
+        acciones = JSON.parse(toParse)
+      } catch {
+        // Si sigue fallando, intentar json permisivo eliminando el último elemento incompleto
+        try {
+          const safe = toParse.replace(/,\s*\{[^}]*$/, ']')
+          acciones = JSON.parse(safe)
+        } catch { /* sin acciones */ }
+      }
     }
 
     await db.from('dd_audit_log').insert({
