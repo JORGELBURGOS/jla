@@ -33,11 +33,8 @@ export default function CaseShell({ children, caseData, caseId }: {
       <aside className="w-48 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col">
         <div className="p-4 border-b border-gray-100">
           <Link href="/" className="text-xs text-gray-500 hover:text-gray-700 mb-3 block">← Todos los casos</Link>
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-[#1a2744] rounded-md flex items-center justify-center">
-              <span className="text-white font-black text-xs">JL</span>
-            </div>
-            <span className="text-xs font-bold text-[#1a2744]">JL Advisory</span>
+          <div className="flex items-center">
+            <img src="/logo.png" alt="JL Advisory" className="h-9 w-auto" />
           </div>
         </div>
         <div className="px-4 py-3 border-b border-gray-100">

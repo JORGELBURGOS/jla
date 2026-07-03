@@ -27,13 +27,7 @@ export default async function HomePage() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-[#1a2744] rounded-lg flex items-center justify-center">
-            <span className="text-white font-black text-sm">JL</span>
-          </div>
-          <div>
-            <h1 className="font-bold text-[#1a2744] text-lg leading-none">JL Advisory</h1>
-            <p className="text-xs text-gray-500">Due Diligence · M&A · Argentina</p>
-          </div>
+          <img src="/logo.png" alt="JL Advisory" className="h-12 w-auto" />
         </div>
         <Link href="/cases/new" className="btn-primary">+ Nuevo caso</Link>
       </header>
