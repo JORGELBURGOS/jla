@@ -185,7 +185,7 @@ export default function RequirementsPage({ params }: { params: { id: string } })
   async function descargarExcel(modo: "vendedor" | "interno") {
     setDownloading(modo)
     try {
-      const res = await fetch(`/api/export-excel?caseId=${caseId}&modo=${modo}`)
+      const res = await fetch(`/api/export?caseId=${caseId}&modo=${modo}`)
       if (!res.ok) throw new Error(await res.text())
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
