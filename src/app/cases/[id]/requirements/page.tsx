@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { ChevronDown, ChevronRight } from "lucide-react"
+import { ChevronDown, ChevronRight, Download } from "lucide-react"
 
 interface Req {
   id: string; seccion: string; seccion_orden: number; n_item: number
@@ -180,6 +180,25 @@ export default function RequirementsPage({ params }: { params: { id: string } })
   const [items, setItems] = useState<Req[]>([])
   const [tab, setTab] = useState<"interna" | "vendedor">("interna")
   const [toggling, setToggling] = useState<string | null>(null)
+  const [downloading, setDownloading] = useState<string | null>(null)
+
+  async function descargarExcel(modo: "vendedor" | "interno") {
+    setDownloading(modo)
+    try {
+      const res = await fetch(`/api/export?caseId=${caseId}&modo=${modo}`)
+      if (!res.ok) throw new Error(await res.text())
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = res.headers.get("content-disposition")?.split('filename="')[1]?.replace('"','') ?? "solicitud.xlsx"
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      alert("Error al generar Excel: " + (e instanceof Error ? e.message : ""))
+    }
+    setDownloading(null)
+  }
   const db = createClient()
 
   useEffect(() => {
@@ -264,6 +283,19 @@ export default function RequirementsPage({ params }: { params: { id: string } })
             </div>
           </div>
         </div>
+      </div>
+      {/* Botones export */}
+      <div className="flex gap-2 flex-wrap mt-3">
+        <button onClick={() => descargarExcel("vendedor")} disabled={!!downloading}
+          className="flex items-center gap-1.5 text-xs bg-[#1a2744] text-white px-3 py-1.5 rounded-lg hover:bg-[#0d1525] disabled:opacity-50 font-medium">
+          <Download size={12}/>
+          {downloading==="vendedor" ? "Generando..." : "Excel para el vendedor"}
+        </button>
+        <button onClick={() => descargarExcel("interno")} disabled={!!downloading}
+          className="flex items-center gap-1.5 text-xs border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 disabled:opacity-50 font-medium">
+          <Download size={12}/>
+          {downloading==="interno" ? "Generando..." : "Tracker interno completo"}
+        </button>
       </div>
 
       {/* Secciones */}
