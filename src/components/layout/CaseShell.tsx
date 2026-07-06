@@ -17,6 +17,7 @@ const NAV = [
   ["/fiscal"   , "Análisis Fiscal"],
   ["/environmental","Síntesis Ambiental"],
   ["/validation","Validación Plan"],
+  ["/report"   , "📄 Informe Final"],
   ["/log"      , "Log Auditoría"],
 ]
 
