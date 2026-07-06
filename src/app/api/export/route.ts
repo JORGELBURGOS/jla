@@ -2,31 +2,78 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import ExcelJS from 'exceljs'
 
-// Colores exactos del formato JL Advisory (extraídos del Excel original)
+export const runtime = 'nodejs'
+
 const C = {
-  navy:    'FF1F3864',  // título y headers de columna
-  blue:    'FF2E5FA3',  // subtítulo y secciones
-  salmon:  'FFFCE4D6',  // fondo estado Pendiente/Incompleto y leyenda
-  orange:  'FF843C0C',  // fuente estado Pendiente y leyenda
-  orange2: 'FF833C00',  // fuente estado Incompleto
-  yellow:  'FFFFF2CC',  // columnas del vendedor (E, F, G)
-  yellow2: 'FF7F6000',  // fuente columnas del vendedor
-  lgray:   'FFF2F2F2',  // fila alternada impar
+  navy:    'FF1F3864',
+  blue:    'FF2E5FA3',
+  salmon:  'FFFCE4D6',
+  orange:  'FF843C0C',
+  orange2: 'FF833C00',
+  yellow:  'FFFFF2CC',
+  yellow2: 'FF7F6000',
+  lgray:   'FFF2F2F2',
   white:   'FFFFFFFF',
-  footer:  'FFD6E4F0',  // pie de página fondo
-  footer2: 'FF1F3864',  // pie de página fuente
+  footer:  'FFD6E4F0',
+  footer2: 'FF1F3864',
 }
 
-const thin = { style: 'thin' as const, color: { argb: 'FFD1D5DB' } }
-const med  = { style: 'medium' as const, color: { argb: 'FF2E5FA3' } }
-const allThin = { top: thin, bottom: thin, left: thin, right: thin }
+type ArgbColor = { argb: string }
+type SolidFill = { type: 'pattern'; pattern: 'solid'; fgColor: ArgbColor }
 
-function solid(argb: string) {
-  return { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb } }
+function sf(argb: string): SolidFill {
+  return { type: 'pattern', pattern: 'solid', fgColor: { argb } }
 }
 
-function fnt(opts: { bold?: boolean; size?: number; color?: string; italic?: boolean; name?: string }) {
-  return { name: opts.name ?? 'Calibri', bold: opts.bold, size: opts.size ?? 9, italic: opts.italic, color: { argb: opts.color ?? 'FF000000' } }
+function applyCell(
+  ws: ExcelJS.Worksheet,
+  row: number, col: number,
+  opts: {
+    value?: ExcelJS.CellValue
+    fill?: string
+    fontColor?: string
+    bold?: boolean
+    size?: number
+    italic?: boolean
+    hAlign?: ExcelJS.Alignment['horizontal']
+    vAlign?: ExcelJS.Alignment['vertical']
+    wrap?: boolean
+  }
+) {
+  const c = ws.getCell(row, col)
+  if (opts.value !== undefined) c.value = opts.value
+  if (opts.fill) c.fill = sf(opts.fill)
+  c.font = {
+    name: 'Calibri',
+    bold: opts.bold ?? false,
+    size: opts.size ?? 9,
+    italic: opts.italic ?? false,
+    color: { argb: opts.fontColor ?? 'FF000000' },
+  }
+  c.alignment = {
+    horizontal: opts.hAlign ?? 'left',
+    vertical: opts.vAlign ?? 'middle',
+    wrapText: opts.wrap ?? false,
+  }
+  c.border = {
+    top:    { style: 'thin', color: { argb: 'FFD1D5DB' } },
+    bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+    left:   { style: 'thin', color: { argb: 'FFD1D5DB' } },
+    right:  { style: 'thin', color: { argb: 'FFD1D5DB' } },
+  }
+}
+
+function applyMergedRow(
+  ws: ExcelJS.Worksheet,
+  row: number,
+  cols: number,
+  opts: Parameters<typeof applyCell>[3]
+) {
+  // Aplicar estilo a TODAS las celdas antes de mergear
+  for (let c = 1; c <= cols; c++) {
+    applyCell(ws, row, c, c === 1 ? opts : { fill: opts.fill })
+  }
+  ws.mergeCells(row, 1, row, cols)
 }
 
 export async function GET(req: NextRequest) {
@@ -50,54 +97,52 @@ export async function GET(req: NextRequest) {
   const ws = wb.addWorksheet('Solicitud de Información')
 
   ws.columns = [
-    { width: 6.1 }, { width: 28 }, { width: 50.8 }, { width: 14 },
-    { width: 17.5 }, { width: 26.2 }, { width: 21 }
+    { width: 6.13 }, { width: 28 }, { width: 50.75 },
+    { width: 14 }, { width: 17.5 }, { width: 26.25 }, { width: 21 }
   ]
 
-  // ── Fila 1: Título ────────────────────────────────────────────────
-  const r1 = ws.addRow([`${nombre}  —  Solicitud de Información  |  Due Diligence`, '', '', '', '', '', ''])
-  r1.height = 36
-  ws.mergeCells(`A${r1.number}:G${r1.number}`)
-  const c1 = r1.getCell(1)
-  c1.value = `${nombre}  —  Solicitud de Información  |  Due Diligence`
-  c1.font = fnt({ bold: true, size: 14, color: C.white })
-  c1.fill = solid(C.navy)
-  c1.alignment = { horizontal: 'center', vertical: 'middle' }
+  let R = 1  // contador de filas
 
-  // ── Fila 2: Subtítulo ─────────────────────────────────────────────
-  const r2 = ws.addRow([`Documento de uso externo — para envío al vendedor  |  Emitido: ${today}`, '', '', '', 'Confidencial — Uso exclusivo de las partes', '', ''])
-  r2.height = 21.75
-  ws.mergeCells(`A${r2.number}:D${r2.number}`)
-  ws.mergeCells(`E${r2.number}:G${r2.number}`)
-  for (const ci of [1, 5]) {
-    const c = r2.getCell(ci)
-    c.font = fnt({ size: 9, color: C.white })
-    c.fill = solid(C.blue)
-    c.alignment = { horizontal: 'left', vertical: 'middle' }
-  }
-
-  // ── Fila 3: Leyenda ───────────────────────────────────────────────
-  const r3 = ws.addRow(['●', 'PENDIENTE — aún no enviado', '● INCOMPLETO — enviado pero faltan elementos', 'Completar col. E y F', 'Columna E: fecha estimada de envío  |  Columna F: observaciones del vendedor  |  Columna G: compromiso de entrega previo a la seña (según el vendedor)', '', ''])
-  r3.height = 19.5
-  ws.mergeCells(`E${r3.number}:G${r3.number}`)
-  for (const [ci, fillC, fontC, bold] of [[1,C.salmon,C.orange,true],[2,C.salmon,C.orange,true],[3,C.salmon,'FF833C00',true],[4,C.yellow,C.yellow2,true],[5,C.yellow,C.yellow2,false]] as [number,string,string,boolean][]) {
-    const c = r3.getCell(ci)
-    c.font = fnt({ bold, size: 9, color: fontC })
-    c.fill = solid(fillC)
-    c.alignment = { horizontal: ci === 1 ? 'center' : 'left', vertical: 'middle', wrapText: true }
-  }
-
-  // ── Fila 4: Headers ───────────────────────────────────────────────
-  const r4 = ws.addRow(['N°', 'Documento / Ítem requerido', 'Qué necesitamos exactamente y cómo enviarlo', 'Estado', 'Fecha comprometida\nde envío', 'Observaciones del vendedor\n(completar aquí)', 'Entrega Previo a Seña\n(según el vendedor)'])
-  r4.height = 30
-  r4.eachCell(c => {
-    c.font = fnt({ bold: true, size: 9, color: C.white })
-    c.fill = solid(C.navy)
-    c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
-    c.border = allThin
+  // ── FILA 1: Título ────────────────────────────────────────────────
+  ws.getRow(R).height = 36
+  applyMergedRow(ws, R, 7, {
+    value: `${nombre}  —  Solicitud de Información  |  Due Diligence`,
+    fill: C.navy, fontColor: C.white, bold: true, size: 14,
+    hAlign: 'center', vAlign: 'middle'
   })
+  R++
 
-  // ── Secciones y datos ─────────────────────────────────────────────
+  // ── FILA 2: Subtítulo ─────────────────────────────────────────────
+  ws.getRow(R).height = 21.75
+  // Estilo todas las celdas primero
+  for (let c = 1; c <= 4; c++) applyCell(ws, R, c, { fill: C.blue, fontColor: C.white, vAlign: 'middle' })
+  for (let c = 5; c <= 7; c++) applyCell(ws, R, c, { fill: C.blue, fontColor: C.white, vAlign: 'middle' })
+  // Valores
+  ws.getCell(R, 1).value = `Documento de uso externo — para envío al vendedor  |  Emitido: ${today}`
+  ws.getCell(R, 5).value = 'Confidencial — Uso exclusivo de las partes'
+  // Merge después de estilos
+  ws.mergeCells(R, 1, R, 4)
+  ws.mergeCells(R, 5, R, 7)
+  R++
+
+  // ── FILA 3: Leyenda ───────────────────────────────────────────────
+  ws.getRow(R).height = 19.5
+  applyCell(ws, R, 1, { value: '●', fill: C.salmon, fontColor: C.orange, bold: true, hAlign: 'center', vAlign: 'middle' })
+  applyCell(ws, R, 2, { value: 'PENDIENTE — aún no enviado', fill: C.salmon, fontColor: C.orange, bold: true, vAlign: 'middle' })
+  applyCell(ws, R, 3, { value: '● INCOMPLETO — enviado pero faltan elementos', fill: C.salmon, fontColor: C.orange2, bold: true, vAlign: 'middle' })
+  applyCell(ws, R, 4, { value: 'Completar col. E y F', fill: C.yellow, fontColor: C.yellow2, bold: true, vAlign: 'middle' })
+  for (let c = 5; c <= 7; c++) applyCell(ws, R, c, { fill: C.yellow, fontColor: C.yellow2, vAlign: 'middle', wrap: true })
+  ws.getCell(R, 5).value = 'Columna E: fecha estimada de envío  |  Columna F: observaciones del vendedor  |  Columna G: compromiso de entrega previo a la seña (según el vendedor)'
+  ws.mergeCells(R, 5, R, 7)
+  R++
+
+  // ── FILA 4: Headers ───────────────────────────────────────────────
+  ws.getRow(R).height = 30
+  const hdrs = ['N°','Documento / Ítem requerido','Qué necesitamos exactamente y cómo enviarlo','Estado','Fecha comprometida\nde envío','Observaciones del vendedor\n(completar aquí)','Entrega Previo a Seña\n(según el vendedor)']
+  hdrs.forEach((h, i) => applyCell(ws, R, i+1, { value: h, fill: C.navy, fontColor: C.white, bold: true, hAlign: 'center', vAlign: 'middle', wrap: true }))
+  R++
+
+  // ── DATOS ─────────────────────────────────────────────────────────
   const seccionesVistas = new Set<string>()
   let rowIdx = 0
 
@@ -107,18 +152,30 @@ export async function GET(req: NextRequest) {
     // Fila de sección
     if (!seccionesVistas.has(sec)) {
       seccionesVistas.add(sec)
-      const rs = ws.addRow([sec, '', '', '', '', '', ''])
-      rs.height = 21.75
-      ws.mergeCells(`A${rs.number}:G${rs.number}`)
-      const cs = rs.getCell(1)
-      cs.value = sec
-      cs.font = fnt({ bold: true, size: 10, color: C.white })
-      cs.fill = solid(C.blue)
-      cs.alignment = { horizontal: 'left', vertical: 'middle' }
-      cs.border = { top: med, bottom: thin, left: thin, right: thin }
+      ws.getRow(R).height = 21.75
+      for (let c = 1; c <= 7; c++) {
+        applyCell(ws, R, c, { fill: C.blue, fontColor: C.white, vAlign: 'middle' })
+        // Borde superior más grueso en la sección
+        ws.getCell(R, c).border = {
+          top:    { style: 'medium', color: { argb: 'FF2E5FA3' } },
+          bottom: { style: 'thin',   color: { argb: 'FFD1D5DB' } },
+          left:   { style: 'thin',   color: { argb: 'FFD1D5DB' } },
+          right:  { style: 'thin',   color: { argb: 'FFD1D5DB' } },
+        }
+      }
+      ws.getCell(R, 1).value = sec
+      ws.getCell(R, 1).font = { name: 'Calibri', bold: true, size: 10, color: { argb: C.white } }
+      ws.mergeCells(R, 1, R, 7)
+      R++
     }
 
-    // Construir columna "Qué necesitamos"
+    // Fila de datos
+    ws.getRow(R).height = 117
+
+    const bg = rowIdx % 2 === 0 ? C.lgray : C.white
+    const estadoStr = it.estado === 'Parcial' ? 'Incompleto' : String(it.estado ?? 'Pendiente')
+    const antesSeña = it.antes_sena ? 'SÍ (Información Básica/Estructural)' : 'NO (Reservar para Post-Seña/Contrato)'
+
     const partes: string[] = []
     if (it.cobertura) partes.push(`Se recibió: ${it.cobertura}`)
     if (it.faltantes) partes.push(`\nFalta: ${it.faltantes}`)
@@ -126,44 +183,29 @@ export async function GET(req: NextRequest) {
     if (it.alertas) partes.push(`\n⚠ ${it.alertas}`)
     const queNec = partes.join('').trim()
 
-    const estadoStr = it.estado === 'Parcial' ? 'Incompleto' : it.estado as string
-    const antesSeña = it.antes_sena ? 'SÍ (Información Básica/Estructural)' : 'NO (Reservar para Post-Seña/Contrato)'
-
-    // Filtrar observaciones del vendedor (excluir notas internas del equipo)
     const obsVend = it.notas ? String(it.notas).split('\n')
       .filter((l: string) => l.trim() && !l.includes('Due Diligence (IA') && !l.includes('(3/7/2026 —'))
       .join('\n') : ''
 
-    const bg = rowIdx % 2 === 0 ? C.lgray : C.white
-    const rd = ws.addRow([it.n_item, it.documento, queNec, estadoStr, '', obsVend, antesSeña])
-    rd.height = 117
+    applyCell(ws, R, 1, { value: it.n_item as number, fill: bg, bold: true, size: 10, hAlign: 'center', vAlign: 'top' })
+    applyCell(ws, R, 2, { value: String(it.documento ?? ''), fill: bg, bold: true, size: 10, vAlign: 'top', wrap: true })
+    applyCell(ws, R, 3, { value: queNec, fill: bg, size: 9, vAlign: 'top', wrap: true })
+    applyCell(ws, R, 4, { value: estadoStr, fill: C.salmon, fontColor: estadoStr === 'Incompleto' ? C.orange2 : C.orange, bold: true, size: 10, hAlign: 'center', vAlign: 'top' })
+    applyCell(ws, R, 5, { value: '', fill: C.yellow, fontColor: C.yellow2, size: 9, hAlign: 'center', vAlign: 'top' })
+    applyCell(ws, R, 6, { value: obsVend, fill: C.yellow, fontColor: C.yellow2, size: 9, vAlign: 'top', wrap: true })
+    applyCell(ws, R, 7, { value: antesSeña, fill: C.yellow, fontColor: C.yellow2, bold: antesSeña.startsWith('SÍ'), size: 9, hAlign: 'center', vAlign: 'top', wrap: true })
 
-    const fills = [bg, bg, bg, C.salmon, C.yellow, C.yellow, C.yellow]
-    rd.eachCell((c, colN) => {
-      c.fill = solid(fills[colN - 1])
-      c.border = allThin
-      c.alignment = { vertical: 'top', wrapText: true, horizontal: colN === 1 ? 'center' : colN === 4 ? 'center' : colN === 7 ? 'center' : 'left' }
-      if (colN === 1) c.font = fnt({ bold: true, size: 10 })
-      else if (colN === 2) c.font = fnt({ bold: true, size: 10 })
-      else if (colN === 3) c.font = fnt({ size: 9 })
-      else if (colN === 4) c.font = fnt({ bold: true, size: 10, color: estadoStr === 'Incompleto' ? C.orange2 : C.orange })
-      else if (colN === 5 || colN === 6) c.font = fnt({ size: 9, color: C.yellow2 })
-      else if (colN === 7) c.font = fnt({ size: 9, color: C.yellow2, bold: antesSeña.startsWith('SÍ') })
-    })
-    rowIdx++
+    R++; rowIdx++
   }
 
-  // ── Pie ───────────────────────────────────────────────────────────
-  const rp = ws.addRow(['Para consultas sobre esta solicitud comunicarse con el equipo de due diligence. Las columnas en amarillo (Fecha comprometida y Observaciones) son para completar por la empresa.', '', '', '', '', '', ''])
-  rp.height = 19.5
-  ws.mergeCells(`A${rp.number}:G${rp.number}`)
-  const cp = rp.getCell(1)
-  cp.font = fnt({ italic: true, size: 9, color: C.footer2 })
-  cp.fill = solid(C.footer)
-  cp.alignment = { horizontal: 'left', vertical: 'middle' }
+  // ── PIE ───────────────────────────────────────────────────────────
+  ws.getRow(R).height = 19.5
+  for (let c = 1; c <= 7; c++) applyCell(ws, R, c, { fill: C.footer, fontColor: C.footer2, italic: true, size: 9, vAlign: 'middle' })
+  ws.getCell(R, 1).value = 'Para consultas sobre esta solicitud comunicarse con el equipo de due diligence. Las columnas en amarillo (Fecha comprometida y Observaciones) son para completar por la empresa.'
+  ws.mergeCells(R, 1, R, 7)
 
   const buf = await wb.xlsx.writeBuffer()
-  const safeName = nombre.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 30)
+  const safeName = nombre.replace(/[^a-zA-Z0-9]/g,'_').slice(0,30)
   const fileName = `Solicitud_${safeName}_${today.replace(/\//g,'-')}.xlsx`
 
   return new NextResponse(Buffer.from(buf), {
