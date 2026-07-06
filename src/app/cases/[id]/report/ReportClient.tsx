@@ -81,57 +81,29 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
   async function generarNarrativa() {
     setGenerating(true)
     try {
-      const context = {
-        caso: { nombre: caso.nombre, precio, industria: (caso as Record<string, Record<string,string>>).industry?.nombre },
-        financiero: { ingresos, ebitda, margen, deuda, tcBase, multiploImplicito, evBase, evAjustado },
-        riesgos: { total: riesgoTotal, confirmado: riesgoConf, identificado: riesgoIden, condicional: riesgoCond, count: risks.length },
-        avance: { total, recibidos, parciales, pendientes, pct: avance },
-        validacion: valid.filter(v => v.estado === "Cuestionado").map(v => ({ clave: v.clave, obs: String(v.observaciones ?? "").slice(0,150) })),
-        alertasCriticas: risks.filter(r => r.probabilidad === "ALTA" && Number(r.impacto) < -200000).map(r => String(r.riesgo).slice(0,100)),
-      }
-      const res = await fetch("/api/chat", {
+      const res = await fetch("/api/report-executive", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          caseId,
-          mensaje: `Generá el análisis ejecutivo para el informe de due diligence de ${caso.nombre}. 
-Datos clave:
-- Ingresos reales: ${ingresos ? fmtUSD(ingresos) : "no cargado"}
-- EBITDA normalizado: ${ebitda ? fmtUSD(ebitda) : "no cargado"}  
-- Margen EBITDA: ${margen ? margen.toFixed(1)+"%" : "N/D"}
-- Múltiplo implícito precio/EBITDA: ${multiploImplicito ? multiploImplicito.toFixed(0)+"x" : "N/D"}
-- Precio pedido: ${fmtUSD(precio)}
-- EV base ${EV_MED}x EBITDA: ${evBase ? fmtUSD(evBase) : "N/D"}
-- Riesgo total cuantificado: ${fmtUSD(riesgoTotal)}
-- EV ajustado por riesgos: ${evAjustado ? fmtUSD(evAjustado) : "N/D"}
-- Avance DD: ${avance}%
-- Hallazgos críticos: ${JSON.stringify(context.alertasCriticas)}
-- Items cuestionados en validación: ${context.validacion.length}
-
-Respondé SOLO con este JSON:
-{
-  "semaforo": "VERDE|AMARILLO|ROJO",
-  "recomendacion": "NO COMPRAR|COMPRAR CON CONDICIONES|COMPRAR",
-  "precio_sugerido": "frase con el precio máximo de oferta justificado",
-  "resumen_ejecutivo": "párrafo de 4-5 oraciones estilo Big4 resumiendo el análisis",
-  "hallazgos_criticos": ["hallazgo 1", "hallazgo 2", "hallazgo 3", "hallazgo 4", "hallazgo 5"],
-  "condiciones_cierre": ["condición 1", "condición 2", "condición 3", "condición 4", "condición 5"]
-}`,
-          historial: []
-        })
+        body: JSON.stringify({ caseId })
       })
       const data = await res.json()
-      const txt = data.respuesta ?? ""
-      const start = txt.indexOf("{"), end = txt.lastIndexOf("}")
-      if (start !== -1 && end > start) {
-        try { setNarrativa(JSON.parse(txt.slice(start, end+1))) } catch { /* fallback */ }
+      if (data.ok && data.resultado) {
+        setNarrativa(data.resultado)
+      } else {
+        alert("Error generando análisis: " + (data.error ?? "desconocido"))
       }
-    } catch { /* silencioso */ }
+    } catch (e) {
+      alert("Error de conexión: " + (e instanceof Error ? e.message : ""))
+    }
     setGenerating(false)
   }
 
-  // ── Imprimir como PDF ──────────────────────────────────────────────
-  function imprimir() { window.print() }
+  // ── Abrir página limpia para imprimir/guardar como PDF ──────────────
+  function imprimir() {
+    const execParam = narrativa ? encodeURIComponent(JSON.stringify(narrativa)) : ""
+    const url = `/cases/${caseId}/report/print${execParam ? "?exec=" + execParam : ""}`
+    window.open(url, "_blank", "width=900,height=800")
+  }
 
   const SEMAFORO_COLOR = { VERDE: "#16a34a", AMARILLO: "#d97706", ROJO: "#dc2626" }
   const today = new Date().toLocaleDateString("es-AR", { day:"2-digit", month:"long", year:"numeric" })
