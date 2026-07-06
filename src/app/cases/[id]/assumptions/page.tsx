@@ -70,9 +70,18 @@ export default function AssumptionsPage({ params }: { params: { id: string } }) 
     setEditing(prev => { const n = { ...prev }; delete n[a.id]; return n })
   }, [editing, caseId, db])
 
-  const financieros = assumptions.filter(a => a.tipo === "financiero")
-  const categoricos = assumptions.filter(a => a.tipo === "categorico")
+  // Separar TC del resto de financieros — son la base de todo el modelo
+  const tcKeys = ["TC oficial", "TC promedio", "Tipo de cambio", "ARS por USD", "ARS/USD"]
+  const esTc = (label: string) => tcKeys.some(k => label.toLowerCase().includes(k.toLowerCase()))
+  const esFechaOMoneda = (label: string) => label.includes("Cierre EJ") || label.includes("Moneda de") || label.includes("Ajuste por inflación")
+  
+  const supTc = assumptions.filter(a => esTc(a.label) || esFechaOMoneda(a.label))
+  const financieros = assumptions.filter(a => a.tipo === "financiero" && !esTc(a.label) && !esFechaOMoneda(a.label))
+  const categoricos = assumptions.filter(a => a.tipo === "categorico" && !esFechaOMoneda(a.label))
   const acumulativos = assumptions.filter(a => a.tipo === "acumulativo")
+  
+  const tcCompletos = supTc.filter(a => a.valor && a.estado === "CARGADO").length
+  const tcTotal = supTc.length
 
   function Card({ a }: { a: Assumption }) {
     const val = editing[a.id] !== undefined ? editing[a.id] : (a.valor ?? "")
@@ -150,6 +159,23 @@ export default function AssumptionsPage({ params }: { params: { id: string } }) 
           Financieros alimentan el EBITDA · Categóricos/acumulativos recalculan riesgos dinámicos al guardar
         </p>
       </div>
+
+      {/* Tipo de Cambio — base del modelo en USD */}
+      {supTc.length > 0 && (
+        <div className="mb-5 card border-l-4 border-l-amber-400">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-base">💱</span>
+            <span className="font-bold text-sm text-gray-900">Tipo de Cambio por Ejercicio</span>
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${tcCompletos === tcTotal ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
+              {tcCompletos}/{tcTotal} cargados
+            </span>
+          </div>
+          <p className="text-xs text-amber-700 mb-3">
+            ⚠ Sin estos valores el EBITDA y el Modelo Financiero no pueden convertirse a USD
+          </p>
+          <div className="space-y-3">{supTc.map(a => <Card key={a.id} a={a}/>)}</div>
+        </div>
+      )}
 
       {financieros.length > 0 && (
         <div className="mb-5">
