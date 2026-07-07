@@ -423,7 +423,7 @@ export default function BalancePage({ params }: { params: { id: string } }) {
                   ok={margenNet>=8}
                 />
 
-                {t.pn>0 && b.resultado_neto>0 && (
+                {t.pn>0 && b.resultado_neto!==0 && (
                   <RatioCard
                     label="ROE (Retorno sobre PN)"
                     valor={`${roeCalc.toFixed(1)}%`}
