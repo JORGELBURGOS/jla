@@ -3,7 +3,12 @@ import { useState, useEffect, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { ChevronDown, ChevronRight, Download } from "lucide-react"
 
-type RiskLink = {risk_id:string;efecto:string;descripcion:string;riesgo:string;estado:string;impacto:number}
+// ── Tipos a nivel de módulo ────────────────────────────────────────
+type RiskLink = {
+  risk_id: string; efecto: string; descripcion: string
+  riesgo: string; estado: string; impacto: number
+}
+type LinksMap = Record<number, RiskLink[]>
 
 interface Req {
   id: string; seccion: string; seccion_orden: number; n_item: number
@@ -21,7 +26,23 @@ const ESTADO_STYLE: Record<string, string> = {
   Pendiente:"bg-gray-100 text-gray-600 border-gray-200",
 }
 
-function DetailField({ label, value, danger, warn, accent }: { label: string; value: string | null | undefined; danger?: boolean; warn?: boolean; accent?: boolean }) {
+const EFECTO_LABEL: Record<string, string> = {
+  cancela:    "✓ Cancela el riesgo",
+  reduce:     "↓ Reduce el riesgo",
+  cuantifica: "≈ Cuantifica el riesgo",
+  confirma:   "! Confirma el riesgo",
+}
+const EFECTO_STYLE: Record<string, string> = {
+  cancela:    "bg-green-100 text-green-800",
+  reduce:     "bg-amber-100 text-amber-800",
+  cuantifica: "bg-blue-100 text-blue-700",
+  confirma:   "bg-red-100 text-red-800",
+}
+
+function DetailField({ label, value, danger, warn, accent }: {
+  label: string; value: string | null | undefined
+  danger?: boolean; warn?: boolean; accent?: boolean
+}) {
   if (!value) return null
   const bg = danger ? "bg-red-50 border-l-2 border-red-400"
     : warn   ? "bg-amber-50 border-l-2 border-amber-400"
@@ -35,14 +56,20 @@ function DetailField({ label, value, danger, warn, accent }: { label: string; va
   )
 }
 
-function ItemRow({ item, toggling, onToggle }: { item: Req; toggling: string | null; onToggle: (item: Req, campo: "antes_sena" | "antes_visita") => void }) {
+// ── ItemRow recibe linksMap como prop explícita ────────────────────
+function ItemRow({ item, toggling, onToggle, linksMap }: {
+  item: Req
+  toggling: string | null
+  onToggle: (item: Req, campo: "antes_sena" | "antes_visita") => void
+  linksMap: LinksMap   // ← prop explícita, no closure
+}) {
   const [open, setOpen] = useState(false)
   const pendienteYSena = item.antes_sena && item.estado !== "Recibido"
   const archivos = Array.isArray(item.archivos) ? item.archivos : []
+  const itemLinks = linksMap[item.n_item] ?? []
 
   return (
     <div className={`border-b border-gray-50 last:border-0 ${pendienteYSena ? "border-l-2 border-l-purple-400" : item.antes_visita ? "border-l-2 border-l-teal-400" : ""}`}>
-      {/* Fila principal */}
       <button
         className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-gray-50 transition-colors text-left"
         onClick={() => setOpen(o => !o)}
@@ -52,12 +79,11 @@ function ItemRow({ item, toggling, onToggle }: { item: Req; toggling: string | n
         </span>
         <span className="text-xs font-bold text-gray-400 w-7 flex-shrink-0">#{item.n_item}</span>
         <span className="flex-1 text-xs font-medium text-gray-800 min-w-0">{item.documento}</span>
-
-        {/* Badges */}
         <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap justify-end">
           {item.alertas    && <span className="text-red-400 text-xs" title="Tiene alertas">⚠</span>}
           {item.faltantes  && <span className="text-amber-400 text-xs" title="Tiene faltantes">⊘</span>}
           {item.notas      && <span className="text-blue-400 text-xs" title="Tiene notas internas">✎</span>}
+          {itemLinks.length > 0 && <span className="text-purple-400 text-xs" title="Riesgos vinculados">⚠🔗</span>}
           {item.antes_sena && pendienteYSena && (
             <span className="text-xs bg-purple-100 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded-full font-bold">Antes Seña</span>
           )}
@@ -70,10 +96,8 @@ function ItemRow({ item, toggling, onToggle }: { item: Req; toggling: string | n
         </div>
       </button>
 
-      {/* Detalle expandido */}
       {open && (
         <div className="px-5 pb-4 bg-gray-50 border-t border-gray-100">
-          {/* Badges de alerta al tope */}
           <div className="flex gap-2 flex-wrap pt-3 pb-2">
             {pendienteYSena && (
               <span className="text-xs bg-red-100 text-red-700 border border-red-300 px-2.5 py-1 rounded-full font-bold">
@@ -97,6 +121,7 @@ function ItemRow({ item, toggling, onToggle }: { item: Req; toggling: string | n
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {/* Columna izquierda */}
             <div className="space-y-2">
               <DetailField label="Cómo cumplimentar" value={item.como_cumplimentar} accent/>
               <DetailField label="Cobertura del requerimiento" value={item.cobertura}/>
@@ -104,32 +129,8 @@ function ItemRow({ item, toggling, onToggle }: { item: Req; toggling: string | n
               <DetailField label="Alertas / Observaciones" value={item.alertas} danger/>
               {item.comentarios && <DetailField label="Comentarios" value={item.comentarios}/>}
             </div>
-            {/* Riesgos vinculados */}
-            {(links[item.n_item]?.length ?? 0) > 0 && (
-              <div className="mt-3 pt-3 border-t border-gray-100 col-span-2">
-                <div className="text-xs font-bold text-gray-600 mb-2">⚠ Riesgos vinculados a este ítem</div>
-                <div className="space-y-2">
-                  {links[item.n_item].map((lk, li) => (
-                    <div key={li} className="flex gap-2 text-xs bg-gray-50 rounded-xl p-2.5">
-                      <div className="flex-shrink-0 flex flex-col gap-1 pt-0.5">
-                        <span className={`px-2 py-0.5 rounded-full font-bold text-xs ${
-                          lk.efecto==="cancela"?"bg-green-100 text-green-800":
-                          lk.efecto==="reduce"?"bg-amber-100 text-amber-800":
-                          lk.efecto==="cuantifica"?"bg-blue-100 text-blue-700":
-                          "bg-red-100 text-red-800"}`}>
-                          {lk.efecto==="cancela"?"✓ Cancela el riesgo":lk.efecto==="reduce"?"↓ Reduce el riesgo":lk.efecto==="cuantifica"?"≈ Cuantifica el riesgo":"! Confirma el riesgo"}
-                        </span>
-                        {lk.impacto!==0&&<span className="text-red-600 font-bold font-mono text-xs text-right">USD {Math.abs(lk.impacto).toLocaleString("es-AR")}</span>}
-                      </div>
-                      <div className="flex-1">
-                        <div className="font-semibold text-gray-800">{lk.riesgo}{lk.riesgo.length>=70?"...":""}</div>
-                        <div className="text-gray-500 mt-0.5">{lk.descripcion}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+
+            {/* Columna derecha */}
             <div className="space-y-2">
               {archivos.length > 0 && (
                 <div className="bg-white border border-gray-100 rounded-lg px-3 py-2.5">
@@ -145,7 +146,6 @@ function ItemRow({ item, toggling, onToggle }: { item: Req; toggling: string | n
                   {item.fecha_analisis && <div className="text-xs text-gray-500">Fecha: {item.fecha_analisis}</div>}
                 </div>
               )}
-              {/* Toggles */}
               <div className="flex gap-2 pt-1">
                 <button
                   onClick={e => { e.stopPropagation(); onToggle(item, "antes_visita") }}
@@ -162,13 +162,47 @@ function ItemRow({ item, toggling, onToggle }: { item: Req; toggling: string | n
               </div>
             </div>
           </div>
+
+          {/* Riesgos vinculados — fuera del grid, ancho completo */}
+          {itemLinks.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <div className="text-xs font-bold text-gray-600 mb-2">
+                ⚠ Riesgos vinculados — qué pasa cuando recibís este ítem
+              </div>
+              <div className="space-y-2">
+                {itemLinks.map((lk, li) => (
+                  <div key={li} className="flex gap-3 bg-white border border-gray-200 rounded-xl p-3 text-xs">
+                    <div className="flex-shrink-0 flex flex-col gap-1.5">
+                      <span className={`px-2 py-0.5 rounded font-bold ${EFECTO_STYLE[lk.efecto] ?? "bg-gray-100 text-gray-700"}`}>
+                        {EFECTO_LABEL[lk.efecto] ?? lk.efecto}
+                      </span>
+                      {lk.impacto !== 0 && (
+                        <span className="text-red-600 font-bold font-mono text-right">
+                          USD {Math.abs(lk.impacto).toLocaleString("es-AR")}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-800 leading-snug">{lk.riesgo}</div>
+                      <div className="text-gray-500 mt-1 leading-relaxed">{lk.descripcion}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
   )
 }
 
-function SeccionRow({ sec, items, toggling, onToggle }: { sec: string; items: Req[]; toggling: string | null; onToggle: (item: Req, campo: "antes_sena" | "antes_visita") => void }) {
+// ── SeccionRow recibe linksMap y la pasa a ItemRow ─────────────────
+function SeccionRow({ sec, items, toggling, onToggle, linksMap }: {
+  sec: string; items: Req[]; toggling: string | null
+  onToggle: (item: Req, campo: "antes_sena" | "antes_visita") => void
+  linksMap: LinksMap   // ← prop explícita
+}) {
   const [open, setOpen] = useState(true)
   const rec = items.filter(x => x.estado === "Recibido").length
   const par = items.filter(x => x.estado === "Parcial").length
@@ -193,23 +227,32 @@ function SeccionRow({ sec, items, toggling, onToggle }: { sec: string; items: Re
           <span className="text-xs font-bold text-gray-600 w-8 text-right">{pct}%</span>
         </div>
       </button>
-
       {open && (
         <div className="border-t border-gray-100">
-          {items.map(item => <ItemRow key={item.id} item={item} toggling={toggling} onToggle={onToggle}/>)}
+          {items.map(item => (
+            <ItemRow
+              key={item.id}
+              item={item}
+              toggling={toggling}
+              onToggle={onToggle}
+              linksMap={linksMap}   // ← pasa el mapa
+            />
+          ))}
         </div>
       )}
     </div>
   )
 }
 
+// ── Componente principal ───────────────────────────────────────────
 export default function RequirementsPage({ params }: { params: { id: string } }) {
   const caseId = params.id
-  const [items, setItems] = useState<Req[]>([])
-  const [links, setLinks] = useState<Record<number, RiskLink[]>>({})
-  const [tab, setTab] = useState<"interna" | "vendedor">("interna")
+  const [items, setItems]     = useState<Req[]>([])
+  const [linksMap, setLinksMap] = useState<LinksMap>({})
+  const [tab, setTab]         = useState<"interna" | "vendedor">("interna")
   const [toggling, setToggling] = useState<string | null>(null)
   const [downloading, setDownloading] = useState<string | null>(null)
+  const db = createClient()
 
   async function descargarExcel(modo: "vendedor" | "interno") {
     setDownloading(modo)
@@ -228,25 +271,32 @@ export default function RequirementsPage({ params }: { params: { id: string } })
     }
     setDownloading(null)
   }
-  const db = createClient()
 
   useEffect(() => {
     db.from("dd_case_requirements").select("*").eq("case_id", caseId)
       .order("seccion_orden").order("n_item")
       .then(({ data }) => setItems((data ?? []) as Req[]))
+
     db.from("dd_case_req_risk_links")
       .select("n_item,efecto,descripcion,risk:dd_case_risks(id,riesgo,estado,impacto)")
       .eq("case_id", caseId)
       .then(({ data: ld }) => {
-        const map: Record<number, RiskLink[]> = {}
-        ;(ld ?? []).forEach((l: Record<string,unknown>) => {
-          const r = l.risk as Record<string,unknown>
+        const map: LinksMap = {}
+        ;(ld ?? []).forEach((l: Record<string, unknown>) => {
+          const r = l.risk as Record<string, unknown>
           if (!r) return
           const ni = l.n_item as number
           if (!map[ni]) map[ni] = []
-          map[ni].push({ risk_id: r.id as string, efecto: l.efecto as string, descripcion: l.descripcion as string, riesgo: String(r.riesgo).slice(0,70), estado: r.estado as string, impacto: Number(r.impacto ?? 0) })
+          map[ni].push({
+            risk_id:     r.id as string,
+            efecto:      l.efecto as string,
+            descripcion: l.descripcion as string,
+            riesgo:      String(r.riesgo ?? "").slice(0, 80),
+            estado:      r.estado as string,
+            impacto:     Number(r.impacto ?? 0),
+          })
         })
-        setLinks(map)
+        setLinksMap(map)
       })
   }, [caseId])
 
@@ -260,14 +310,13 @@ export default function RequirementsPage({ params }: { params: { id: string } })
 
   const secciones = [...new Set(items.map(x => x.seccion))].sort((a,b) => parseInt(a) - parseInt(b))
   const total = items.length
-  const rec = items.filter(x => x.estado === "Recibido").length
-  const par = items.filter(x => x.estado === "Parcial").length
-  const pend = total - rec - par
+  const rec   = items.filter(x => x.estado === "Recibido").length
+  const par   = items.filter(x => x.estado === "Parcial").length
+  const pend  = total - rec - par
   const avance = total ? Math.round((rec + par * 0.5) / total * 100) : 0
   const pendSena = items.filter(x => x.antes_sena && x.estado !== "Recibido")
 
   if (tab === "vendedor") {
-    // Vista para el vendedor — lista simple con pendientes
     const pendientes = items.filter(x => x.estado !== "Recibido")
     return (
       <div className="p-6 max-w-4xl mx-auto">
@@ -301,7 +350,6 @@ export default function RequirementsPage({ params }: { params: { id: string } })
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div>
           <div className="flex items-center gap-3 mb-1">
@@ -327,8 +375,8 @@ export default function RequirementsPage({ params }: { params: { id: string } })
           </div>
         </div>
       </div>
-      {/* Botones export */}
-      <div className="flex gap-2 flex-wrap mt-3">
+
+      <div className="flex gap-2 flex-wrap mt-3 mb-4">
         <button onClick={() => descargarExcel("vendedor")} disabled={!!downloading}
           className="flex items-center gap-1.5 text-xs bg-[#1a2744] text-white px-3 py-1.5 rounded-lg hover:bg-[#0d1525] disabled:opacity-50 font-medium">
           <Download size={12}/>
@@ -341,14 +389,15 @@ export default function RequirementsPage({ params }: { params: { id: string } })
         </button>
       </div>
 
-      {/* Secciones */}
       <div>
         {secciones.map(sec => (
           <SeccionRow
-            key={sec} sec={sec}
+            key={sec}
+            sec={sec}
             items={items.filter(x => x.seccion === sec)}
             toggling={toggling}
             onToggle={onToggle}
+            linksMap={linksMap}   // ← pasa el mapa a cada sección
           />
         ))}
       </div>
