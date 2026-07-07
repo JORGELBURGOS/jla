@@ -581,9 +581,7 @@ export default function BalancePage({ params }: { params: { id: string } }) {
             </tbody>
           </table>
         </div>
-        <p className="text-xs text-gray-400 mt-2">
-          Los rubros marcados como "ingresar" requieren datos del Estado de Resultados del EECC físico. El EBITDA se calcula desde Resultado antes de impuesto + Impuesto + Depreciación (todos datos auditados confirmados por DeepSeek).
-        </p>
+
       </div>
 
       <p className="text-xs text-gray-400 mt-3">
