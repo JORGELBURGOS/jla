@@ -3,6 +3,8 @@ import { useState, useEffect, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { ChevronDown, ChevronRight, Download } from "lucide-react"
 
+type RiskLink = {risk_id:string;efecto:string;descripcion:string;riesgo:string;estado:string;impacto:number}
+
 interface Req {
   id: string; seccion: string; seccion_orden: number; n_item: number
   documento: string; como_cumplimentar: string | null; comentarios: string | null
@@ -204,7 +206,6 @@ function SeccionRow({ sec, items, toggling, onToggle }: { sec: string; items: Re
 export default function RequirementsPage({ params }: { params: { id: string } }) {
   const caseId = params.id
   const [items, setItems] = useState<Req[]>([])
-  type RiskLink = {risk_id:string;efecto:string;descripcion:string;riesgo:string;estado:string;impacto:number}
   const [links, setLinks] = useState<Record<number, RiskLink[]>>({})
   const [tab, setTab] = useState<"interna" | "vendedor">("interna")
   const [toggling, setToggling] = useState<string | null>(null)
