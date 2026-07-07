@@ -26,7 +26,7 @@ export default async function Dashboard({ params }: { params: Promise<{ id: stri
   const hayEBITDA = ss.some((s: Record<string,unknown>) => String(s.label).includes("EBITDA") && s.valor)
   const incumplidos = r.filter((x: Record<string,unknown>) => (x.estado==="Pendiente"||x.estado==="Parcial") && x.antes_sena)
   const secciones = [...new Set(r.map((x: Record<string,string>) => x.seccion))].sort()
-  const criticos = rk.filter((x: Record<string,number>) => Math.abs(x.impacto)>=300000).sort((a: Record<string,number>,b: Record<string,number>) => a.impacto-b.impacto).slice(0,6)
+  const criticos = [...rk].filter((x: Record<string,unknown>) => !["DUPLICADO","RECLASIFICADO"].includes(x.estado as string) && (x.impacto as number) < 0).sort((a: Record<string,number>,b: Record<string,number>) => a.impacto-b.impacto).slice(0,6)
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
