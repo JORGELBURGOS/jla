@@ -447,8 +447,148 @@ export default function BalancePage({ params }: { params: { id: string } }) {
 
       {/* Nota sobre datos */}
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
-        <strong>Nota sobre los datos:</strong> EJ N°17 y N°16 tienen datos detallados extraídos de los EECC. EJ N°13, N°14 y N°15 tienen estimaciones derivadas de los ingresos confirmados por el triage y proporciones históricas. Para mayor precisión, editá los valores directamente en la tabla y guardá.
+        <strong>Nota sobre los datos:</strong> Los totales del balance (Activo, Pasivo, PN) son exactos de los EECC auditados. La distribución por línea de los EJ N°13-15 es estimada — editá directamente para corregir. Los rubros de costos del P&L (Costos de servicios, Gastos admin, Gastos comercial) requieren ingreso manual desde el Estado de Resultados de cada EECC.
       </div>
+
+      {/* ═══════════ P&L ═══════════ */}
+      <div className="mt-4">
+        <div className="flex items-center gap-3 mb-3">
+          <h2 className="text-base font-bold text-gray-900">Estado de Resultados</h2>
+          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
+            Convertido a USD con TC <strong>promedio</strong> de cada ejercicio
+          </span>
+        </div>
+        <div className="card overflow-hidden p-0">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-[#1a2744] text-white">
+                <th className="text-left py-2 px-3 w-44">Concepto</th>
+                {sel.map(ej => {
+                  const b=get(ej)
+                  return (
+                    <th key={ej} className="py-2 px-1">
+                      <div className="flex items-center gap-1.5 justify-end">
+                        <span>ARS</span>
+                        <span className="text-blue-300 w-24 text-right">USD (prom ${b.tc_promedio||"?"})</span>
+                      </div>
+                    </th>
+                  )
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                {label:"Ingresos por servicios",field:"ingresos",editable:true,indent:false},
+                {label:"(-) Costos de prestación de servicios",field:"costos_servicios",editable:true,indent:true},
+              ].map(({label,field,editable,indent})=>(
+                <tr key={field} className="hover:bg-gray-50 border-b border-gray-50">
+                  <td className={`py-1 px-3 text-gray-700 ${indent?"pl-6":""}`}>{label}</td>
+                  {sel.map(ej=>{const b=get(ej);const val=b[field as keyof Bal] as number;const tc=b.tc_promedio||1;return(
+                    <td key={ej} className="py-1 px-1">
+                      <div className="flex items-center gap-1.5">
+                        <div className="flex-1">{editable?<EditCell val={val} onChange={v=>upd(ej,field as keyof Bal,v)}/>:<span className="text-right block font-mono">{ars(val)}</span>}</div>
+                        <span className="text-xs text-gray-400 font-mono w-24 text-right">{val?usd(val,tc):<span className="text-gray-300 text-xs">ingresar</span>}</span>
+                      </div>
+                    </td>
+                  )})}
+                </tr>
+              ))}
+              {/* Resultado bruto */}
+              <tr className="bg-gray-100">
+                <td className="py-1.5 px-3 text-xs font-black text-gray-800">= Resultado bruto</td>
+                {sel.map(ej=>{const b=get(ej);const v=b.ingresos-b.costos_servicios;const tc=b.tc_promedio||1;return(
+                  <td key={ej} className="py-1.5 px-1"><div className="flex gap-1.5"><span className="text-xs font-black flex-1 text-right">{ars(v)}</span><span className="text-xs font-mono text-gray-500 w-24 text-right">{usd(v,tc)}</span></div></td>
+                )})}
+              </tr>
+              {[
+                {label:"(-) Gastos de administración",field:"gastos_admin"},
+                {label:"(-) Gastos de comercialización",field:"gastos_comercial"},
+              ].map(({label,field})=>(
+                <tr key={field} className="hover:bg-gray-50 border-b border-gray-50">
+                  <td className="py-1 px-3 text-gray-700 pl-6">{label}</td>
+                  {sel.map(ej=>{const b=get(ej);const val=b[field as keyof Bal] as number;const tc=b.tc_promedio||1;return(
+                    <td key={ej} className="py-1 px-1"><div className="flex gap-1.5"><div className="flex-1"><EditCell val={val} onChange={v=>upd(ej,field as keyof Bal,v)}/></div><span className="text-xs text-gray-400 font-mono w-24 text-right">{val?usd(val,tc):<span className="text-gray-300 text-xs">ingresar</span>}</span></div></td>
+                  )})}
+                </tr>
+              ))}
+              {/* EBITDA */}
+              <tr className="bg-[#1a2744] text-white">
+                <td className="py-2 px-3 text-xs font-black">= EBITDA</td>
+                {sel.map(ej=>{
+                  const b=get(ej)
+                  const ebitda=b.resultado_antes_impuesto+b.impuesto_ganancias+b.depreciacion
+                  const tc=b.tc_promedio||1
+                  const m=b.ingresos>0?(ebitda/b.ingresos*100):0
+                  return(
+                    <td key={ej} className="py-2 px-1">
+                      <div className="flex gap-1.5 items-center">
+                        <div className="flex-1 text-right">
+                          <span className="text-xs font-black">{ars(ebitda)}</span>
+                          <span className="text-blue-300 text-xs ml-1">({m.toFixed(1)}%)</span>
+                        </div>
+                        <span className="text-xs font-mono text-blue-200 w-24 text-right">{usd(ebitda,tc)}</span>
+                      </div>
+                    </td>
+                  )
+                })}
+              </tr>
+              <tr className="hover:bg-gray-50 border-b border-gray-50">
+                <td className="py-1 px-3 text-gray-700 pl-6">(-) Depreciación y amortización</td>
+                {sel.map(ej=>{const b=get(ej);const val=b.depreciacion;const tc=b.tc_promedio||1;return(
+                  <td key={ej} className="py-1 px-1"><div className="flex gap-1.5"><div className="flex-1"><EditCell val={val} onChange={v=>upd(ej,'depreciacion',v)}/></div><span className="text-xs text-gray-400 font-mono w-24 text-right">{usd(val,tc)}</span></div></td>
+                )})}
+              </tr>
+              {/* EBIT */}
+              <tr className="bg-gray-100">
+                <td className="py-1.5 px-3 text-xs font-black text-gray-800">= EBIT (resultado operativo)</td>
+                {sel.map(ej=>{const b=get(ej);const v=b.resultado_antes_impuesto+b.impuesto_ganancias;const tc=b.tc_promedio||1;return(
+                  <td key={ej} className="py-1.5 px-1"><div className="flex gap-1.5"><span className={`text-xs font-black flex-1 text-right ${v<0?"text-red-600":""}`}>{ars(v)}</span><span className={`text-xs font-mono w-24 text-right ${v<0?"text-red-400":"text-gray-500"}`}>{usd(v,tc)}</span></div></td>
+                )})}
+              </tr>
+              <tr className="hover:bg-gray-50 border-b border-gray-50">
+                <td className="py-1 px-3 text-gray-700 pl-6">(+/-) Resultado financiero</td>
+                {sel.map(ej=>{const b=get(ej);const val=b.resultado_financiero;const tc=b.tc_promedio||1;return(
+                  <td key={ej} className="py-1 px-1"><div className="flex gap-1.5"><div className="flex-1"><EditCell val={val} onChange={v=>upd(ej,'resultado_financiero',v)}/></div><span className="text-xs text-gray-400 font-mono w-24 text-right">{val?usd(val,tc):<span className="text-gray-300 text-xs">ingresar</span>}</span></div></td>
+                )})}
+              </tr>
+              <tr className="hover:bg-gray-50 border-b border-gray-50">
+                <td className="py-1 px-3 text-gray-700 font-semibold">Resultado antes de impuesto</td>
+                {sel.map(ej=>{const b=get(ej);const val=b.resultado_antes_impuesto;const tc=b.tc_promedio||1;return(
+                  <td key={ej} className="py-1 px-1"><div className="flex gap-1.5"><div className="flex-1"><EditCell val={val} onChange={v=>upd(ej,'resultado_antes_impuesto',v)}/></div><span className={`text-xs font-mono w-24 text-right ${val<0?"text-red-400":"text-gray-400"}`}>{usd(val,tc)}</span></div></td>
+                )})}
+              </tr>
+              <tr className="hover:bg-gray-50 border-b border-gray-50">
+                <td className="py-1 px-3 text-gray-700 pl-6">(-) Impuesto a las ganancias</td>
+                {sel.map(ej=>{const b=get(ej);const val=b.impuesto_ganancias;const tc=b.tc_promedio||1;return(
+                  <td key={ej} className="py-1 px-1"><div className="flex gap-1.5"><div className="flex-1"><EditCell val={val} onChange={v=>upd(ej,'impuesto_ganancias',v)}/></div><span className="text-xs text-gray-400 font-mono w-24 text-right">{usd(val,tc)}</span></div></td>
+                )})}
+              </tr>
+              {/* Resultado neto */}
+              <tr className="bg-[#1a2744] text-white">
+                <td className="py-2 px-3 text-xs font-black">= RESULTADO DEL EJERCICIO</td>
+                {sel.map(ej=>{const b=get(ej);const val=b.resultado_neto;const tc=b.tc_promedio||1;const m=b.ingresos>0?(val/b.ingresos*100):0;return(
+                  <td key={ej} className="py-2 px-1">
+                    <div className="flex gap-1.5 items-center">
+                      <div className="flex-1 text-right">
+                        <span className={`text-xs font-black ${val<0?"text-red-300":""}`}>{ars(val)}</span>
+                        <span className="text-blue-300 text-xs ml-1">({m.toFixed(1)}%)</span>
+                      </div>
+                      <span className={`text-xs font-mono w-24 text-right ${val<0?"text-red-300":"text-blue-200"}`}>{usd(val,tc)}</span>
+                    </div>
+                  </td>
+                )})}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-gray-400 mt-2">
+          Los rubros marcados como "ingresar" requieren datos del Estado de Resultados del EECC físico. El EBITDA se calcula desde Resultado antes de impuesto + Impuesto + Depreciación (todos datos auditados confirmados por DeepSeek).
+        </p>
+      </div>
+
+      <p className="text-xs text-gray-400 mt-3">
+        Hacé clic en cualquier valor ARS para editarlo · Enter o Tab para confirmar · Guardar con el botón de cada ejercicio.
+      </p>
     </div>
   )
 }
