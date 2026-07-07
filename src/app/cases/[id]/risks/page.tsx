@@ -10,6 +10,8 @@ interface Risk {
   prioridad: string | null; accion_requerida: string | null; notas: string | null
 }
 
+type ItemLink = {n_item:number;efecto:string;descripcion:string;documento:string;estado:string}
+
 function fmtUSD(n: number) {
   return (n < 0 ? "-" : "") + "USD " + Math.abs(n).toLocaleString("es-AR")
 }
@@ -26,7 +28,6 @@ function AreaBadge({ a }: { a: string | null }) {
   return <span className="text-xs bg-gray-100 text-gray-600 border border-gray-200 px-2 py-0.5 rounded-full">{a}</span>
 }
 
-type ItemLink = {n_item:number;efecto:string;descripcion:string;documento:string;estado:string}
 function RiskRow({ r, defaultOpen, itemLinks }: { r: Risk; defaultOpen?: boolean; itemLinks?: ItemLink[] }) {
   const [open, setOpen] = useState(defaultOpen ?? false)
   const impNeg = r.impacto < 0
@@ -186,7 +187,6 @@ export default function RisksPage({ params }: { params: { id: string } }) {
   const [risks, setRisks] = useState<Risk[]>([])
   const [precio, setPrecio] = useState(0)
   const [expandAll, setExpandAll] = useState(false)
-  type ItemLink = {n_item:number;efecto:string;descripcion:string;documento:string;estado:string}
   const [itemLinks, setItemLinks] = useState<Record<string, ItemLink[]>>({})
   const db = createClient()
 
