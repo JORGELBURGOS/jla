@@ -516,7 +516,7 @@ export default function BalancePage({ params }: { params: { id: string } }) {
                 <td className="py-2 px-3 text-xs font-black">= EBITDA</td>
                 {sel.map(ej=>{
                   const b=get(ej)
-                  const ebitda=b.resultado_antes_impuesto+b.impuesto_ganancias+b.depreciacion
+                  const ebitda=(b.ingresos-b.costos_servicios-b.gastos_admin-b.gastos_comercial)+b.depreciacion
                   const tc=b.tc_promedio||1
                   const m=b.ingresos>0?(ebitda/b.ingresos*100):0
                   return(
@@ -541,7 +541,7 @@ export default function BalancePage({ params }: { params: { id: string } }) {
               {/* EBIT */}
               <tr className="bg-gray-100">
                 <td className="py-1.5 px-3 text-xs font-black text-gray-800">= EBIT (resultado operativo)</td>
-                {sel.map(ej=>{const b=get(ej);const v=b.resultado_antes_impuesto+b.impuesto_ganancias;const tc=b.tc_promedio||1;return(
+                {sel.map(ej=>{const b=get(ej);const v=b.resultado_antes_impuesto-b.resultado_financiero;const tc=b.tc_promedio||1;return(
                   <td key={ej} className="py-1.5 px-1"><div className="flex gap-1.5"><span className={`text-xs font-black flex-1 text-right ${v<0?"text-red-600":""}`}>{ars(v)}</span><span className={`text-xs font-mono w-24 text-right ${v<0?"text-red-400":"text-gray-500"}`}>{usd(v,tc)}</span></div></td>
                 )})}
               </tr>
