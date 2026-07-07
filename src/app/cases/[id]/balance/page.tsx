@@ -584,6 +584,92 @@ export default function BalancePage({ params }: { params: { id: string } }) {
 
       </div>
 
+      {/* ═══════════ RESUMEN EVOLUCIÓN ═══════════ */}
+      <div className="mt-4">
+        <h2 className="text-base font-bold text-gray-900 mb-3">Evolución 5 ejercicios — Métricas clave</h2>
+        <div className="card overflow-hidden p-0">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-[#1a2744] text-white">
+                <th className="text-left py-2 px-3">Concepto</th>
+                {EJS.map(ej => (
+                  <th key={ej} className="text-right py-2 px-2 font-bold whitespace-nowrap">
+                    {ej.replace("EJ N°","").replace(" (","\n(").split("\n")[0]}
+                    <div className="text-blue-300 font-normal text-xs">{ej.match(/[(](\d+)[)]/)?.[1]}</div>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {/* Ingresos USD */}
+              <tr className="border-b border-gray-100 hover:bg-gray-50">
+                <td className="py-1.5 px-3 text-gray-600 font-medium">Ingresos</td>
+                {EJS.map(ej => {
+                  const b = get(ej); const tc = b.tc_promedio || 1
+                  return <td key={ej} className="py-1.5 px-2 text-right font-mono text-gray-700">{b.ingresos ? usd(b.ingresos, tc) : "—"}</td>
+                })}
+              </tr>
+              {/* EBITDA USD */}
+              <tr className="bg-[#1a2744] text-white">
+                <td className="py-2 px-3 font-black">EBITDA</td>
+                {EJS.map(ej => {
+                  const b = get(ej); const tc = b.tc_promedio || 1
+                  const ebitda = (b.ingresos - b.costos_servicios - b.gastos_admin - b.gastos_comercial) + b.depreciacion
+                  return <td key={ej} className="py-2 px-2 text-right font-black font-mono">{ebitda > 0 ? usd(ebitda, tc) : "—"}</td>
+                })}
+              </tr>
+              {/* Margen EBITDA */}
+              <tr className="border-b border-gray-100 bg-gray-50">
+                <td className="py-1.5 px-3 text-gray-500 italic">Margen EBITDA</td>
+                {EJS.map(ej => {
+                  const b = get(ej)
+                  const ebitda = (b.ingresos - b.costos_servicios - b.gastos_admin - b.gastos_comercial) + b.depreciacion
+                  const m = b.ingresos > 0 ? (ebitda / b.ingresos * 100) : 0
+                  return <td key={ej} className={`py-1.5 px-2 text-right font-bold ${m >= 15 ? "text-green-600" : m >= 8 ? "text-amber-600" : "text-red-500"}`}>{b.ingresos ? `${m.toFixed(1)}%` : "—"}</td>
+                })}
+              </tr>
+              {/* Margen bruto */}
+              <tr className="border-b border-gray-100 hover:bg-gray-50">
+                <td className="py-1.5 px-3 text-gray-600">Margen bruto</td>
+                {EJS.map(ej => {
+                  const b = get(ej)
+                  const m = b.ingresos > 0 ? ((b.ingresos - b.costos_servicios) / b.ingresos * 100) : 0
+                  return <td key={ej} className="py-1.5 px-2 text-right font-mono text-gray-700">{b.ingresos ? `${m.toFixed(1)}%` : "—"}</td>
+                })}
+              </tr>
+              {/* Resultado neto USD */}
+              <tr className="border-b border-gray-100 hover:bg-gray-50">
+                <td className="py-1.5 px-3 text-gray-600">Resultado neto</td>
+                {EJS.map(ej => {
+                  const b = get(ej); const tc = b.tc_promedio || 1
+                  return <td key={ej} className={`py-1.5 px-2 text-right font-bold font-mono ${b.resultado_neto < 0 ? "text-red-600" : "text-green-600"}`}>{b.resultado_neto ? usd(b.resultado_neto, tc) : "—"}</td>
+                })}
+              </tr>
+              {/* Margen neto */}
+              <tr className="border-b border-gray-100 bg-gray-50">
+                <td className="py-1.5 px-3 text-gray-500 italic">Margen neto</td>
+                {EJS.map(ej => {
+                  const b = get(ej)
+                  const m = b.ingresos > 0 ? (b.resultado_neto / b.ingresos * 100) : 0
+                  return <td key={ej} className={`py-1.5 px-2 text-right font-bold ${m >= 5 ? "text-green-600" : m >= 0 ? "text-amber-600" : "text-red-500"}`}>{b.ingresos ? `${m.toFixed(1)}%` : "—"}</td>
+                })}
+              </tr>
+              {/* Deuda neta / TC cierre */}
+              <tr className="hover:bg-gray-50">
+                <td className="py-1.5 px-3 text-gray-600">Activo total</td>
+                {EJS.map(ej => {
+                  const b = get(ej); const t = tots(b); const tc = b.tc_cierre || 1
+                  return <td key={ej} className="py-1.5 px-2 text-right font-mono text-gray-700">{t.actT ? usd(t.actT, tc) : "—"}</td>
+                })}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-gray-400 mt-2">
+          Ingresos, EBITDA y resultado neto convertidos con TC promedio de cada ejercicio · Activo total con TC cierre
+        </p>
+      </div>
+
       <p className="text-xs text-gray-400 mt-3">
         Hacé clic en cualquier valor ARS para editarlo · Enter o Tab para confirmar · Guardar con el botón de cada ejercicio.
       </p>
