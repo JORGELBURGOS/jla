@@ -231,20 +231,6 @@ export default function RequirementsPage({ params }: { params: { id: string } })
   const db = createClient()
 
   useEffect(() => {
-    db.from("dd_case_req_risk_links")
-      .select("n_item, efecto, descripcion, risk:dd_case_risks(id,riesgo,estado,impacto)")
-      .eq("case_id", caseId)
-      .then(({ data: ldata }) => {
-        const map: Record<number, Array<{risk_id:string;efecto:string;descripcion:string;riesgo:string;estado:string;impacto:number;}>> = {}
-        ;(ldata ?? []).forEach((l: Record<string,unknown>) => {
-          const r = l.risk as Record<string,unknown>
-          if (!r) return
-          const ni = l.n_item as number
-          if (!map[ni]) map[ni] = []
-          map[ni].push({ risk_id: r.id as string, efecto: l.efecto as string, descripcion: l.descripcion as string, riesgo: r.riesgo as string, estado: r.estado as string, impacto: Number(r.impacto ?? 0) })
-        })
-        setLinks(map)
-      })
     db.from("dd_case_requirements").select("*").eq("case_id", caseId)
       .order("seccion_orden").order("n_item")
       .then(({ data }) => setItems((data ?? []) as Req[]))
