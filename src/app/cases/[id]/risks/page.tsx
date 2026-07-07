@@ -218,26 +218,41 @@ export default function RisksPage({ params }: { params: { id: string } }) {
     db.from("dd_cases").select("precio_pedido").eq("id", caseId).single()
       .then(({ data }) => setPrecio(Number(data?.precio_pedido ?? 0)))
 
-    db.from("dd_case_req_risk_links")
-      .select("risk_id,n_item,efecto,descripcion,req:dd_case_requirements(n_item,documento,estado)")
-      .eq("case_id", caseId)
-      .then(({ data: ld }) => {
-        const map: Record<string, ItemLink[]> = {}
-        ;(ld ?? []).forEach((l: Record<string, unknown>) => {
-          const req = l.req as Record<string, unknown>
-          if (!req) return
-          const rid = l.risk_id as string
-          if (!map[rid]) map[rid] = []
-          map[rid].push({
-            n_item:    l.n_item as number,
-            efecto:    l.efecto as string,
-            descripcion: l.descripcion as string,
-            documento: String(req.documento ?? "").slice(0, 65),
-            estado:    req.estado as string,
-          })
-        })
-        setItemLinksMap(map)
+    // Dos queries separados porque no hay FK entre links.n_item y requirements
+    Promise.all([
+      db.from("dd_case_req_risk_links")
+        .select("risk_id,n_item,efecto,descripcion")
+        .eq("case_id", caseId),
+      db.from("dd_case_requirements")
+        .select("n_item,documento,estado")
+        .eq("case_id", caseId)
+    ]).then(([{ data: ld }, { data: rd }]) => {
+      // Índice de requerimientos por n_item
+      const reqIdx: Record<number, {documento:string;estado:string}> = {}
+      ;(rd ?? []).forEach((r: Record<string,unknown>) => {
+        reqIdx[r.n_item as number] = {
+          documento: String(r.documento ?? "").slice(0, 65),
+          estado: r.estado as string,
+        }
       })
+      // Construir mapa risk_id → ItemLink[]
+      const map: Record<string, ItemLink[]> = {}
+      ;(ld ?? []).forEach((l: Record<string, unknown>) => {
+        const rid = l.risk_id as string
+        const ni  = l.n_item as number
+        const req = reqIdx[ni]
+        if (!req) return
+        if (!map[rid]) map[rid] = []
+        map[rid].push({
+          n_item:      ni,
+          efecto:      l.efecto as string,
+          descripcion: l.descripcion as string,
+          documento:   req.documento,
+          estado:      req.estado,
+        })
+      })
+      setItemLinksMap(map)
+    })
   }, [caseId])
 
   const confirmados   = risks.filter(r => r.estado === "CONFIRMADO").sort((a,b) => a.impacto - b.impacto)
