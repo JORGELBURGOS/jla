@@ -4,22 +4,28 @@ import { usePathname } from "next/navigation"
 import { useState, useRef } from "react"
 import { createClient } from "@/lib/supabase/client"
 
-const NAV = [
-  [""          , "Dashboard"],
-  ["/requirements","Requerimientos"],
-  ["/risks"    , "Mapa de Riesgos"],
-  ["/assumptions","Supuestos"],
-  ["/ebitda"   , "Borrador EBITDA"],
-  ["/financial", "Modelo Financiero"],
-  ["/valuation", "Valuación"],
-  ["/triage"   , "Triage de Docs"],
-  ["/assistant", "Asistente IA"],
-  ["/fiscal"   , "Análisis Fiscal"],
-  ["/environmental","Síntesis Ambiental"],
-  ["/validation","Validación Plan"],
-  ["/balance"  , "EECC y EERR"],
-  ["/report"   , "📄 Informe Final"],
-  ["/log"      , "Log Auditoría"],
+const NAV: [string, string, boolean?][] = [
+  [""             , "Dashboard"],
+  ["---"          , "RECOLECCIÓN"],
+  ["/requirements", "Requerimientos"],
+  ["/triage"      , "Triage de Docs"],
+  ["---"          , "ANÁLISIS"],
+  ["/balance"     , "EECC y EERR"],
+  ["/environmental", "Síntesis Ambiental"],
+  ["/fiscal"      , "Análisis Fiscal"],
+  ["---"          , "MODELO FINANCIERO"],
+  ["/assumptions" , "Supuestos"],
+  ["/ebitda"      , "Borrador EBITDA"],
+  ["/financial"   , "Modelo Financiero"],
+  ["/valuation"   , "Valuación"],
+  ["---"          , "RIESGOS"],
+  ["/risks"       , "Mapa de Riesgos"],
+  ["/validation"  , "Validación Plan"],
+  ["---"          , "HERRAMIENTAS"],
+  ["/assistant"   , "Asistente IA"],
+  ["---"          , "ENTREGABLE"],
+  ["/report"      , "📄 Informe Final"],
+  ["/log"         , "Log Auditoría"],
 ]
 
 export default function CaseShell({ children, caseData, caseId }: {
@@ -64,6 +70,11 @@ export default function CaseShell({ children, caseData, caseId }: {
         </div>
         <nav className="flex-1 overflow-y-auto py-2">
           {NAV.map(([href, label]) => {
+            if (href === "---") return (
+              <div key={label} className="px-4 pt-4 pb-1">
+                <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{label}</div>
+              </div>
+            )
             const full = base + href
             const active = href === "" ? pathname === base || pathname === base + "/" : pathname.startsWith(full)
             return (
