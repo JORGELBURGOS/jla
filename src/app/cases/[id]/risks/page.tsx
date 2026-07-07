@@ -26,7 +26,8 @@ function AreaBadge({ a }: { a: string | null }) {
   return <span className="text-xs bg-gray-100 text-gray-600 border border-gray-200 px-2 py-0.5 rounded-full">{a}</span>
 }
 
-function RiskRow({ r, defaultOpen }: { r: Risk; defaultOpen?: boolean }) {
+type ItemLink = {n_item:number;efecto:string;descripcion:string;documento:string;estado:string}
+function RiskRow({ r, defaultOpen, itemLinks }: { r: Risk; defaultOpen?: boolean; itemLinks?: ItemLink[] }) {
   const [open, setOpen] = useState(defaultOpen ?? false)
   const impNeg = r.impacto < 0
   const borderColor = r.impacto <= -500000 ? "border-l-red-600"
@@ -94,6 +95,38 @@ function RiskRow({ r, defaultOpen }: { r: Risk; defaultOpen?: boolean }) {
                 <div className="text-xs text-gray-800 leading-relaxed whitespace-pre-wrap">{r.notas}</div>
               </div>
             )}
+            {/* Ítems del tracker vinculados */}
+            {(itemLinks?.length ?? 0) > 0 && (
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <div className="text-xs font-bold text-gray-600 mb-2">📋 Ítems del tracker que afectan este riesgo</div>
+                <div className="space-y-2">
+                  {itemLinks!.map((lk, li) => (
+                    <div key={li} className="flex gap-2 text-xs bg-gray-50 rounded-xl p-2.5">
+                      <div className="flex-shrink-0 flex flex-col gap-1">
+                        <span className="text-xs font-bold bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">N° {lk.n_item}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                          lk.estado==="Recibido"?"bg-green-100 text-green-700":
+                          lk.estado==="Parcial"?"bg-amber-100 text-amber-700":
+                          "bg-red-100 text-red-700"}`}>
+                          {lk.estado}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                          lk.efecto==="cancela"?"bg-green-100 text-green-800":
+                          lk.efecto==="reduce"?"bg-amber-100 text-amber-800":
+                          lk.efecto==="cuantifica"?"bg-blue-100 text-blue-700":
+                          "bg-red-100 text-red-800"}`}>
+                          {lk.efecto==="cancela"?"✓ Cancela":lk.efecto==="reduce"?"↓ Reduce":lk.efecto==="cuantifica"?"≈ Cuantifica":"! Confirma"}
+                        </span>
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-semibold text-gray-800">{lk.documento}{lk.documento.length>=65?"...":""}</div>
+                        <div className="text-gray-500 mt-0.5">{lk.descripcion}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -141,7 +174,7 @@ function NivelSection({
 
       {!collapsed && (
         <div>
-          {risks.map(r => <RiskRow key={r.id} r={r} defaultOpen={expandAll}/>)}
+          {risks.map(r => <RiskRow key={r.id} r={r} defaultOpen={expandAll} itemLinks={itemLinks[r.id] ?? []}/>)}
         </div>
       )}
     </div>
@@ -153,6 +186,8 @@ export default function RisksPage({ params }: { params: { id: string } }) {
   const [risks, setRisks] = useState<Risk[]>([])
   const [precio, setPrecio] = useState(0)
   const [expandAll, setExpandAll] = useState(false)
+  type ItemLink = {n_item:number;efecto:string;descripcion:string;documento:string;estado:string}
+  const [itemLinks, setItemLinks] = useState<Record<string, ItemLink[]>>({})
   const db = createClient()
 
   useEffect(() => {
@@ -162,6 +197,20 @@ export default function RisksPage({ params }: { params: { id: string } }) {
       .then(({ data }) => setRisks((data ?? []) as Risk[]))
     db.from("dd_cases").select("precio_pedido").eq("id", caseId).single()
       .then(({ data }) => setPrecio(Number(data?.precio_pedido ?? 0)))
+    db.from("dd_case_req_risk_links")
+      .select("risk_id,n_item,efecto,descripcion,req:dd_case_requirements(n_item,documento,estado)")
+      .eq("case_id", caseId)
+      .then(({ data: ld }) => {
+        const map: Record<string, ItemLink[]> = {}
+        ;(ld ?? []).forEach((l: Record<string,unknown>) => {
+          const req = l.req as Record<string,unknown>
+          if (!req) return
+          const rid = l.risk_id as string
+          if (!map[rid]) map[rid] = []
+          map[rid].push({ n_item: l.n_item as number, efecto: l.efecto as string, descripcion: l.descripcion as string, documento: String(req.documento ?? "").slice(0,65), estado: req.estado as string })
+        })
+        setItemLinks(map)
+      })
   }, [caseId])
 
   const confirmados   = risks.filter(r => r.estado === "CONFIRMADO").sort((a,b) => a.impacto - b.impacto)

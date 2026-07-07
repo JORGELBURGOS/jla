@@ -102,6 +102,32 @@ function ItemRow({ item, toggling, onToggle }: { item: Req; toggling: string | n
               <DetailField label="Alertas / Observaciones" value={item.alertas} danger/>
               {item.comentarios && <DetailField label="Comentarios" value={item.comentarios}/>}
             </div>
+            {/* Riesgos vinculados */}
+            {(links[item.n_item]?.length ?? 0) > 0 && (
+              <div className="mt-3 pt-3 border-t border-gray-100 col-span-2">
+                <div className="text-xs font-bold text-gray-600 mb-2">⚠ Riesgos vinculados a este ítem</div>
+                <div className="space-y-2">
+                  {links[item.n_item].map((lk, li) => (
+                    <div key={li} className="flex gap-2 text-xs bg-gray-50 rounded-xl p-2.5">
+                      <div className="flex-shrink-0 flex flex-col gap-1 pt-0.5">
+                        <span className={`px-2 py-0.5 rounded-full font-bold text-xs ${
+                          lk.efecto==="cancela"?"bg-green-100 text-green-800":
+                          lk.efecto==="reduce"?"bg-amber-100 text-amber-800":
+                          lk.efecto==="cuantifica"?"bg-blue-100 text-blue-700":
+                          "bg-red-100 text-red-800"}`}>
+                          {lk.efecto==="cancela"?"✓ Cancela el riesgo":lk.efecto==="reduce"?"↓ Reduce el riesgo":lk.efecto==="cuantifica"?"≈ Cuantifica el riesgo":"! Confirma el riesgo"}
+                        </span>
+                        {lk.impacto!==0&&<span className="text-red-600 font-bold font-mono text-xs text-right">USD {Math.abs(lk.impacto).toLocaleString("es-AR")}</span>}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-semibold text-gray-800">{lk.riesgo}{lk.riesgo.length>=70?"...":""}</div>
+                        <div className="text-gray-500 mt-0.5">{lk.descripcion}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               {archivos.length > 0 && (
                 <div className="bg-white border border-gray-100 rounded-lg px-3 py-2.5">
@@ -178,6 +204,8 @@ function SeccionRow({ sec, items, toggling, onToggle }: { sec: string; items: Re
 export default function RequirementsPage({ params }: { params: { id: string } }) {
   const caseId = params.id
   const [items, setItems] = useState<Req[]>([])
+  type RiskLink = {risk_id:string;efecto:string;descripcion:string;riesgo:string;estado:string;impacto:number}
+  const [links, setLinks] = useState<Record<number, RiskLink[]>>({})
   const [tab, setTab] = useState<"interna" | "vendedor">("interna")
   const [toggling, setToggling] = useState<string | null>(null)
   const [downloading, setDownloading] = useState<string | null>(null)
@@ -202,9 +230,37 @@ export default function RequirementsPage({ params }: { params: { id: string } })
   const db = createClient()
 
   useEffect(() => {
+    db.from("dd_case_req_risk_links")
+      .select("n_item, efecto, descripcion, risk:dd_case_risks(id,riesgo,estado,impacto)")
+      .eq("case_id", caseId)
+      .then(({ data: ldata }) => {
+        const map: Record<number, Array<{risk_id:string;efecto:string;descripcion:string;riesgo:string;estado:string;impacto:number;}>> = {}
+        ;(ldata ?? []).forEach((l: Record<string,unknown>) => {
+          const r = l.risk as Record<string,unknown>
+          if (!r) return
+          const ni = l.n_item as number
+          if (!map[ni]) map[ni] = []
+          map[ni].push({ risk_id: r.id as string, efecto: l.efecto as string, descripcion: l.descripcion as string, riesgo: r.riesgo as string, estado: r.estado as string, impacto: Number(r.impacto ?? 0) })
+        })
+        setLinks(map)
+      })
     db.from("dd_case_requirements").select("*").eq("case_id", caseId)
       .order("seccion_orden").order("n_item")
       .then(({ data }) => setItems((data ?? []) as Req[]))
+    db.from("dd_case_req_risk_links")
+      .select("n_item,efecto,descripcion,risk:dd_case_risks(id,riesgo,estado,impacto)")
+      .eq("case_id", caseId)
+      .then(({ data: ld }) => {
+        const map: Record<number, RiskLink[]> = {}
+        ;(ld ?? []).forEach((l: Record<string,unknown>) => {
+          const r = l.risk as Record<string,unknown>
+          if (!r) return
+          const ni = l.n_item as number
+          if (!map[ni]) map[ni] = []
+          map[ni].push({ risk_id: r.id as string, efecto: l.efecto as string, descripcion: l.descripcion as string, riesgo: String(r.riesgo).slice(0,70), estado: r.estado as string, impacto: Number(r.impacto ?? 0) })
+        })
+        setLinks(map)
+      })
   }, [caseId])
 
   const onToggle = useCallback(async (item: Req, campo: "antes_sena" | "antes_visita") => {
