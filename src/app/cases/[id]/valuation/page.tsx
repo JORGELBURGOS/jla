@@ -552,56 +552,211 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
       </div>
 
       {/* ══════════════════════════════════════════════
-          4. RANGO DE OFERTA
+          4. ¿CUÁNTO OFRECER?
       ══════════════════════════════════════════════ */}
-      <div className="bg-gray-900 text-white rounded-xl p-5">
-        <h2 className="text-sm font-semibold mb-4 opacity-80">¿Cuánto ofrecer?</h2>
-        <div className="grid grid-cols-3 gap-4 mb-5">
-          <div className="bg-white/5 rounded-lg p-3 text-center border border-white/10">
-            <div className="text-xs opacity-60 mb-1">Oferta mínima razonable</div>
-            <div className="text-lg font-black text-green-300">
-              {evFlujos > 0 ? usd(Math.max(0, evFlujos * 0.5)) : "—"}
+      <div className="space-y-3">
+        <h2 className="text-sm font-semibold text-gray-700">¿Cuánto ofrecer? — Cuatro escenarios</h2>
+
+        {/* Escenario A: Stock Deal hoy */}
+        <div className="card p-4 border-l-4 border-l-gray-400">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-black uppercase tracking-wide text-gray-700">A · Stock Deal — precio actual</span>
+                <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">Difícil de defender</span>
+              </div>
+              <p className="text-xs text-gray-500 mb-2">
+                Comprás las acciones hoy, con todos los riesgos incluidos. El precio máximo racional es el valor por flujos ajustado por la totalidad de los riesgos identificados.
+                Con los números actuales el valor ajustado es negativo — lo que significa que el comprador debería exigir que el vendedor absorba los riesgos como condición del cierre.
+              </p>
+              <div className="flex gap-4 text-xs text-gray-500">
+                <span>EBITDA × {multiplo}: <strong className="text-gray-800">{usd(evFlujos)}</strong></span>
+                <span>Riesgos: <strong className="text-red-600">−{usd(riesgosAbs)}</strong></span>
+                <span>Deuda neta: <strong className="text-gray-800">≈ —</strong></span>
+              </div>
             </div>
-            <div className="text-xs opacity-50 mt-1">50% del valor por flujos bruto, condicionado a resolución de riesgos críticos</div>
-          </div>
-          <div className="bg-white/10 rounded-lg p-3 text-center border border-white/20">
-            <div className="text-xs opacity-60 mb-1">Oferta máxima defensible</div>
-            <div className="text-lg font-black">
-              {evFlujos > 0 ? usd(evFlujos) : "—"}
+            <div className="text-right flex-shrink-0">
+              <div className="text-xs text-gray-400 mb-0.5">Oferta máxima</div>
+              <div className={`text-2xl font-black ${valorFlujosAjust < 0 ? "text-red-600" : "text-[#1a2744]"}`}>
+                {valorFlujosAjust < 0 ? "Negativo" : usd(valorFlujosAjust)}
+              </div>
+              {valorFlujosAjust < 0 && <div className="text-xs text-red-500 mt-0.5">Resolver riesgos antes de ofrecer</div>}
             </div>
-            <div className="text-xs opacity-50 mt-1">{multiplo}× EBITDA sin descuento de riesgos — solo si todos los riesgos se resuelven antes del cierre</div>
-          </div>
-          <div className="bg-white/5 rounded-lg p-3 text-center border border-red-400/20">
-            <div className="text-xs opacity-60 mb-1">Precio pedido vendedor</div>
-            <div className="text-lg font-black text-red-300">{usd(precio)}</div>
-            <div className="text-xs opacity-50 mt-1">{ebitda > 0 ? `${Math.round(precio/ebitda)}× EBITDA — indefendible sin contratos YPF firmados` : "Sin datos de EBITDA"}</div>
           </div>
         </div>
 
-        <div className="border-t border-white/20 pt-4">
-          <div className="text-xs font-bold opacity-70 mb-2 uppercase tracking-wide">Condiciones que suben el precio</div>
-          <div className="grid grid-cols-2 gap-2 text-xs opacity-80 mb-3">
-            {[
-              "Horno rotativo verificado operativo en visita técnica",
-              "Créditos a accionistas cancelados o ajustados al precio",
-              "Contratos de clientes firmados con cláusulas de continuidad",
-              "Seguro ambiental contratado antes del cierre",
-              "ART renovada sin observaciones",
-              "NAV de activos verificado en más de USD 3M",
-              "Todos los planes AFIP al día sin mora",
-              "Convenio YPF con carta de intención firmada",
-            ].map((c,i) => <div key={i} className="flex gap-1.5"><span className="text-green-400">↑</span>{c}</div>)}
+        {/* Escenario B: Stock Deal con condiciones precedentes */}
+        <div className="card p-4 border-l-4 border-l-amber-400">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-black uppercase tracking-wide text-gray-700">B · Stock Deal — con condiciones precedentes</span>
+                <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">Recomendado</span>
+              </div>
+              <p className="text-xs text-gray-500 mb-2">
+                Se ofrece un precio base bajo ahora, con ajuste al alza conforme el vendedor resuelva las condiciones clave antes del cierre: cancelación de créditos a accionistas,
+                libre deuda AFIP, renovación ART, verificación del horno rotativo. Protege al comprador y da al vendedor incentivo para resolver.
+              </p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                {[
+                  { cond:"Precio base (hoy, con riesgos actuales)", val:Math.max(0, evFlujos * 0.4), color:"text-gray-800" },
+                  { cond:"+  Cancelación créditos accionistas verificada", val:140000, color:"text-green-700" },
+                  { cond:"+  Horno rotativo operativo confirmado en visita", val:50000, color:"text-green-700" },
+                  { cond:"+  Libre deuda AFIP/SIPA certificado", val:40000, color:"text-green-700" },
+                  { cond:"+  ART renovada antes del cierre", val:10000, color:"text-green-700" },
+                  { cond:"+  DIA cubre corrientes actuales confirmado", val:80000, color:"text-green-700" },
+                ].map((row,i) => (
+                  <div key={i} className="flex justify-between border-b border-gray-50 py-0.5">
+                    <span className="text-gray-500">{row.cond}</span>
+                    <span className={`font-bold ml-2 flex-shrink-0 ${row.color}`}>{usd(row.val)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="text-right flex-shrink-0 ml-4">
+              <div className="text-xs text-gray-400 mb-0.5">Precio base</div>
+              <div className="text-2xl font-black text-amber-700">{usd(Math.max(0, evFlujos * 0.4))}</div>
+              <div className="text-xs text-gray-400 mt-1">Hasta</div>
+              <div className="text-lg font-black text-[#1a2744]">{usd(Math.max(0, evFlujos * 0.4) + 320000)}</div>
+              <div className="text-xs text-gray-400">si se cumplen condiciones</div>
+            </div>
           </div>
-          <div className="text-xs font-bold opacity-70 mb-2 uppercase tracking-wide">Condiciones que bajan el precio</div>
-          <div className="grid grid-cols-2 gap-2 text-xs opacity-80">
-            {[
-              "Horno rotativo inoperativo o requiere inversión mayor",
-              "Créditos a accionistas no cancelados (−USD 140K mínimo)",
-              "Deuda SIPA con mora o intereses no revelados",
-              "Servidumbre EDEMSA con restricciones adicionales",
-              "DIA no cubre corrientes actuales (Y11/Y18/Y31/Y36)",
-              "GIJ-234 y HMC-351 sin habilitación CAA resoluble",
-            ].map((c,i) => <div key={i} className="flex gap-1.5"><span className="text-red-400">↓</span>{c}</div>)}
+        </div>
+
+        {/* Escenario C: Asset Deal */}
+        <div className={`card p-4 border-l-4 ${hayNAV ? "border-l-[#1a2744]" : "border-l-gray-200"}`}>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-black uppercase tracking-wide text-gray-700">C · Asset Deal — compra de activos</span>
+                {!hayNAV && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-bold">Cargar activos para activar</span>}
+                {hayNAV && navAjustAsset > 0 && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">Potencialmente favorable</span>}
+              </div>
+              <p className="text-xs text-gray-500 mb-2">
+                Se compran solo los activos físicos y operativos. No se heredan pasivos ni contingencias fiscales.
+                El costo: se pierde la continuidad regulatoria — el CAA y la DIA deben retramitarse desde cero (2-3 años, costo estimado {usd(costoRehabilitacion)}).
+                Solo se descuentan riesgos ambientales y operativos que van pegados a los activos.
+              </p>
+              {hayNAV ? (
+                <div className="flex gap-4 text-xs text-gray-500">
+                  <span>Activos sin pasivos: <strong className="text-gray-800">{usd(navBruto)}</strong></span>
+                  <span>Riesgos ambientales: <strong className="text-red-600">−{usd(riesgosAssetAbs)}</strong></span>
+                  <span>Re-permisos: <strong className="text-red-600">−{usd(costoRehabilitacion)}</strong></span>
+                </div>
+              ) : (
+                <p className="text-xs text-amber-600">→ Ingresá los valores de los activos en la tabla de abajo para calcular esta oferta.</p>
+              )}
+            </div>
+            <div className="text-right flex-shrink-0 ml-4">
+              <div className="text-xs text-gray-400 mb-0.5">Oferta máxima</div>
+              {hayNAV ? (
+                <>
+                  <div className={`text-2xl font-black ${navAjustAsset < 0 ? "text-red-600" : "text-[#1a2744]"}`}>
+                    {navAjustAsset < 0 ? "Negativo" : usd(navAjustAsset)}
+                  </div>
+                  {navAjustAsset > 0 && (
+                    <div className="text-xs text-gray-400 mt-0.5">
+                      {(navAjustAsset/precio*100).toFixed(0)}% del precio pedido
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-xl font-black text-gray-300">Sin datos</div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Escenario D: Precio con escrow */}
+        <div className="card p-4 border-l-4 border-l-gray-300">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-black uppercase tracking-wide text-gray-700">D · Precio con escrow o earn-out</span>
+                <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-bold">Alternativa sofisticada</span>
+              </div>
+              <p className="text-xs text-gray-500 mb-2">
+                Se paga el precio lleno (o parte) pero se retiene en escrow una suma equivalente a los riesgos no resueltos.
+                El dinero se libera al vendedor conforme se verifica que los riesgos no se materializan, en plazos definidos post-cierre.
+                Alternativa: earn-out donde parte del precio se paga solo si la empresa alcanza metas de ingresos (ej: USD 700K en 2026).
+              </p>
+              <div className="grid grid-cols-2 gap-x-6 text-xs mt-2">
+                <div>
+                  <div className="font-semibold text-gray-600 mb-1">Estructura escrow sugerida</div>
+                  {[
+                    { concepto:"Pago al cierre", val:evFlujos > 0 ? evFlujos : 200000 },
+                    { concepto:"En escrow (riesgos identificados)", val:riesgosAbs },
+                    { concepto:"Liberación a 12 meses si sin incidentes", val:Math.round(riesgosAbs * 0.5) },
+                    { concepto:"Liberación a 24 meses saldo restante", val:Math.round(riesgosAbs * 0.5) },
+                  ].map((row,i) => (
+                    <div key={i} className="flex justify-between border-b border-gray-50 py-0.5">
+                      <span className="text-gray-500">{row.concepto}</span>
+                      <span className="font-bold text-gray-700 ml-2">{usd(row.val)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <div className="font-semibold text-gray-600 mb-1">Estructura earn-out sugerida</div>
+                  {[
+                    { concepto:"Pago al cierre", val:evFlujos > 0 ? Math.round(evFlujos * 0.5) : 150000 },
+                    { concepto:"Si factura +USD 700K en 2026", val:100000 },
+                    { concepto:"Si factura +USD 900K en 2027", val:100000 },
+                    { concepto:"Si obtiene contrato YPF firmado", val:150000 },
+                  ].map((row,i) => (
+                    <div key={i} className="flex justify-between border-b border-gray-50 py-0.5">
+                      <span className="text-gray-500">{row.concepto}</span>
+                      <span className="font-bold text-gray-700 ml-2">+{usd(row.val)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Condiciones que mueven el precio */}
+        <div className="card p-4">
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Condiciones que suben el precio</div>
+              <div className="space-y-1 text-xs">
+                {[
+                  ["Horno rotativo operativo verificado en visita", "+USD 50K"],
+                  ["Créditos a accionistas cancelados antes del cierre", "+USD 140K"],
+                  ["Contratos de clientes firmados (no solo relaciones)", "+USD 80K"],
+                  ["Seguro ambiental contratado (Art. 22 Ley 24.051)", "+USD 30K"],
+                  ["ART renovada sin observaciones", "+USD 10K"],
+                  ["Libre deuda AFIP/ARBA certificada", "+USD 60K"],
+                  ["Carta de intención YPF firmada", "+USD 150K"],
+                  ["NAV de activos verificado en visita > USD 3M", "+según tasación"],
+                ].map(([cond,val],i) => (
+                  <div key={i} className="flex justify-between">
+                    <span className="text-gray-500 flex items-start gap-1.5"><span className="text-green-500 flex-shrink-0">↑</span>{cond}</span>
+                    <span className="font-bold text-green-700 ml-2 flex-shrink-0">{val}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Condiciones que bajan el precio</div>
+              <div className="space-y-1 text-xs">
+                {[
+                  ["Horno rotativo inoperativo o con vida útil < 3 años", "−USD 100K"],
+                  ["Créditos a accionistas no cancelados", "−USD 140K"],
+                  ["Deuda SIPA con mora o intereses acumulados", "−USD 15K"],
+                  ["Servidumbre EDEMSA con restricciones adicionales", "−USD 140K"],
+                  ["DIA no cubre corrientes Y11/Y18/Y31/Y36 actuales", "−USD 160K"],
+                  ["GIJ-234 y HMC-351 sin habilitación CAA regularizable", "−USD 80K"],
+                  ["Pileta API fuera de servicio sin reemplazo", "−USD 30K"],
+                  ["Planes AFIP con mora en cuotas", "−USD 60K"],
+                ].map(([cond,val],i) => (
+                  <div key={i} className="flex justify-between">
+                    <span className="text-gray-500 flex items-start gap-1.5"><span className="text-red-400 flex-shrink-0">↓</span>{cond}</span>
+                    <span className="font-bold text-red-700 ml-2 flex-shrink-0">{val}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
