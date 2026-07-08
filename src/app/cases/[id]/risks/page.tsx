@@ -136,9 +136,10 @@ function RiskRow({ r, defaultOpen, links }: {
                           </span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <Link href={`/cases/${caseId}/requirements?highlight=${lk.n_item}`}
-                            className="font-medium text-gray-800 hover:text-[#1a2744] hover:underline block leading-snug">
-                            N°{lk.n_item} {lk.documento} →
+                                                 <Link href={`/cases/${caseId}/requirements?highlight=${lk.n_item}`}
+                            className="font-medium text-[#1a2744] underline decoration-dotted hover:decoration-solid flex items-center gap-1 leading-snug">
+                            <span>N°{lk.n_item} — {lk.documento}</span>
+                            <span className="text-xs bg-[#1a2744] text-white px-1.5 py-0.5 rounded font-bold flex-shrink-0 ml-1">Ver →</span>
                           </Link>
                           <div className="text-gray-500 mt-0.5 leading-relaxed">{lk.descripcion}</div>
                         </div>

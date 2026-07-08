@@ -59,14 +59,13 @@ function DetailField({ label, value, danger, warn, accent }: {
 }
 
 // ── ItemRow recibe linksMap como prop explícita ────────────────────
-function ItemRow({ item, toggling, onToggle, linksMap, caseId }: {
+function ItemRow({ item, toggling, onToggle, linksMap, caseId, highlight }: {
   item: Req
   toggling: string | null
   onToggle: (item: Req, campo: "antes_sena" | "antes_visita") => void
-  linksMap: LinksMap   // ← prop explícita
+  linksMap: LinksMap
   caseId: string
-  highlightItem?: number, no closure
-  caseId: string
+  highlight?: boolean
 }) {
   const [open, setOpen] = useState(highlight ?? false)
   const ref = useRef<HTMLDivElement>(null)
@@ -191,8 +190,9 @@ function ItemRow({ item, toggling, onToggle, linksMap, caseId }: {
                     </div>
                     <div className="flex-1 min-w-0">
                       <Link href={`/cases/${caseId}/risks?highlight=${lk.risk_id}`}
-                        className="font-semibold text-gray-800 leading-snug hover:text-[#1a2744] hover:underline block">
-                        {lk.riesgo} →
+                        className="font-semibold text-[#1a2744] underline decoration-dotted hover:decoration-solid flex items-center gap-1 leading-snug">
+                        {lk.riesgo}
+                        <span className="text-xs bg-[#1a2744] text-white px-1.5 py-0.5 rounded font-bold flex-shrink-0 ml-1">Ver →</span>
                       </Link>
                       <div className="text-gray-500 mt-1 leading-relaxed">{lk.descripcion}</div>
                     </div>
@@ -211,7 +211,9 @@ function ItemRow({ item, toggling, onToggle, linksMap, caseId }: {
 function SeccionRow({ sec, items, toggling, onToggle, linksMap, caseId, highlightItem }: {
   sec: string; items: Req[]; toggling: string | null
   onToggle: (item: Req, campo: "antes_sena" | "antes_visita") => void
-  linksMap: LinksMap   // ← prop explícita
+  linksMap: LinksMap
+  caseId: string
+  highlightItem?: number
 }) {
   const [open, setOpen] = useState(true)
   const rec = items.filter(x => x.estado === "Recibido").length
