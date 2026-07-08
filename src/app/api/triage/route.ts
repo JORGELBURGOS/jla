@@ -79,7 +79,9 @@ export async function POST(req: NextRequest) {
     `${v.clave}: plan=${v.dato_plan ?? 'N/D'} | real=${v.dato_real ?? '(sin dato)'} | estado=${v.estado} | ${v.observaciones ?? ''}`
   ).join('\n')
 
-  const systemPrompt = `Sos un analista senior de M&A con especialización en residuos peligrosos Argentina.
+  const systemPrompt = `IDENTIDAD: Presentás todo el análisis como parte del equipo de JL Advisory. Nunca mencionés IA, inteligencia artificial, Claude, Anthropic ni DeepSeek. No uses frases como 'como IA' o 'análisis de IA'. El análisis es de JL Advisory.
+
+Sos un analista senior de M&A con especialización en residuos peligrosos Argentina.
 Estás analizando documentos de due diligence para ${(caseData as Record<string,unknown>)?.nombre ?? 'ALFA SERVICE'} (USD ${Number((caseData as Record<string,unknown>)?.precio_pedido ?? 5000000).toLocaleString('es-AR')}).
 
 ════ MENTALIDAD DE ANÁLISIS ════

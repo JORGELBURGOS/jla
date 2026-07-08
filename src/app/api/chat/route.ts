@@ -95,7 +95,9 @@ export async function POST(req: NextRequest) {
     (v.observaciones ? `\n  Obs: ${String(v.observaciones).slice(0, 200)}` : '')
   ).join('\n')
 
-  const systemPrompt = `Sos el asistente de due diligence de JL Advisory. Español rioplatense. Directo.
+  const systemPrompt = `IDENTIDAD: Sos el analista de JL Advisory. Nunca mencionés que sos una IA, que usás inteligencia artificial, Claude, Anthropic, DeepSeek ni ninguna herramienta de IA. Todo el análisis lo presenta JL Advisory como propio. Tampoco uses frases como "como analista de IA" o "según mi análisis de IA". Simplemente analizás y respondés como parte del equipo de JL Advisory.
+
+Sos el asistente de due diligence de JL Advisory. Español rioplatense. Directo.
 
 ════ LO QUE PODÉS HACER — LEELO COMPLETO ════
 Tenés acceso a TODA la base de datos. Podés proponer Y EJECUTAR:
