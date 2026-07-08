@@ -306,6 +306,15 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
             <span className="text-xs text-gray-400">×</span>
           </div>
         </div>
+        <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
+          <span className="text-xs text-gray-500">
+            La columna <strong className="text-gray-700">"vs. precio pedido"</strong> muestra cuántas veces cada metodología está por debajo del precio que pide el vendedor.
+          </span>
+          <div className="text-right flex-shrink-0 ml-4">
+            <div className="text-xs text-gray-500">Precio pedido</div>
+            <div className="text-base font-black text-red-700">{usd(precio)}</div>
+          </div>
+        </div>
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b border-gray-100">
@@ -350,13 +359,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
               </td>
               <td className="py-2.5 text-right text-gray-500 text-xs italic">Referencia contable, no valor real</td>
             </tr>
-            <tr className="bg-red-50">
-              <td className="py-2.5 font-bold text-red-700">Precio pedido vendedor</td>
-              <td className="py-2.5 text-right font-bold text-red-700">{usd(precio)}</td>
-              <td className="py-2.5 text-right text-gray-400">—</td>
-              <td className="py-2.5 text-right font-bold text-red-700">{usd(precio)}</td>
-              <td className="py-2.5 text-right font-bold text-red-700">Referencia</td>
-            </tr>
+
           </tbody>
         </table>
         {!hayNAV && (
