@@ -206,7 +206,7 @@ export default function AdminPage() {
                       <div className="text-xs font-bold text-gray-600 mb-2 uppercase tracking-wide">Casos visibles</div>
                       <label className="flex items-center gap-2 text-xs mb-2 cursor-pointer font-semibold">
                         <input type="checkbox" checked={u.allowed_cases === null}
-                          onChange={e => upd(u.id, "allowed_cases", e.target.checked ? null : [])}
+                          onChange={e => upd(u.id, "allowed_cases", e.target.checked ? null : cases.map(c => c.id))}
                           className="rounded"/>
                         Todos los casos
                       </label>
