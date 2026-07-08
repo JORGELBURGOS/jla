@@ -171,7 +171,10 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const [precio, setPrecio]         = useState(0)
   const [pasivos, setPasivos]       = useState(0)
   const [pnContable, setPnContable] = useState(0)
-  const [riesgos, setRiesgos]       = useState(0)
+  const [riesgos, setRiesgos]           = useState(0)      // todos — stock deal
+  const [riesgosAsset, setRiesgosAsset] = useState(0)      // solo ambientales/operativos
+  const [riesgosPatrim, setRiesgosPatrim] = useState(0)    // contingencias off-balance
+  const [costoRehabilitacion, setCostoRehabilitacion] = useState(150000) // costo re-permisos asset deal
   const [caseName, setCaseName]     = useState("")
   const [multiplo, setMultiplo]     = useState(6)
   const [collapsed, setCollapsed]   = useState<Record<string,boolean>>({})
@@ -195,9 +198,20 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
         setPasivos(Math.round((d.deudas_comerciales+d.cargas_fiscales+d.remuneraciones_pagar+(d.otras_deudas_corrientes||0)+(d.deuda_financiera_nc||0))/tc))
         setPnContable(Math.round((d.capital_social+d.reservas+d.resultados_acumulados+(d.ajuste_inflacion_pn||0))/tc))
       })
-    db.from("dd_case_risks").select("impacto").eq("case_id",caseId)
-      .not("estado","in",'("DUPLICADO","RECLASIFICADO")').lt("impacto",0)
-      .then(({data}) => setRiesgos(((data??[]) as {impacto:number}[]).reduce((s,r)=>s+r.impacto,0)))
+    // Tres pools de riesgos según tipo de deal
+    Promise.all([
+      db.from("dd_case_risks").select("impacto").eq("case_id",caseId)
+        .not("estado","in",'("DUPLICADO","RECLASIFICADO")').lt("impacto",0),
+      db.from("dd_case_risks").select("impacto").eq("case_id",caseId)
+        .not("estado","in",'("DUPLICADO","RECLASIFICADO")').lt("impacto",0).eq("aplica_asset_deal",true),
+      db.from("dd_case_risks").select("impacto").eq("case_id",caseId)
+        .not("estado","in",'("DUPLICADO","RECLASIFICADO")').lt("impacto",0).eq("aplica_patrimonio",true),
+    ]).then(([{data:r1},{data:r2},{data:r3}]) => {
+      const sum = (d: {impacto:number}[]|null) => (d??[]).reduce((s,r)=>s+r.impacto,0)
+      setRiesgos(sum(r1 as {impacto:number}[]))
+      setRiesgosAsset(sum(r2 as {impacto:number}[]))
+      setRiesgosPatrim(sum(r3 as {impacto:number}[]))
+    })
   },[caseId])
 
   // Auto-save
@@ -254,12 +268,28 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const cats = [...new Set(assets.map(a=>a.categoria))]
   const totalActivosEstim  = assets.filter(a=>a.estado!=="Pendiente").reduce((s,a)=>s+getVal(a),0)
   const totalActivosVerif  = assets.filter(a=>a.estado==="Verificado en visita").reduce((s,a)=>s+getVal(a),0)
-  const riesgosAbs         = Math.abs(riesgos)
+  const riesgosAbs         = Math.abs(riesgos)        // todos — stock deal
+  const riesgosAssetAbs    = Math.abs(riesgosAsset)  // ambientales/operativos — asset deal
+  const riesgosPatrimAbs   = Math.abs(riesgosPatrim) // off-balance — patrimonio
   const evFlujos           = ebitda * multiplo
-  const navEstimado        = totalActivosEstim - pasivos
-  const navVerificado      = totalActivosVerif - pasivos
+
+  // Stock Deal: EV por flujos menos TODOS los riesgos menos deuda neta
   const valorFlujosAjust   = evFlujos - riesgosAbs
-  const navAjust           = navEstimado > 0 ? navEstimado - riesgosAbs : 0
+
+  // Asset Deal: activos a valor de mercado (SIN restar pasivos — el comprador no los hereda)
+  // menos solo riesgos ambientales/operativos y costo de re-habilitación
+  const navBruto           = totalActivosEstim                                    // sin pasivos
+  const navAjustAsset      = navBruto - riesgosAssetAbs - costoRehabilitacion   // solo riesgos del activo
+  const navVerifBruto      = totalActivosVerif
+  const navVerifAjust      = navVerifBruto - riesgosAssetAbs - costoRehabilitacion
+
+  // Patrimonio contable: PN del EECC (ya neto de pasivos) menos contingencias off-balance
+  const pnAjustado         = pnContable - riesgosPatrimAbs
+
+  // Para compatibilidad con código anterior
+  const navEstimado        = totalActivosEstim - pasivos  // referencia con pasivos
+  const navVerificado      = totalActivosVerif - pasivos
+  const navAjust           = navAjustAsset  // reemplazar con lógica correcta
   const hayNAV             = totalActivosEstim > 0
 
   // Football field: escala = precio pedido como referencia 100%
@@ -326,40 +356,67 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            <tr>
-              <td className="py-2.5 text-gray-700">Por flujos ({multiplo}× EBITDA)</td>
-              <td className="py-2.5 text-right font-mono text-gray-700">{usd(evFlujos)}</td>
-              <td className="py-2.5 text-right font-mono text-red-600">−{usd(riesgosAbs)}</td>
-              <td className={`py-2.5 text-right font-bold ${valorFlujosAjust < 0 ? "text-red-600" : "text-[#1a2744]"}`}>
-                {valorFlujosAjust < 0 ? `−${usd(Math.abs(valorFlujosAjust))}` : usd(valorFlujosAjust)}
+            <tr className="hover:bg-gray-50">
+              <td className="py-2.5 text-gray-700">
+                <div className="font-medium">Stock Deal — por flujos ({multiplo}× EBITDA)</div>
+                <div className="text-gray-400 text-xs">Todos los riesgos aplican — heredás toda la sociedad</div>
               </td>
-              <td className="py-2.5 text-right text-red-600 font-semibold">
-                {valorFlujosAjust < 0 ? "El vendedor debería pagar" : `${(precio/valorFlujosAjust).toFixed(1)}× por encima`}
+              <td className="py-2.5 text-right font-mono text-gray-700">{usd(evFlujos)}</td>
+              <td className="py-2.5 text-right text-red-600 text-xs">
+                <div className="font-mono">−{usd(riesgosAbs)}</div>
+                <div className="text-gray-400">40 riesgos</div>
+              </td>
+              <td className={`py-2.5 text-right font-bold ${valorFlujosAjust<0?"text-red-600":"text-[#1a2744]"}`}>
+                {valorFlujosAjust<0?`−${usd(Math.abs(valorFlujosAjust))}`:usd(valorFlujosAjust)}
+              </td>
+              <td className="py-2.5 text-right text-xs font-semibold text-red-600">
+                {valorFlujosAjust<0?"Negativo — resolver riesgos antes":`${(precio/valorFlujosAjust).toFixed(1)}× por encima`}
               </td>
             </tr>
             {hayNAV && (
-              <tr>
-                <td className="py-2.5 text-gray-700">Por activos — NAV</td>
-                <td className="py-2.5 text-right font-mono text-gray-700">{usd(navEstimado)}</td>
-                <td className="py-2.5 text-right font-mono text-red-600">−{usd(riesgosAbs)}</td>
-                <td className={`py-2.5 text-right font-bold ${navAjust < 0 ? "text-red-600" : "text-[#1a2744]"}`}>
-                  {navAjust < 0 ? `−${usd(Math.abs(navAjust))}` : usd(navAjust)}
+              <tr className="hover:bg-gray-50">
+                <td className="py-2.5 text-gray-700">
+                  <div className="font-medium">Asset Deal — por activos (NAV)</div>
+                  <div className="text-gray-400 text-xs">Sin pasivos del balance · Solo riesgos ambientales/operativos · Excluidos fiscales <span className="text-amber-600">{usd(riesgosAbs-riesgosAssetAbs)}</span></div>
                 </td>
-                <td className="py-2.5 text-right text-gray-600 font-semibold">
-                  {navAjust > 0 && navAjust < precio ? `${(precio/navAjust).toFixed(1)}× por encima` : navAjust >= precio ? "Dentro del rango" : "El vendedor debería pagar"}
+                <td className="py-2.5 text-right text-xs">
+                  <div className="font-mono text-gray-700">{usd(navBruto)}</div>
+                  <div className="text-gray-400">activos sin pasivos</div>
+                </td>
+                <td className="py-2.5 text-right text-red-600 text-xs">
+                  <div className="font-mono">−{usd(riesgosAssetAbs+costoRehabilitacion)}</div>
+                  <div className="text-gray-400">riesgos + re-permisos</div>
+                </td>
+                <td className={`py-2.5 text-right font-bold ${navAjustAsset<0?"text-red-600":"text-[#1a2744]"}`}>
+                  {navAjustAsset<0?`−${usd(Math.abs(navAjustAsset))}`:usd(navAjustAsset)}
+                </td>
+                <td className="py-2.5 text-right text-xs font-semibold">
+                  {navAjustAsset>0&&navAjustAsset<precio
+                    ?<span className="text-red-600">{(precio/navAjustAsset).toFixed(1)}× por encima</span>
+                    :navAjustAsset>=precio
+                    ?<span className="text-green-600">Dentro del rango</span>
+                    :<span className="text-red-600">Negativo</span>}
                 </td>
               </tr>
             )}
-            <tr>
-              <td className="py-2.5 text-gray-700">Patrimonio neto contable (EECC)</td>
-              <td className="py-2.5 text-right font-mono text-gray-700">{usd(pnContable)}</td>
-              <td className="py-2.5 text-right font-mono text-red-600">−{usd(riesgosAbs)}</td>
-              <td className={`py-2.5 text-right font-bold ${pnContable - riesgosAbs < 0 ? "text-red-600" : "text-[#1a2744]"}`}>
-                {pnContable - riesgosAbs < 0 ? `−${usd(Math.abs(pnContable - riesgosAbs))}` : usd(pnContable - riesgosAbs)}
+            <tr className="hover:bg-gray-50">
+              <td className="py-2.5 text-gray-700">
+                <div className="font-medium">Patrimonio neto contable (EECC)</div>
+                <div className="text-gray-400 text-xs">PN auditado ya neto de pasivos · Solo contingencias ambientales off-balance</div>
               </td>
-              <td className="py-2.5 text-right text-gray-500 text-xs italic">Referencia contable, no valor real</td>
+              <td className="py-2.5 text-right text-xs">
+                <div className="font-mono text-gray-700">{usd(pnContable)}</div>
+                <div className="text-gray-400">PN RT6/17</div>
+              </td>
+              <td className="py-2.5 text-right text-red-600 text-xs">
+                <div className="font-mono">−{usd(riesgosPatrimAbs)}</div>
+                <div className="text-gray-400">solo contingencias</div>
+              </td>
+              <td className={`py-2.5 text-right font-bold ${pnAjustado<0?"text-red-600":"text-gray-700"}`}>
+                {pnAjustado<0?`−${usd(Math.abs(pnAjustado))}`:usd(pnAjustado)}
+              </td>
+              <td className="py-2.5 text-right text-gray-400 text-xs italic">Referencia — incluye RT6/17</td>
             </tr>
-
           </tbody>
         </table>
         {!hayNAV && (
@@ -385,6 +442,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
               { label:`× Múltiplo M&A (${multiplo}×)`, val:null, color:"text-gray-400", op:true },
               { label:"= Valor operativo bruto", val:evFlujos, color:"text-blue-700", bold:true },
               { label:"− Riesgos identificados", val:-riesgosAbs, color:"text-red-600" },
+              { label:"(Todos los riesgos: fiscal+ambiental+laboral+societario)", val:null, color:"text-gray-400", nota:true },
               { label:"= Valor para el comprador", val:valorFlujosAjust, color:valorFlujosAjust<0?"text-red-700":"text-blue-900", bold:true, grande:true },
             ].map((row,i) => (
               <div key={i} className={`flex justify-between items-center ${i===4?"border-t-2 border-blue-200 pt-2 mt-1":""}`}>
@@ -401,10 +459,11 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
             <div className="text-xs text-gray-500 mb-3">Cuánto valen los activos a precio de mercado</div>
             {[
               { label:"Activos a valor de mercado", val:totalActivosEstim||null, color:"text-gray-800", pending:!hayNAV },
-              { label:"− Pasivos reales (EECC)", val:pasivos?-pasivos:null, color:"text-red-600" },
-              { label:"= NAV bruto", val:hayNAV?navEstimado:null, color:"text-amber-700", bold:true },
-              { label:"− Riesgos identificados", val:riesgosAbs?-riesgosAbs:null, color:"text-red-600" },
-              { label:"= Valor para el comprador", val:hayNAV?navAjust:null, color:navAjust<0?"text-red-700":"text-amber-900", bold:true, grande:true, pending:!hayNAV },
+              { label:"(El comprador no hereda los pasivos del balance)", val:null, color:"text-green-700", nota:true },
+              { label:"= NAV sin pasivos", val:hayNAV?navBruto:null, color:"text-amber-700", bold:true },
+              { label:"− Riesgos ambientales y operativos", val:riesgosAssetAbs?-riesgosAssetAbs:null, color:"text-red-600" },
+              { label:"− Costo estimado re-habilitación permisos", val:-costoRehabilitacion, color:"text-red-600" },
+              { label:"= Valor para el comprador", val:hayNAV?navAjustAsset:null, color:navAjustAsset<0?"text-red-700":"text-amber-900", bold:true, grande:true, pending:!hayNAV },
             ].map((row,i) => (
               <div key={i} className={`flex justify-between items-center ${i===4?"border-t-2 border-amber-200 pt-2 mt-1":""}`}>
                 <span className={`text-xs ${row.bold?"font-bold":"text-gray-500"}`}>{row.label}</span>
@@ -422,9 +481,10 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
             <div className="text-xs text-gray-500 mb-3">Lo que dice el balance auditado — referencia, no valor real</div>
             {[
               { label:"Patrimonio Neto EECC EJ N°17", val:pnContable, color:"text-gray-800" },
-              { label:"(Ajuste RT6/17 — no es valor de mercado)", val:null, color:"text-gray-400", nota:true },
-              { label:"− Riesgos identificados", val:-riesgosAbs, color:"text-red-600" },
-              { label:"= Valor ajustado contable", val:pnContable-riesgosAbs, color:pnContable-riesgosAbs<0?"text-red-700":"text-gray-700", bold:true, grande:true },
+              { label:"(Ya neto de todos los pasivos reconocidos)", val:null, color:"text-green-700", nota:true },
+              { label:"− Solo contingencias off-balance (ambientales)", val:-riesgosPatrimAbs, color:"text-red-600" },
+              { label:"(Los riesgos fiscales ya están en cargas fiscales del PN)", val:null, color:"text-gray-400", nota:true },
+              { label:"= Valor patrimonial ajustado", val:pnAjustado, color:pnAjustado<0?"text-red-700":"text-gray-700", bold:true, grande:true },
             ].map((row,i) => (
               <div key={i} className={`flex justify-between items-center ${i===3?"border-t-2 border-gray-200 pt-2 mt-1":""}`}>
                 <span className={`text-xs ${row.bold?"font-bold":row.nota?"italic text-gray-400":"text-gray-500"}`}>{row.label}</span>
@@ -463,11 +523,20 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
           </div>
 
           <div className="card p-4 border border-gray-200">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-lg">🏭</span>
-              <div className="font-bold text-gray-900">Compra de activos (Asset Deal)</div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🏭</span>
+                <div className="font-bold text-gray-900">Compra de activos (Asset Deal)</div>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="text-gray-400">Re-habilitación:</span>
+                <input type="number" value={costoRehabilitacion}
+                  onChange={e => setCostoRehabilitacion(parseInt(e.target.value)||0)}
+                  className="w-24 border border-gray-200 rounded px-1.5 py-0.5 text-xs font-bold text-right focus:outline-none focus:border-[#1a2744]"/>
+                <span className="text-gray-400">USD</span>
+              </div>
             </div>
-            <p className="text-xs text-gray-600 mb-3">El comprador elige qué activos adquiere — deja los pasivos en la sociedad vendedora.</p>
+            <p className="text-xs text-gray-600 mb-3">El comprador elige qué activos adquiere — los pasivos quedan en la sociedad vendedora.</p>
             <div className="space-y-1.5 text-xs">
               <div className="flex gap-2"><span className="text-green-600 font-bold">✓</span><span className="text-gray-700">No se heredan pasivos ocultos ni contingencias fiscales</span></div>
               <div className="flex gap-2"><span className="text-red-600 font-bold">✗</span><span className="text-gray-700">Las habilitaciones (CAA, DIA) deben retramitarse a nombre del comprador</span></div>
