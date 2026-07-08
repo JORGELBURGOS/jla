@@ -10,7 +10,7 @@ const NAV: [string, string, boolean?][] = [
   ["/requirements", "Requerimientos"],
   ["/triage"      , "Triage de Docs"],
   ["---"          , "ANÁLISIS"],
-  ["/balance"     , "EECC y EERR"],
+  ["/balance"     , "Estados Contables"],
   ["/environmental", "Síntesis Ambiental"],
   ["/fiscal"      , "Análisis Fiscal"],
   ["---"          , "MODELO FINANCIERO"],

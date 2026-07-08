@@ -223,7 +223,7 @@ export default function BalancePage({ params }: { params: { id: string } }) {
     <div className="p-4 max-w-6xl mx-auto space-y-4">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold text-gray-900">Cuadro Patrimonial</h1>
+        <h1 className="text-xl font-bold text-gray-900">Balance General</h1>
         <p className="text-sm text-gray-500">{caseName} · Valores en ARS · Columna USD al TC de cierre de cada ejercicio · Hacé clic en cualquier valor para editarlo</p>
       </div>
 
@@ -586,7 +586,7 @@ export default function BalancePage({ params }: { params: { id: string } }) {
 
       {/* ═══════════ RESUMEN EVOLUCIÓN ═══════════ */}
       <div className="mt-4">
-        <h2 className="text-base font-bold text-gray-900 mb-3">Evolución 5 ejercicios — Métricas clave</h2>
+        <h2 className="text-base font-bold text-gray-900 mb-3">Evolución 5 Ejercicios</h2>
         <div className="card overflow-hidden p-0">
           <table className="w-full text-xs">
             <thead>
