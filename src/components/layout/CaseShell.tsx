@@ -19,7 +19,6 @@ const NAV: [string, string][] = [
   ["/triage"      , "Triage de Docs"],
   ["---"          , "ANÁLISIS"],
   ["/balance"     , "Estados Contables"],
-  ["/assets"      , "Valuación de Activos"],
   ["/environmental", "Síntesis Ambiental"],
   ["/fiscal"      , "Análisis Fiscal"],
   ["---"          , "MODELO FINANCIERO"],
