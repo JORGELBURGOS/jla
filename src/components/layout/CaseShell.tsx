@@ -1,6 +1,6 @@
 "use client"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { useState, useRef, useEffect, createContext, useContext } from "react"
 import { createClient } from "@/lib/supabase/client"
 
@@ -10,8 +10,9 @@ const PermissionsContext = createContext<PermCtx>({ canEdit: true, userEmail: ""
 export function usePermissions() { return useContext(PermissionsContext) }
 
 const ADMIN_EMAIL = "jorgeleonburgos@gmail.com"
+const EMAIL_KEY   = "jla_user_email"
 
-const NAV: [string, string, boolean?][] = [
+const NAV: [string, string][] = [
   [""             , "Dashboard"],
   ["---"          , "RECOLECCIÓN"],
   ["/requirements", "Requerimientos"],
@@ -41,37 +42,58 @@ export default function CaseShell({ children, caseData, caseId }: {
   caseId: string
 }) {
   const pathname = usePathname()
-  const router = useRouter()
   const db = createClient()
   const [editingPrecio, setEditingPrecio] = useState(false)
   const [precioVal, setPrecioVal] = useState(String(caseData.precio_pedido ?? 0))
   const [savingPrecio, setSavingPrecio] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // ── Permisos ───────────────────────────────────────────────────
+  // ── Identificación por email (localStorage) ────────────────────
   const [userEmail, setUserEmail] = useState("")
+  const [emailInput, setEmailInput] = useState("")
   const [canEdit, setCanEdit] = useState(true)
   const [hiddenNav, setHiddenNav] = useState<string[]>([])
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [showPrompt, setShowPrompt] = useState(false)
 
   useEffect(() => {
-    db.auth.getUser().then(async ({ data }) => {
-      const email = data.user?.email?.toLowerCase() ?? ""
-      setUserEmail(email)
-      if (email === ADMIN_EMAIL) { setIsAdmin(true); return }
-
-      const { data: perm } = await db.from("dd_user_permissions")
-        .select("can_edit,hidden_nav").eq("email", email).single()
-      if (perm) {
-        setCanEdit(perm.can_edit ?? true)
-        setHiddenNav(perm.hidden_nav ?? [])
-      }
-    })
+    const saved = localStorage.getItem(EMAIL_KEY) ?? ""
+    if (saved) {
+      loadPermissions(saved)
+    } else {
+      setShowPrompt(true)
+    }
   }, [])
 
-  async function handleLogout() {
-    await db.auth.signOut()
-    router.push("/login")
+  async function loadPermissions(email: string) {
+    setUserEmail(email)
+    if (email === ADMIN_EMAIL) {
+      setCanEdit(true); setHiddenNav([]); setShowPrompt(false); return
+    }
+    const { data } = await db.from("dd_user_permissions")
+      .select("is_enabled,can_edit,hidden_nav").eq("email", email).single()
+    if (data && data.is_enabled) {
+      setCanEdit(data.can_edit ?? true)
+      setHiddenNav(data.hidden_nav ?? [])
+      setShowPrompt(false)
+    } else {
+      // Email no habilitado — mostrar prompt de nuevo
+      localStorage.removeItem(EMAIL_KEY)
+      setShowPrompt(true)
+      setUserEmail("")
+    }
+  }
+
+  function confirmEmail() {
+    const e = emailInput.trim().toLowerCase()
+    if (!e || !e.includes("@")) return
+    localStorage.setItem(EMAIL_KEY, e)
+    setEmailInput("")
+    loadPermissions(e)
+  }
+
+  function changeUser() {
+    localStorage.removeItem(EMAIL_KEY)
+    setUserEmail(""); setShowPrompt(true)
   }
 
   async function savePrecio() {
@@ -79,20 +101,41 @@ export default function CaseShell({ children, caseData, caseId }: {
     if (isNaN(n) || n <= 0) { setEditingPrecio(false); return }
     setSavingPrecio(true)
     await db.from("dd_cases").update({ precio_pedido: n, updated_at: new Date().toISOString() }).eq("id", caseId)
-    setSavingPrecio(false)
-    setEditingPrecio(false)
+    setSavingPrecio(false); setEditingPrecio(false)
     window.location.reload()
   }
 
   const base = `/cases/${caseId}`
-  const industry = caseData.industry as { nombre: string; icono: string } | undefined
-  const subSector = caseData.sub_sector as { nombre: string } | undefined
+  const industry  = caseData.industry   as { nombre: string; icono: string } | undefined
+  const subSector = caseData.sub_sector as { nombre: string }                 | undefined
+  const isAdmin   = userEmail === ADMIN_EMAIL
 
-  // Filtrar NAV según permisos
-  const visibleNav = NAV.filter(([href]) => {
-    if (href === "---" || href === "") return true
-    return !hiddenNav.includes(href)
-  })
+  const visibleNav = NAV.filter(([href]) =>
+    href === "---" || href === "" || !hiddenNav.includes(href)
+  )
+
+  // ── Modal de identificación ────────────────────────────────────
+  if (showPrompt) return (
+    <div className="flex h-screen items-center justify-center bg-[#1a2744]">
+      <div className="bg-white rounded-2xl p-8 w-80 shadow-2xl">
+        <img src="/logo.png" alt="JL Advisory" className="h-10 mx-auto mb-6"/>
+        <h2 className="text-base font-bold text-gray-900 mb-1 text-center">Due Diligence M&A</h2>
+        <p className="text-xs text-gray-500 text-center mb-5">Ingresá tu email para continuar</p>
+        <input type="email" value={emailInput}
+          onChange={e => setEmailInput(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && confirmEmail()}
+          placeholder="tu@email.com"
+          className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1a2744] mb-3"/>
+        <button onClick={confirmEmail} disabled={!emailInput}
+          className="w-full bg-[#1a2744] text-white font-bold py-2.5 rounded-xl text-sm hover:bg-[#0d1525] disabled:opacity-40">
+          Ingresar →
+        </button>
+        <p className="text-xs text-gray-400 text-center mt-3">
+          Si no tenés acceso, contactá a JL Advisory
+        </p>
+      </div>
+    </div>
+  )
 
   return (
     <PermissionsContext.Provider value={{ canEdit, userEmail }}>
@@ -100,15 +143,14 @@ export default function CaseShell({ children, caseData, caseId }: {
         <aside className="w-48 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col">
           <div className="p-4 border-b border-gray-100">
             <Link href="/" className="text-xs text-gray-500 hover:text-gray-700 mb-3 block">← Todos los casos</Link>
-            <div className="flex items-center">
-              <img src="/logo.png" alt="JL Advisory" className="h-9 w-auto" />
-            </div>
+            <img src="/logo.png" alt="JL Advisory" className="h-9 w-auto"/>
           </div>
           <div className="px-4 py-3 border-b border-gray-100">
             <div className="text-xs font-bold text-gray-900 line-clamp-2">{caseData.nombre as string}</div>
-            {industry && <div className="text-xs text-gray-500 mt-0.5">{industry.icono} {industry.nombre}</div>}
-            {subSector && <div className="text-xs text-gray-400">{subSector.nombre}</div>}
+            {industry   && <div className="text-xs text-gray-500 mt-0.5">{industry.icono} {industry.nombre}</div>}
+            {subSector  && <div className="text-xs text-gray-400">{subSector.nombre}</div>}
           </div>
+
           <nav className="flex-1 overflow-y-auto py-2">
             {visibleNav.map(([href, label]) => {
               if (href === "---") return (
@@ -121,15 +163,13 @@ export default function CaseShell({ children, caseData, caseId }: {
               return (
                 <Link key={href} href={full}
                   className={`flex items-center px-4 py-2 text-xs font-medium transition-colors ${
-                    active ? "bg-blue-50 text-[#1a2744] border-r-2 border-[#1a2744]" : "text-gray-600 hover:bg-gray-50"
-                  }`}>
+                    active ? "bg-blue-50 text-[#1a2744] border-r-2 border-[#1a2744]" : "text-gray-600 hover:bg-gray-50"}`}>
                   {label}
                 </Link>
               )
             })}
           </nav>
 
-          {/* Footer: precio + usuario */}
           <div className="border-t border-gray-100">
             <div className="p-4">
               <div className="text-xs text-gray-500 mb-1">Precio pedido</div>
@@ -137,40 +177,36 @@ export default function CaseShell({ children, caseData, caseId }: {
                 <div className="flex gap-1">
                   <input ref={inputRef} type="number" value={precioVal}
                     onChange={e => setPrecioVal(e.target.value)}
-                    onKeyDown={e => { if (e.key === "Enter") savePrecio(); if (e.key === "Escape") setEditingPrecio(false) }}
-                    autoFocus
-                    className="w-full border border-[#1a2744] rounded px-2 py-1 text-xs font-bold text-[#1a2744] focus:outline-none"/>
+                    onKeyDown={e => { if (e.key==="Enter") savePrecio(); if (e.key==="Escape") setEditingPrecio(false) }}
+                    autoFocus className="w-full border border-[#1a2744] rounded px-2 py-1 text-xs font-bold focus:outline-none"/>
                   <button onClick={savePrecio} disabled={savingPrecio}
-                    className="bg-[#1a2744] text-white rounded px-2 text-xs font-bold hover:bg-[#0d1525] disabled:opacity-50">
+                    className="bg-[#1a2744] text-white rounded px-2 text-xs font-bold disabled:opacity-50">
                     {savingPrecio ? "..." : "✓"}
                   </button>
                 </div>
               ) : (
                 <button onClick={() => { setPrecioVal(String(caseData.precio_pedido ?? 0)); setEditingPrecio(true) }}
-                  className="text-sm font-bold text-[#1a2744] hover:opacity-70 transition-opacity text-left w-full group"
-                  title="Clic para editar">
-                  USD {((Number(caseData.precio_pedido) || 0)/1e6).toFixed(1)}M
-                  <span className="ml-1 text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">✎</span>
+                  className="text-sm font-bold text-[#1a2744] hover:opacity-70 text-left w-full group">
+                  USD {((Number(caseData.precio_pedido)||0)/1e6).toFixed(1)}M
+                  <span className="ml-1 text-xs text-gray-400 opacity-0 group-hover:opacity-100">✎</span>
                 </button>
               )}
             </div>
 
-            {/* Usuario + acciones */}
-            <div className="px-4 pb-3 border-t border-gray-50 pt-2">
-              <div className="text-xs text-gray-400 truncate">{userEmail}</div>
-              <div className="flex items-center gap-2 mt-1.5">
+            <div className="px-4 pb-3 border-t border-gray-50 pt-2 space-y-1.5">
+              <div className="text-xs text-gray-400 truncate" title={userEmail}>{userEmail}</div>
+              <div className="flex items-center gap-2">
                 {isAdmin && (
                   <Link href="/admin"
                     className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold hover:bg-amber-200">
                     ⚙ Admin
                   </Link>
                 )}
-                {!canEdit && (
+                {!canEdit && !isAdmin && (
                   <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Solo lectura</span>
                 )}
-                <button onClick={handleLogout}
-                  className="text-xs text-gray-400 hover:text-gray-600 ml-auto">
-                  Salir
+                <button onClick={changeUser} className="text-xs text-gray-400 hover:text-gray-600 ml-auto">
+                  Cambiar
                 </button>
               </div>
             </div>
