@@ -174,7 +174,12 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const [riesgos, setRiesgos]           = useState(0)      // todos — stock deal
   const [riesgosAsset, setRiesgosAsset] = useState(0)      // solo ambientales/operativos
   const [riesgosPatrim, setRiesgosPatrim] = useState(0)    // contingencias off-balance
-  const [costoRehabilitacion, setCostoRehabilitacion] = useState(150000) // costo re-permisos asset deal
+  const [costoRehabilitacion, setCostoRehabilitacion] = useState(150000)
+  const [earnout1, setEarnout1] = useState(100000)  // meta facturación año 1
+  const [earnout2, setEarnout2] = useState(100000)  // meta facturación año 2
+  const [earnoutYPF, setEarnoutYPF] = useState(150000) // contrato YPF
+  // Riesgos individuales clave para el cuadro de oferta
+  const [riesgoPorNombre, setRiesgoPorNombre] = useState<Record<string,number>>({})
   const [caseName, setCaseName]     = useState("")
   const [multiplo, setMultiplo]     = useState(6)
   const [collapsed, setCollapsed]   = useState<Record<string,boolean>>({})
@@ -198,6 +203,31 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
         setPasivos(Math.round((d.deudas_comerciales+d.cargas_fiscales+d.remuneraciones_pagar+(d.otras_deudas_corrientes||0)+(d.deuda_financiera_nc||0))/tc))
         setPnContable(Math.round((d.capital_social+d.reservas+d.resultados_acumulados+(d.ajuste_inflacion_pn||0))/tc))
       })
+    // Riesgos individuales clave para el cuadro de oferta
+    db.from("dd_case_risks").select("riesgo,impacto")
+      .eq("case_id",caseId)
+      .not("estado","in",'("DUPLICADO","RECLASIFICADO")')
+      .lt("impacto",0)
+      .then(({data}) => {
+        const m: Record<string,number> = {}
+        ;(data as {riesgo:string;impacto:number}[]??[]).forEach(r => {
+          const txt = r.riesgo.toLowerCase()
+          if (txt.includes("extracción") || txt.includes("accionistas")) m.extraccion = (m.extraccion||0) + Math.abs(r.impacto)
+          if (txt.includes("horno rotativo")) m.horno = (m.horno||0) + Math.abs(r.impacto)
+          if (txt.includes("afip") || txt.includes("planes afip") || txt.includes("presentacion")) m.afip = (m.afip||0) + Math.abs(r.impacto)
+          if (txt.includes("sipa") || txt.includes("previsional")) m.sipa = (m.sipa||0) + Math.abs(r.impacto)
+          if (txt.includes("art ")) m.art = (m.art||0) + Math.abs(r.impacto)
+          if (txt.includes("dia ") || txt.includes("declaración de impacto") || txt.includes("dia:") || txt.includes("dia 2015")) m.dia = (m.dia||0) + Math.abs(r.impacto)
+          if (txt.includes("servidumbre") || txt.includes("edemsa")) m.servidumbre = (m.servidumbre||0) + Math.abs(r.impacto)
+          if (txt.includes("y36") || txt.includes("amianto")) m.y36 = (m.y36||0) + Math.abs(r.impacto)
+          if (txt.includes("vehículo") || txt.includes("sin habilitación") || txt.includes("gij") || txt.includes("hmc")) m.vehiculos = (m.vehiculos||0) + Math.abs(r.impacto)
+          if (txt.includes("seguro ambiental")) m.seguroAmb = (m.seguroAmb||0) + Math.abs(r.impacto)
+          if (txt.includes("pileta")) m.pileta = (m.pileta||0) + Math.abs(r.impacto)
+          if (txt.includes("rku")) m.rku = (m.rku||0) + Math.abs(r.impacto)
+        })
+        setRiesgoPorNombre(m)
+      })
+
     // Tres pools de riesgos según tipo de deal
     Promise.all([
       db.from("dd_case_risks").select("impacto").eq("case_id",caseId)
@@ -597,28 +627,48 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                 Se ofrece un precio base bajo ahora, con ajuste al alza conforme el vendedor resuelva las condiciones clave antes del cierre: cancelación de créditos a accionistas,
                 libre deuda AFIP, renovación ART, verificación del horno rotativo. Protege al comprador y da al vendedor incentivo para resolver.
               </p>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                {[
-                  { cond:"Precio base (hoy, con riesgos actuales)", val:Math.max(0, evFlujos * 0.4), color:"text-gray-800" },
-                  { cond:"+  Cancelación créditos accionistas verificada", val:140000, color:"text-green-700" },
-                  { cond:"+  Horno rotativo operativo confirmado en visita", val:50000, color:"text-green-700" },
-                  { cond:"+  Libre deuda AFIP/SIPA certificado", val:40000, color:"text-green-700" },
-                  { cond:"+  ART renovada antes del cierre", val:10000, color:"text-green-700" },
-                  { cond:"+  DIA cubre corrientes actuales confirmado", val:80000, color:"text-green-700" },
-                ].map((row,i) => (
-                  <div key={i} className="flex justify-between border-b border-gray-50 py-0.5">
-                    <span className="text-gray-500">{row.cond}</span>
-                    <span className={`font-bold ml-2 flex-shrink-0 ${row.color}`}>{usd(row.val)}</span>
+              {(() => {
+                const rn = riesgoPorNombre
+                const precioBase = Math.max(0, Math.round(evFlujos * 0.4))
+                const filas = [
+                  { cond:"Precio base (flujos sin resolver riesgos)", val:precioBase, color:"text-gray-800" },
+                  rn.extraccion ? { cond:"+  Cancelación créditos a accionistas verificada", val:rn.extraccion, color:"text-green-700" } : null,
+                  rn.horno      ? { cond:"+  Horno rotativo operativo confirmado en visita", val:rn.horno, color:"text-green-700" } : null,
+                  (rn.afip||rn.sipa) ? { cond:"+  Libre deuda AFIP/SIPA certificada", val:(rn.afip||0)+(rn.sipa||0), color:"text-green-700" } : null,
+                  rn.art        ? { cond:"+  ART renovada antes del cierre", val:rn.art, color:"text-green-700" } : null,
+                  rn.dia        ? { cond:"+  DIA cubre corrientes actuales confirmado", val:rn.dia, color:"text-green-700" } : null,
+                  rn.seguroAmb  ? { cond:"+  Seguro ambiental contratado", val:rn.seguroAmb, color:"text-green-700" } : null,
+                ].filter(Boolean) as {cond:string;val:number;color:string}[]
+                const totalCondiciones = filas.slice(1).reduce((s,r) => s+r.val, 0)
+                return (
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                    {filas.map((row,i) => (
+                      <div key={i} className="flex justify-between border-b border-gray-50 py-0.5">
+                        <span className="text-gray-500">{row.cond}</span>
+                        <span className={`font-bold ml-2 flex-shrink-0 ${row.color}`}>{usd(row.val)}</span>
+                      </div>
+                    ))}
+                    <div className="col-span-2 flex justify-between border-t border-gray-200 pt-1 mt-0.5">
+                      <span className="font-semibold text-gray-700">Total si se cumplen todas las condiciones</span>
+                      <span className="font-black text-[#1a2744]">{usd(precioBase + totalCondiciones)}</span>
+                    </div>
                   </div>
-                ))}
-              </div>
+                )
+              })()}
             </div>
             <div className="text-right flex-shrink-0 ml-4">
               <div className="text-xs text-gray-400 mb-0.5">Precio base</div>
               <div className="text-2xl font-black text-amber-700">{usd(Math.max(0, evFlujos * 0.4))}</div>
-              <div className="text-xs text-gray-400 mt-1">Hasta</div>
-              <div className="text-lg font-black text-[#1a2744]">{usd(Math.max(0, evFlujos * 0.4) + 320000)}</div>
-              <div className="text-xs text-gray-400">si se cumplen condiciones</div>
+              {(() => {
+                const rn = riesgoPorNombre
+                const precioBase = Math.max(0, Math.round(evFlujos * 0.4))
+                const totalCond = (rn.extraccion||0)+(rn.horno||0)+(rn.afip||0)+(rn.sipa||0)+(rn.art||0)+(rn.dia||0)+(rn.seguroAmb||0)
+                return <>
+                  <div className="text-xs text-gray-400 mt-1">Hasta</div>
+                  <div className="text-lg font-black text-[#1a2744]">{usd(precioBase + totalCond)}</div>
+                  <div className="text-xs text-gray-400">si se cumplen condiciones</div>
+                </>
+              })()}
             </div>
           </div>
         </div>
@@ -698,14 +748,19 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                 <div>
                   <div className="font-semibold text-gray-600 mb-1">Estructura earn-out sugerida</div>
                   {[
-                    { concepto:"Pago al cierre", val:evFlujos > 0 ? Math.round(evFlujos * 0.5) : 150000 },
-                    { concepto:"Si factura +USD 700K en 2026", val:100000 },
-                    { concepto:"Si factura +USD 900K en 2027", val:100000 },
-                    { concepto:"Si obtiene contrato YPF firmado", val:150000 },
+                    { concepto:"Pago al cierre", val:evFlujos > 0 ? Math.round(evFlujos * 0.5) : 150000, edit:false },
+                    { concepto:"Si factura meta año 1", val:earnout1, edit:true, setter:setEarnout1 },
+                    { concepto:"Si factura meta año 2", val:earnout2, edit:true, setter:setEarnout2 },
+                    { concepto:"Si obtiene contrato YPF firmado", val:earnoutYPF, edit:true, setter:setEarnoutYPF },
                   ].map((row,i) => (
-                    <div key={i} className="flex justify-between border-b border-gray-50 py-0.5">
+                    <div key={i} className="flex justify-between items-center border-b border-gray-50 py-0.5">
                       <span className="text-gray-500">{row.concepto}</span>
-                      <span className="font-bold text-gray-700 ml-2">+{usd(row.val)}</span>
+                      {(row as {edit?:boolean}).edit
+                        ? <input type="number" value={row.val}
+                            onChange={e => (row as {setter?:(v:number)=>void}).setter?.(parseInt(e.target.value)||0)}
+                            className="w-24 border border-gray-200 rounded px-1.5 py-0.5 text-xs font-bold text-right focus:outline-none focus:border-[#1a2744] ml-2"/>
+                        : <span className="font-bold text-gray-700 ml-2">+{usd(row.val)}</span>
+                      }
                     </div>
                   ))}
                 </div>
@@ -721,18 +776,18 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
               <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Condiciones que suben el precio</div>
               <div className="space-y-1 text-xs">
                 {[
-                  ["Horno rotativo operativo verificado en visita", "+USD 50K"],
-                  ["Créditos a accionistas cancelados antes del cierre", "+USD 140K"],
-                  ["Contratos de clientes firmados (no solo relaciones)", "+USD 80K"],
-                  ["Seguro ambiental contratado (Art. 22 Ley 24.051)", "+USD 30K"],
-                  ["ART renovada sin observaciones", "+USD 10K"],
-                  ["Libre deuda AFIP/ARBA certificada", "+USD 60K"],
-                  ["Carta de intención YPF firmada", "+USD 150K"],
-                  ["NAV de activos verificado en visita > USD 3M", "+según tasación"],
-                ].map(([cond,val],i) => (
+                  { cond:"Horno rotativo operativo verificado en visita", val:riesgoPorNombre.horno||50000 },
+                  { cond:"Créditos a accionistas cancelados antes del cierre", val:riesgoPorNombre.extraccion||140000 },
+                  { cond:"Contratos de clientes firmados con continuidad garantizada", val:80000 },
+                  { cond:"Seguro ambiental contratado (Art. 22 Ley 24.051)", val:riesgoPorNombre.seguroAmb||30000 },
+                  { cond:"ART renovada sin observaciones", val:riesgoPorNombre.art||10000 },
+                  { cond:"Libre deuda AFIP/ARBA/SIPA certificada", val:(riesgoPorNombre.afip||0)+(riesgoPorNombre.sipa||0)||70000 },
+                  { cond:"Carta de intención YPF firmada", val:earnoutYPF },
+                  { cond:"NAV de activos verificado en visita > USD 3M", val:null },
+                ].map(({cond,val},i) => (
                   <div key={i} className="flex justify-between">
                     <span className="text-gray-500 flex items-start gap-1.5"><span className="text-green-500 flex-shrink-0">↑</span>{cond}</span>
-                    <span className="font-bold text-green-700 ml-2 flex-shrink-0">{val}</span>
+                    <span className="font-bold text-green-700 ml-2 flex-shrink-0">{val ? `+${usd(val)}` : "+según tasación"}</span>
                   </div>
                 ))}
               </div>
@@ -741,18 +796,18 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
               <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Condiciones que bajan el precio</div>
               <div className="space-y-1 text-xs">
                 {[
-                  ["Horno rotativo inoperativo o con vida útil < 3 años", "−USD 100K"],
-                  ["Créditos a accionistas no cancelados", "−USD 140K"],
-                  ["Deuda SIPA con mora o intereses acumulados", "−USD 15K"],
-                  ["Servidumbre EDEMSA con restricciones adicionales", "−USD 140K"],
-                  ["DIA no cubre corrientes Y11/Y18/Y31/Y36 actuales", "−USD 160K"],
-                  ["GIJ-234 y HMC-351 sin habilitación CAA regularizable", "−USD 80K"],
-                  ["Pileta API fuera de servicio sin reemplazo", "−USD 30K"],
-                  ["Planes AFIP con mora en cuotas", "−USD 60K"],
-                ].map(([cond,val],i) => (
+                  { cond:"Horno rotativo inoperativo o vida útil < 3 años", val:riesgoPorNombre.horno||100000 },
+                  { cond:"Créditos a accionistas no cancelados", val:riesgoPorNombre.extraccion||140000 },
+                  { cond:"Deuda SIPA con mora o intereses acumulados", val:(riesgoPorNombre.sipa||0)*1.5||15000 },
+                  { cond:"Servidumbre EDEMSA con restricciones adicionales", val:riesgoPorNombre.servidumbre||140000 },
+                  { cond:"DIA no cubre corrientes Y11/Y18/Y31/Y36 actuales", val:riesgoPorNombre.dia||160000 },
+                  { cond:"Vehículos sin habilitación CAA no regularizable", val:riesgoPorNombre.vehiculos||80000 },
+                  { cond:"Pileta API fuera de servicio sin reemplazo", val:riesgoPorNombre.pileta||30000 },
+                  { cond:"Planes AFIP con mora en cuotas", val:riesgoPorNombre.afip||60000 },
+                ].map(({cond,val},i) => (
                   <div key={i} className="flex justify-between">
                     <span className="text-gray-500 flex items-start gap-1.5"><span className="text-red-400 flex-shrink-0">↓</span>{cond}</span>
-                    <span className="font-bold text-red-700 ml-2 flex-shrink-0">{val}</span>
+                    <span className="font-bold text-red-700 ml-2 flex-shrink-0">−{usd(val)}</span>
                   </div>
                 ))}
               </div>
