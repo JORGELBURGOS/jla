@@ -1,7 +1,6 @@
 "use client"
 import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { ChevronDown, ChevronRight, Download } from "lucide-react"
 
@@ -264,8 +263,11 @@ export default function RequirementsPage({ params }: { params: { id: string } })
   const [items, setItems]     = useState<Req[]>([])
   const [linksMap, setLinksMap] = useState<LinksMap>({})
   const [tab, setTab]         = useState<"interna" | "vendedor">("interna")
-  const searchParams = useSearchParams()
-  const highlightItem = Number(searchParams.get("highlight") ?? 0)
+  const [highlightItem, setHighlightItem] = useState(0)
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search)
+    setHighlightItem(Number(p.get("highlight") ?? 0))
+  }, [])
   const [toggling, setToggling] = useState<string | null>(null)
   const [downloading, setDownloading] = useState<string | null>(null)
   const db = createClient()
