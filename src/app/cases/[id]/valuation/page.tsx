@@ -293,57 +293,76 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
       </div>
 
       {/* ══════════════════════════════════════════════
-          1. CAMPO DE FÚTBOL
+          1. RESUMEN COMPARATIVO
       ══════════════════════════════════════════════ */}
       <div className="card p-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-bold text-gray-900">¿Cuánto vale la empresa?</h2>
+          <h2 className="text-sm font-bold text-gray-800">Comparativa de metodologías de valuación</h2>
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-500">Múltiplo EBITDA:</span>
             <input type="number" value={multiplo} min={1} max={20} step={0.5}
               onChange={e=>setMultiplo(parseFloat(e.target.value)||6)}
-              className="w-14 border border-gray-300 rounded px-2 py-1 text-sm font-bold text-center focus:outline-none focus:border-[#1a2744]"/>
+              className="w-12 border border-gray-200 rounded px-2 py-1 text-sm font-bold text-center focus:outline-none focus:border-[#1a2744]"/>
             <span className="text-xs text-gray-400">×</span>
           </div>
         </div>
-        <div className="space-y-3 relative">
-          {filasFutbol.map((f,i) => (
-            <div key={i} className="flex items-center gap-3">
-              <div className="w-64 flex-shrink-0 text-right">
-                <div className="text-xs font-semibold text-gray-700">{f.label}</div>
-                <div className="text-xs text-gray-400">{f.sub}</div>
-              </div>
-              <div className="flex-1 relative h-7 bg-gray-100 rounded-full overflow-hidden">
-                {f.negativo ? (
-                  <div className="absolute inset-0 flex items-center pl-3">
-                    <span className="text-xs text-red-600 font-bold">⚠ Valor negativo — riesgos superan el valor</span>
-                  </div>
-                ) : (
-                  <div className={`h-full ${f.color} rounded-full transition-all duration-700 flex items-center justify-end pr-2`}
-                    style={{width:`${barra(f.val)}%`}}>
-                    <span className="text-white text-xs font-bold whitespace-nowrap">{usd(f.val)}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-          {/* Línea del precio pedido */}
-          <div className="flex items-center gap-3">
-            <div className="w-64 flex-shrink-0 text-right">
-              <div className="text-xs font-black text-red-700">PRECIO PEDIDO</div>
-              <div className="text-xs text-gray-400">Lo que pide el vendedor</div>
-            </div>
-            <div className="flex-1 relative h-7 bg-red-100 rounded-full overflow-hidden border-2 border-red-400">
-              <div className="h-full bg-red-500 rounded-full flex items-center justify-end pr-2" style={{width:"100%"}}>
-                <span className="text-white text-xs font-black">{usd(precio)}</span>
-              </div>
-            </div>
-          </div>
-        </div>
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-gray-100">
+              <th className="text-left py-2 text-gray-500 font-semibold">Metodología</th>
+              <th className="text-right py-2 text-gray-500 font-semibold">Valor bruto</th>
+              <th className="text-right py-2 text-gray-500 font-semibold">− Riesgos</th>
+              <th className="text-right py-2 text-gray-500 font-semibold">Valor para el comprador</th>
+              <th className="text-right py-2 text-gray-500 font-semibold">vs. precio pedido</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            <tr>
+              <td className="py-2.5 text-gray-700">Por flujos ({multiplo}× EBITDA)</td>
+              <td className="py-2.5 text-right font-mono text-gray-700">{usd(evFlujos)}</td>
+              <td className="py-2.5 text-right font-mono text-red-600">−{usd(riesgosAbs)}</td>
+              <td className={`py-2.5 text-right font-bold ${valorFlujosAjust < 0 ? "text-red-600" : "text-[#1a2744]"}`}>
+                {valorFlujosAjust < 0 ? `−${usd(Math.abs(valorFlujosAjust))}` : usd(valorFlujosAjust)}
+              </td>
+              <td className="py-2.5 text-right text-red-600 font-semibold">
+                {valorFlujosAjust < 0 ? "El vendedor debería pagar" : `${(precio/valorFlujosAjust).toFixed(1)}× por encima`}
+              </td>
+            </tr>
+            {hayNAV && (
+              <tr>
+                <td className="py-2.5 text-gray-700">Por activos — NAV</td>
+                <td className="py-2.5 text-right font-mono text-gray-700">{usd(navEstimado)}</td>
+                <td className="py-2.5 text-right font-mono text-red-600">−{usd(riesgosAbs)}</td>
+                <td className={`py-2.5 text-right font-bold ${navAjust < 0 ? "text-red-600" : "text-[#1a2744]"}`}>
+                  {navAjust < 0 ? `−${usd(Math.abs(navAjust))}` : usd(navAjust)}
+                </td>
+                <td className="py-2.5 text-right text-gray-600 font-semibold">
+                  {navAjust > 0 && navAjust < precio ? `${(precio/navAjust).toFixed(1)}× por encima` : navAjust >= precio ? "Dentro del rango" : "El vendedor debería pagar"}
+                </td>
+              </tr>
+            )}
+            <tr>
+              <td className="py-2.5 text-gray-700">Patrimonio neto contable (EECC)</td>
+              <td className="py-2.5 text-right font-mono text-gray-700">{usd(pnContable)}</td>
+              <td className="py-2.5 text-right font-mono text-red-600">−{usd(riesgosAbs)}</td>
+              <td className={`py-2.5 text-right font-bold ${pnContable - riesgosAbs < 0 ? "text-red-600" : "text-[#1a2744]"}`}>
+                {pnContable - riesgosAbs < 0 ? `−${usd(Math.abs(pnContable - riesgosAbs))}` : usd(pnContable - riesgosAbs)}
+              </td>
+              <td className="py-2.5 text-right text-gray-500 text-xs italic">Referencia contable, no valor real</td>
+            </tr>
+            <tr className="bg-red-50">
+              <td className="py-2.5 font-bold text-red-700">Precio pedido vendedor</td>
+              <td className="py-2.5 text-right font-bold text-red-700">{usd(precio)}</td>
+              <td className="py-2.5 text-right text-gray-400">—</td>
+              <td className="py-2.5 text-right font-bold text-red-700">{usd(precio)}</td>
+              <td className="py-2.5 text-right font-bold text-red-700">Referencia</td>
+            </tr>
+          </tbody>
+        </table>
         {!hayNAV && (
-          <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
-            💡 Cargá valores en la tabla de activos (más abajo) para ver el NAV en este gráfico.
-          </div>
+          <p className="text-xs text-gray-400 mt-2">
+            Cargá valores en la tabla de activos para agregar la fila de NAV.
+          </p>
         )}
       </div>
 
@@ -351,12 +370,12 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
           2. TRES BRIDGES LADO A LADO
       ══════════════════════════════════════════════ */}
       <div>
-        <h2 className="text-base font-bold text-gray-900 mb-3">Tres formas de llegar al valor</h2>
+        <h2 className="text-sm font-semibold text-gray-700 mb-3">Tres formas de llegar al valor</h2>
         <div className="grid grid-cols-3 gap-4">
 
           {/* Bridge 1: Por flujos */}
-          <div className="card p-4 border-t-4 border-t-blue-500 space-y-2">
-            <div className="text-xs font-black text-blue-700 uppercase tracking-wide">Por flujos de caja</div>
+          <div className="card p-4 border-t-2 border-t-gray-200 space-y-2">
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-100 pb-2 mb-1">Por flujos de caja</div>
             <div className="text-xs text-gray-500 mb-3">Cuánto vale el negocio como generador de caja</div>
             {[
               { label:"EBITDA anual normalizado", val:ebitda, color:"text-gray-800" },
@@ -374,8 +393,8 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
           </div>
 
           {/* Bridge 2: Por activos */}
-          <div className="card p-4 border-t-4 border-t-amber-400 space-y-2">
-            <div className="text-xs font-black text-amber-700 uppercase tracking-wide">Por activos (NAV)</div>
+          <div className="card p-4 border-t-2 border-t-gray-200 space-y-2">
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-100 pb-2 mb-1">Por activos (NAV)</div>
             <div className="text-xs text-gray-500 mb-3">Cuánto valen los activos a precio de mercado</div>
             {[
               { label:"Activos a valor de mercado", val:totalActivosEstim||null, color:"text-gray-800", pending:!hayNAV },
@@ -395,8 +414,8 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
           </div>
 
           {/* Bridge 3: Patrimonial */}
-          <div className="card p-4 border-t-4 border-t-gray-400 space-y-2">
-            <div className="text-xs font-black text-gray-600 uppercase tracking-wide">Valor patrimonial contable</div>
+          <div className="card p-4 border-t-2 border-t-gray-200 space-y-2">
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-100 pb-2 mb-1">Valor patrimonial contable</div>
             <div className="text-xs text-gray-500 mb-3">Lo que dice el balance auditado — referencia, no valor real</div>
             {[
               { label:"Patrimonio Neto EECC EJ N°17", val:pnContable, color:"text-gray-800" },
@@ -420,9 +439,9 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
           3. STOCK DEAL vs ASSET DEAL
       ══════════════════════════════════════════════ */}
       <div>
-        <h2 className="text-base font-bold text-gray-900 mb-3">Estructura del deal — ¿cómo cambia la ecuación?</h2>
+        <h2 className="text-sm font-semibold text-gray-700 mb-3">Estructura del deal</h2>
         <div className="grid grid-cols-2 gap-4">
-          <div className="card p-4 border-l-4 border-l-[#1a2744]">
+          <div className="card p-4 border border-gray-200">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-lg">📋</span>
               <div className="font-bold text-gray-900">Compra de acciones (Stock Deal)</div>
@@ -433,14 +452,14 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
               <div className="flex gap-2"><span className="text-red-600 font-bold">✗</span><span className="text-gray-700">El comprador hereda TODOS los pasivos ocultos y contingencias fiscales</span></div>
               <div className="flex gap-2"><span className="text-red-600 font-bold">✗</span><span className="text-gray-700">Los riesgos identificados (USD {Math.round(riesgosAbs/1000)}K) van con el paquete</span></div>
               <div className="flex gap-2"><span className="text-amber-600 font-bold">→</span><span className="text-gray-700 font-semibold">Metodología relevante: por flujos ajustado por riesgos</span></div>
-              <div className="bg-[#1a2744] text-white rounded-lg px-3 py-2 mt-2 text-center">
+              <div className="bg-gray-100 text-gray-900 rounded-lg px-3 py-2 mt-2 text-center border border-gray-200">
                 <div className="text-xs opacity-70">Valor máximo a ofrecer</div>
-                <div className="font-black text-lg">{valorFlujosAjust > 0 ? usd(valorFlujosAjust) : "⚠ Negativo — resolver riesgos primero"}</div>
+                <div className={`font-black text-base ${valorFlujosAjust > 0 ? "text-[#1a2744]" : "text-red-600"}`}>{valorFlujosAjust > 0 ? usd(valorFlujosAjust) : "Negativo — resolver riesgos primero"}</div>
               </div>
             </div>
           </div>
 
-          <div className="card p-4 border-l-4 border-l-amber-400">
+          <div className="card p-4 border border-gray-200">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-lg">🏭</span>
               <div className="font-bold text-gray-900">Compra de activos (Asset Deal)</div>
@@ -451,9 +470,9 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
               <div className="flex gap-2"><span className="text-red-600 font-bold">✗</span><span className="text-gray-700">Las habilitaciones (CAA, DIA) deben retramitarse a nombre del comprador</span></div>
               <div className="flex gap-2"><span className="text-red-600 font-bold">✗</span><span className="text-gray-700">Proceso de 2-3 años mínimo para re-obtener el CAA como Operador Fijo</span></div>
               <div className="flex gap-2"><span className="text-amber-600 font-bold">→</span><span className="text-gray-700 font-semibold">Metodología relevante: NAV de activos físicos únicamente</span></div>
-              <div className="bg-amber-600 text-white rounded-lg px-3 py-2 mt-2 text-center">
+              <div className="bg-gray-100 text-gray-900 rounded-lg px-3 py-2 mt-2 text-center border border-gray-200">
                 <div className="text-xs opacity-70">Valor máximo a ofrecer</div>
-                <div className="font-black text-lg">{hayNAV ? (navAjust > 0 ? usd(navAjust) : "⚠ Riesgos superan NAV") : "Cargar activos para calcular"}</div>
+                <div className={`font-black text-base ${navAjust > 0 ? "text-[#1a2744]" : "text-red-600"}`}>{hayNAV ? (navAjust > 0 ? usd(navAjust) : "Riesgos superan NAV") : "Cargar activos para calcular"}</div>
               </div>
             </div>
           </div>
@@ -463,26 +482,26 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
       {/* ══════════════════════════════════════════════
           4. RANGO DE OFERTA
       ══════════════════════════════════════════════ */}
-      <div className="bg-[#1a2744] text-white rounded-2xl p-5">
-        <h2 className="text-base font-bold mb-4">¿Cuánto ofrecer?</h2>
+      <div className="bg-gray-900 text-white rounded-xl p-5">
+        <h2 className="text-sm font-semibold mb-4 opacity-80">¿Cuánto ofrecer?</h2>
         <div className="grid grid-cols-3 gap-4 mb-5">
-          <div className="bg-white/10 rounded-xl p-3 text-center">
+          <div className="bg-white/5 rounded-lg p-3 text-center border border-white/10">
             <div className="text-xs opacity-60 mb-1">Oferta mínima razonable</div>
-            <div className="text-xl font-black text-green-300">
+            <div className="text-lg font-black text-green-300">
               {evFlujos > 0 ? usd(Math.max(0, evFlujos * 0.5)) : "—"}
             </div>
             <div className="text-xs opacity-50 mt-1">50% del valor por flujos bruto, condicionado a resolución de riesgos críticos</div>
           </div>
-          <div className="bg-white/20 rounded-xl p-3 text-center border-2 border-white/30">
+          <div className="bg-white/10 rounded-lg p-3 text-center border border-white/20">
             <div className="text-xs opacity-60 mb-1">Oferta máxima defensible</div>
-            <div className="text-xl font-black">
+            <div className="text-lg font-black">
               {evFlujos > 0 ? usd(evFlujos) : "—"}
             </div>
             <div className="text-xs opacity-50 mt-1">{multiplo}× EBITDA sin descuento de riesgos — solo si todos los riesgos se resuelven antes del cierre</div>
           </div>
-          <div className="bg-red-900/40 rounded-xl p-3 text-center border border-red-400/30">
+          <div className="bg-white/5 rounded-lg p-3 text-center border border-red-400/20">
             <div className="text-xs opacity-60 mb-1">Precio pedido vendedor</div>
-            <div className="text-xl font-black text-red-300">{usd(precio)}</div>
+            <div className="text-lg font-black text-red-300">{usd(precio)}</div>
             <div className="text-xs opacity-50 mt-1">{ebitda > 0 ? `${Math.round(precio/ebitda)}× EBITDA — indefendible sin contratos YPF firmados` : "Sin datos de EBITDA"}</div>
           </div>
         </div>
