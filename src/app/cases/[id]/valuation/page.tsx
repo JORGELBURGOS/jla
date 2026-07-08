@@ -164,6 +164,8 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const [assets, setAssets]     = useState<Asset[]>([])
   const [saving, setSaving]     = useState<string|null>(null)
   const [adding, setAdding]     = useState(false)
+  const [dirty, setDirty]       = useState<Set<string>>(new Set())
+  const [autoSaving, setAutoSaving] = useState(false)
   const [ebitda, setEbitda]     = useState(0)
   const [precio, setPrecio]     = useState(0)
   const [pasivos, setPasivos]   = useState(0)
@@ -192,7 +194,29 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
 
   function updAsset(id:string, f:keyof Asset, v:unknown) {
     setAssets(prev => prev.map(a => a.id===id ? {...a,[f]:v} : a))
+    setDirty(prev => new Set([...prev, id]))
   }
+
+  // Auto-save: 2 segundos después del último cambio
+  useEffect(() => {
+    if (dirty.size === 0) return
+    const timer = setTimeout(async () => {
+      setAutoSaving(true)
+      const toSave = assets.filter(a => dirty.has(a.id))
+      await Promise.all(toSave.map(a =>
+        db.from("dd_case_assets").update({
+          categoria:a.categoria, nombre:a.nombre, descripcion:a.descripcion,
+          cantidad:a.cantidad, precio_unitario:a.precio_unitario, unidad:a.unidad,
+          valor_usd:a.valor_usd, metodologia:a.metodologia, estado:a.estado,
+          item_validante:a.item_validante, notas:a.notas,
+          updated_at:new Date().toISOString()
+        }).eq("id",a.id)
+      ))
+      setDirty(new Set())
+      setAutoSaving(false)
+    }, 2000)
+    return () => clearTimeout(timer)
+  }, [dirty, assets])
 
   async function saveAsset(a: Asset) {
     setSaving(a.id)
@@ -241,6 +265,13 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
       <div>
         <h1 className="text-xl font-bold text-gray-900">Valuación</h1>
         <p className="text-sm text-gray-500">{caseName} — tres enfoques de valuación convergentes</p>
+      </div>
+      <div className="flex items-center gap-2">
+        {(dirty.size > 0 || autoSaving) && (
+          <span className={`text-xs px-3 py-1.5 rounded-full font-medium ${autoSaving ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
+            {autoSaving ? "✓ Guardando..." : `● ${dirty.size} cambio${dirty.size>1?"s":""} sin guardar`}
+          </span>
+        )}
       </div>
 
       {/* ══════════════════════════════════════════════
@@ -367,35 +398,38 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
           BLOQUE 3 — RESUMEN FINAL
       ══════════════════════════════════════════════ */}
       <div className="bg-[#1a2744] text-white rounded-2xl p-5">
-        <h3 className="font-bold text-sm mb-4 uppercase tracking-wide opacity-70">Conclusión de valuación</h3>
-        <div className="grid grid-cols-2 gap-6">
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between border-b border-white/10 pb-2">
-              <span className="opacity-70">Valor por flujos ({multiploEV}× EBITDA)</span>
-              <span className="font-bold">{usd(evFlujos)}</span>
+        <h3 className="font-bold text-sm mb-4 uppercase tracking-wide opacity-70">¿Cuánto vale la empresa?</h3>
+        <div className="grid grid-cols-3 gap-4 mb-5">
+          {[
+            { label:`Por flujos (${multiploEV}× EBITDA)`, base: usd(evFlujos), adj: usd(evFlujos - riesgosAbsUSD), adjLabel:"Ajustado por riesgos", color:"text-white" },
+            { label:"Por activos (NAV)", base: navEstimado ? usd(navEstimado) : "Sin datos aún", adj: totalVerif ? usd(navVerificado) : "Pendiente visita", adjLabel:"Solo verificados", color:"text-amber-300" },
+            { label:"Precio pedido", base: usd(precio), adj: null, adjLabel:"", color:"text-red-300" },
+          ].map(item => (
+            <div key={item.label} className="bg-white/10 rounded-xl p-3">
+              <div className="text-xs opacity-60 mb-1">{item.label}</div>
+              <div className={`text-xl font-black ${item.color}`}>{item.base}</div>
+              {item.adj && <div className="text-xs opacity-60 mt-1">{item.adjLabel}: <strong className="opacity-90">{item.adj}</strong></div>}
             </div>
-            <div className="flex justify-between border-b border-white/10 pb-2 text-red-300">
-              <span>(-) Riesgos identificados</span>
-              <span className="font-bold">-{usd(riesgosAbsUSD)}</span>
-            </div>
-            <div className="flex justify-between font-black text-lg">
-              <span>Valor ajustado por flujos</span>
-              <span>{usd(evFlujos - riesgosAbsUSD)}</span>
-            </div>
+          ))}
+        </div>
+        <div className="space-y-2 text-sm border-t border-white/20 pt-4">
+          <div className="flex justify-between items-center">
+            <span className="opacity-70">Precio pedido</span>
+            <span className="font-bold text-red-300">{usd(precio)}</span>
           </div>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between border-b border-white/10 pb-2">
-              <span className="opacity-70">NAV estimado (activos − pasivos)</span>
-              <span className="font-bold">{navEstimado ? usd(navEstimado) : "Pendiente"}</span>
-            </div>
-            <div className="flex justify-between border-b border-white/10 pb-2 text-red-300">
-              <span>Precio pedido vendedor</span>
-              <span className="font-bold">{usd(precio)}</span>
-            </div>
-            <div className="flex justify-between font-black text-lg text-red-300">
-              <span>Brecha precio vs. valor</span>
-              <span>-{usd(precio - (evFlujos - riesgosAbsUSD))}</span>
-            </div>
+          <div className="flex justify-between items-center">
+            <span className="opacity-70">Valor máximo defendible (por flujos ajustado)</span>
+            <span className="font-bold">{usd(Math.max(0, evFlujos - riesgosAbsUSD))}</span>
+          </div>
+          <div className="flex justify-between items-center border-t border-white/20 pt-2">
+            <span className="font-black text-base">Sobreprecio del vendedor</span>
+            <span className="font-black text-2xl text-red-300">
+              {usd(precio - Math.max(0, evFlujos - riesgosAbsUSD))}
+            </span>
+          </div>
+          <div className="text-xs opacity-50 mt-1">
+            El vendedor pide {evFlujos > riesgosAbsUSD ? (precio / (evFlujos - riesgosAbsUSD)).toFixed(1) : "∞"}× el valor ajustado por flujos
+            {navEstimado > 0 ? ` · ${(precio/navEstimado).toFixed(1)}× el NAV estimado` : ""}
           </div>
         </div>
       </div>
