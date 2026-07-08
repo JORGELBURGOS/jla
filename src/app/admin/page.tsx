@@ -11,6 +11,7 @@ const ALL_NAV = [
   { path: "/requirements",  label: "Requerimientos" },
   { path: "/triage",        label: "Triage de Docs" },
   { path: "/balance",       label: "Estados Contables" },
+  { path: "/assets",        label: "Valuación de Activos" },
   { path: "/environmental", label: "Síntesis Ambiental" },
   { path: "/fiscal",        label: "Análisis Fiscal" },
   { path: "/assumptions",   label: "Supuestos" },
@@ -19,7 +20,7 @@ const ALL_NAV = [
   { path: "/valuation",     label: "Valuación" },
   { path: "/risks",         label: "Mapa de Riesgos" },
   { path: "/validation",    label: "Validación Plan" },
-  { path: "/assistant",     label: "Asistente IA" },
+  { path: "/assistant",     label: "Asistente" },
   { path: "/report",        label: "Informe Final" },
   { path: "/log",           label: "Log Auditoría" },
 ]
