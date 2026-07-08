@@ -1,5 +1,7 @@
 "use client"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
+import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { ChevronDown, ChevronRight, Download } from "lucide-react"
 
@@ -57,19 +59,24 @@ function DetailField({ label, value, danger, warn, accent }: {
 }
 
 // ── ItemRow recibe linksMap como prop explícita ────────────────────
-function ItemRow({ item, toggling, onToggle, linksMap }: {
+function ItemRow({ item, toggling, onToggle, linksMap, caseId }: {
   item: Req
   toggling: string | null
   onToggle: (item: Req, campo: "antes_sena" | "antes_visita") => void
-  linksMap: LinksMap   // ← prop explícita, no closure
+  linksMap: LinksMap   // ← prop explícita
+  caseId: string
+  highlightItem?: number, no closure
+  caseId: string
 }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(highlight ?? false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => { if (highlight && ref.current) { ref.current.scrollIntoView({ behavior: "smooth", block: "center" }) } }, [highlight])
   const pendienteYSena = item.antes_sena && item.estado !== "Recibido"
   const archivos = Array.isArray(item.archivos) ? item.archivos : []
   const itemLinks = linksMap[item.n_item] ?? []
 
   return (
-    <div className={`border-b border-gray-50 last:border-0 ${pendienteYSena ? "border-l-2 border-l-purple-400" : item.antes_visita ? "border-l-2 border-l-teal-400" : ""}`}>
+    <div ref={ref} className={`border-b border-gray-50 last:border-0 ${highlight ? "ring-2 ring-amber-400 rounded" : ""} ${pendienteYSena ? "border-l-2 border-l-purple-400" : item.antes_visita ? "border-l-2 border-l-teal-400" : ""}`}>
       <button
         className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-gray-50 transition-colors text-left"
         onClick={() => setOpen(o => !o)}
@@ -183,7 +190,10 @@ function ItemRow({ item, toggling, onToggle, linksMap }: {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-gray-800 leading-snug">{lk.riesgo}</div>
+                      <Link href={`/cases/${caseId}/risks?highlight=${lk.risk_id}`}
+                        className="font-semibold text-gray-800 leading-snug hover:text-[#1a2744] hover:underline block">
+                        {lk.riesgo} →
+                      </Link>
                       <div className="text-gray-500 mt-1 leading-relaxed">{lk.descripcion}</div>
                     </div>
                   </div>
@@ -198,7 +208,7 @@ function ItemRow({ item, toggling, onToggle, linksMap }: {
 }
 
 // ── SeccionRow recibe linksMap y la pasa a ItemRow ─────────────────
-function SeccionRow({ sec, items, toggling, onToggle, linksMap }: {
+function SeccionRow({ sec, items, toggling, onToggle, linksMap, caseId, highlightItem }: {
   sec: string; items: Req[]; toggling: string | null
   onToggle: (item: Req, campo: "antes_sena" | "antes_visita") => void
   linksMap: LinksMap   // ← prop explícita
@@ -236,6 +246,8 @@ function SeccionRow({ sec, items, toggling, onToggle, linksMap }: {
               toggling={toggling}
               onToggle={onToggle}
               linksMap={linksMap}   // ← pasa el mapa
+              caseId={caseId}
+              highlight={item.n_item === highlightItem}
             />
           ))}
         </div>
@@ -250,6 +262,8 @@ export default function RequirementsPage({ params }: { params: { id: string } })
   const [items, setItems]     = useState<Req[]>([])
   const [linksMap, setLinksMap] = useState<LinksMap>({})
   const [tab, setTab]         = useState<"interna" | "vendedor">("interna")
+  const searchParams = useSearchParams()
+  const highlightItem = Number(searchParams.get("highlight") ?? 0)
   const [toggling, setToggling] = useState<string | null>(null)
   const [downloading, setDownloading] = useState<string | null>(null)
   const db = createClient()
@@ -398,6 +412,8 @@ export default function RequirementsPage({ params }: { params: { id: string } })
             toggling={toggling}
             onToggle={onToggle}
             linksMap={linksMap}   // ← pasa el mapa a cada sección
+            caseId={caseId}
+            highlightItem={highlightItem}
           />
         ))}
       </div>

@@ -1,5 +1,7 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
+import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { ChevronDown, ChevronRight } from "lucide-react"
 
@@ -36,8 +38,11 @@ function RiskRow({ r, defaultOpen, links }: {
   r: Risk
   defaultOpen?: boolean
   links: ItemLink[]
+  highlight?: boolean
 }) {
   const [open, setOpen] = useState(defaultOpen ?? false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => { if (highlight && ref.current) { ref.current.scrollIntoView({ behavior: "smooth", block: "center" }) } }, [highlight])
   const impNeg = r.impacto < 0
   const borderColor = r.impacto <= -500000 ? "border-l-red-600"
     : r.impacto <= -200000 ? "border-l-orange-500"
@@ -45,7 +50,7 @@ function RiskRow({ r, defaultOpen, links }: {
     : "border-l-gray-300"
 
   return (
-    <div className={`border-l-4 ${borderColor} bg-white rounded-r-xl mb-1.5 overflow-hidden shadow-sm`}>
+    <div ref={ref} className={`border-l-4 ${borderColor} bg-white rounded-r-xl mb-1.5 overflow-hidden shadow-sm ${highlight ? "ring-2 ring-amber-400" : ""}`}>
       <button
         className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
         onClick={() => setOpen(o => !o)}
@@ -131,7 +136,10 @@ function RiskRow({ r, defaultOpen, links }: {
                           </span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium text-gray-800 leading-snug">{lk.documento}</div>
+                          <Link href={`/cases/${caseId}/requirements?highlight=${lk.n_item}`}
+                            className="font-medium text-gray-800 hover:text-[#1a2744] hover:underline block leading-snug">
+                            N°{lk.n_item} {lk.documento} →
+                          </Link>
                           <div className="text-gray-500 mt-0.5 leading-relaxed">{lk.descripcion}</div>
                         </div>
                       </div>
@@ -191,8 +199,9 @@ function NivelSection({
             <RiskRow
               key={r.id}
               r={r}
-              defaultOpen={expandAll}
+              defaultOpen={expandAll || r.id === highlightId}
               links={itemLinksMap[r.id] ?? []}
+              highlight={r.id === highlightId}
             />
           ))}
         </div>
@@ -208,6 +217,8 @@ export default function RisksPage({ params }: { params: { id: string } }) {
   const [expandAll, setExpandAll] = useState(false)
   const [itemLinksMap, setItemLinksMap] = useState<Record<string, ItemLink[]>>({})
   const db = createClient()
+  const searchParams = useSearchParams()
+  const highlightId = searchParams.get("highlight") ?? ""
 
   useEffect(() => {
     db.from("dd_case_risks").select("*").eq("case_id", caseId)
