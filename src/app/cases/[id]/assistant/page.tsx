@@ -121,7 +121,7 @@ export default function AssistantPage({ params }: { params: { id: string } }) {
         const res = await fetch("/api/apply-action", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ caseId, acciones: [accion], archivo: "Asistente IA" })
+          body: JSON.stringify({ caseId, acciones: [accion], archivo: "Asistente" })
         })
         const data = await res.json()
         if (data.aplicados > 0) aplicados++
@@ -152,7 +152,7 @@ export default function AssistantPage({ params }: { params: { id: string } }) {
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-200 bg-white flex-shrink-0">
-        <h1 className="text-lg font-bold text-gray-900">Asistente IA</h1>
+        <h1 className="text-lg font-bold text-gray-900">Asistente</h1>
         <p className="text-xs text-gray-500">Contexto completo del caso · propone cambios en lenguaje claro · guardás lo que aprobás</p>
       </div>
 

@@ -30,7 +30,7 @@ const NAV: [string, string][] = [
   ["/risks"       , "Mapa de Riesgos"],
   ["/validation"  , "Validación Plan"],
   ["---"          , "HERRAMIENTAS"],
-  ["/assistant"   , "Asistente IA"],
+  ["/assistant"   , "Asistente"],
   ["---"          , "ENTREGABLE"],
   ["/report"      , "📄 Informe Final"],
   ["/log"         , "Log Auditoría"],
