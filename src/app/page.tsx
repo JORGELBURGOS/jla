@@ -1,11 +1,11 @@
 "use client"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import Script from "next/script"
 
-const ADMIN_EMAIL = "jorgeleonburgos@gmail.com"
-const EMAIL_KEY   = "jla_user_email"
+const ADMIN_EMAIL      = "jorgeleonburgos@gmail.com"
+const EMAIL_KEY        = "jla_user_email"
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? ""
 
 interface Case {
@@ -21,176 +21,198 @@ declare global {
     google?: {
       accounts: {
         id: {
-          initialize: (config: Record<string,unknown>) => void
-          prompt: () => void
-          renderButton: (el: HTMLElement, config: Record<string,unknown>) => void
+          initialize: (cfg: Record<string,unknown>) => void
+          prompt: (cb?: (n: {isNotDisplayed:()=>boolean}) => void) => void
+          renderButton: (el: HTMLElement, cfg: Record<string,unknown>) => void
           disableAutoSelect: () => void
+          revoke: (email: string, done: () => void) => void
         }
       }
     }
   }
 }
 
-export default function HomePage() {
-  const db = createClient()
-  const [email, setEmail]       = useState("")
-  const [emailInput, setEmailInput] = useState("")
-  const [showPrompt, setShowPrompt] = useState(false)
-  const [cases, setCases]       = useState<Case[]>([])
-  const [loading, setLoading]   = useState(true)
-  const [error, setError]       = useState("")
-  const [googleReady, setGoogleReady] = useState(false)
+function decodeJWT(token: string): Record<string,string> {
+  try { return JSON.parse(atob(token.split(".")[1])) }
+  catch { return {} }
+}
 
-  const handleIdentifiedEmail = useCallback(async (userEmail: string) => {
-    setEmail(userEmail)
-    localStorage.setItem(EMAIL_KEY, userEmail)
-    setShowPrompt(false)
-    setError("")
-    await loadCases(userEmail)
+export default function HomePage() {
+  const db       = createClient()
+  const btnRef   = useRef<HTMLDivElement>(null)
+
+  const [email,    setEmail]    = useState("")
+  const [cases,    setCases]    = useState<Case[]>([])
+  const [loading,  setLoading]  = useState(true)
+  const [error,    setError]    = useState("")
+  const [gReady,   setGReady]   = useState(false)
+  const [waiting,  setWaiting]  = useState(true) // esperando que Google inicialice
+
+  // ── Identificar usuario verificado por Google ──────────────────
+  const onGoogleCredential = useCallback(async (credential: string) => {
+    const payload = decodeJWT(credential)
+    const verifiedEmail = (payload.email ?? "").toLowerCase()
+    if (!verifiedEmail) { setError("No se pudo obtener el email de Google."); return }
+    await identifyUser(verifiedEmail)
   }, [])
 
-  // Inicializar Google One Tap
+  const identifyUser = useCallback(async (userEmail: string) => {
+    setError(""); setLoading(true)
+
+    if (userEmail !== ADMIN_EMAIL) {
+      const { data: perm } = await db.from("dd_user_permissions")
+        .select("is_enabled,allowed_cases").eq("email", userEmail).single()
+      if (!perm || !perm.is_enabled) {
+        setError(`El email ${userEmail} no tiene acceso a la plataforma. Contactá al administrador.`)
+        setLoading(false); setWaiting(false); return
+      }
+    }
+
+    localStorage.setItem(EMAIL_KEY, userEmail)
+    setEmail(userEmail)
+    await loadCases(userEmail)
+    setWaiting(false)
+  }, [])
+
+  // ── Inicializar Google One Tap ──────────────────────────────────
   const initGoogle = useCallback(() => {
-    if (!window.google || !GOOGLE_CLIENT_ID) return
-    setGoogleReady(true)
+    if (!window.google || !GOOGLE_CLIENT_ID) {
+      setWaiting(false); return
+    }
     window.google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
-      callback: (response: { credential: string }) => {
-        // Decodificar JWT para obtener email
-        const payload = JSON.parse(atob(response.credential.split(".")[1]))
-        handleIdentifiedEmail(payload.email.toLowerCase())
-      },
-      auto_select: true,           // Auto-detecta si hay una sola cuenta
+      client_id:  GOOGLE_CLIENT_ID,
+      callback:   (r: { credential: string }) => onGoogleCredential(r.credential),
+      auto_select: true,
       cancel_on_tap_outside: false,
     })
-    window.google.accounts.id.prompt()
-  }, [handleIdentifiedEmail])
+    // Intentar auto-login
+    window.google.accounts.id.prompt((notification) => {
+      if (notification.isNotDisplayed()) {
+        // One Tap no pudo auto-mostrar — mostrar botón manual
+        setWaiting(false)
+        if (btnRef.current) {
+          window.google!.accounts.id.renderButton(btnRef.current, {
+            theme: "outline", size: "large",
+            text: "signin_with", width: 280,
+            locale: "es"
+          })
+        }
+      }
+    })
+    setGReady(true)
+  }, [onGoogleCredential])
 
   useEffect(() => {
+    // ¿Ya hay sesión guardada?
     const saved = localStorage.getItem(EMAIL_KEY) ?? ""
     if (saved) {
-      setEmail(saved)
-      loadCases(saved)
+      identifyUser(saved)
     } else {
       setLoading(false)
-      // Mostrar Google One Tap si está disponible, sino mostrar formulario manual
-      if (window.google && GOOGLE_CLIENT_ID) {
-        initGoogle()
-      } else {
-        setShowPrompt(true)
-      }
+      if (window.google) initGoogle()
     }
   }, [])
 
+  // ── Cargar casos filtrados ─────────────────────────────────────
   async function loadCases(userEmail: string) {
     setLoading(true)
     let allowedCases: string[] | null = null
 
     if (userEmail !== ADMIN_EMAIL) {
       const { data: perm } = await db.from("dd_user_permissions")
-        .select("is_enabled,allowed_cases").eq("email", userEmail).single()
-
-      if (!perm || !perm.is_enabled) {
-        localStorage.removeItem(EMAIL_KEY)
-        setEmail(""); setError("Este email no tiene acceso. Contactá al administrador.")
-        setShowPrompt(true); setLoading(false); return
-      }
-      allowedCases = perm.allowed_cases ?? null
+        .select("allowed_cases").eq("email", userEmail).single()
+      allowedCases = (perm as {allowed_cases: string[]|null})?.allowed_cases ?? null
     }
 
     let query = db.from("dd_cases")
       .select("*, industry:dd_industries(nombre,icono), sub_sector:dd_sub_sectors(nombre)")
-      .eq("org_id", "jl-advisory").order("created_at", { ascending: false })
+      .eq("org_id","jl-advisory").order("created_at",{ascending:false})
 
-    if (allowedCases !== null && allowedCases.length > 0) {
-      query = query.in("id", allowedCases)
-    } else if (allowedCases !== null && allowedCases.length === 0) {
-      setCases([]); setLoading(false); return
-    }
+    if (allowedCases !== null && allowedCases.length > 0) query = query.in("id", allowedCases)
+    else if (allowedCases !== null && allowedCases.length === 0) { setCases([]); setLoading(false); return }
 
     const { data: rawCases } = await query
-
     const enriched = await Promise.all((rawCases ?? []).map(async (c: Record<string,unknown>) => {
-      const [{ data: reqs }, { data: risks }] = await Promise.all([
-        db.from("dd_case_requirements").select("estado").eq("case_id", c.id),
-        db.from("dd_case_risks").select("impacto").eq("case_id", c.id)
+      const [{ data: reqs },{ data: risks }] = await Promise.all([
+        db.from("dd_case_requirements").select("estado").eq("case_id",c.id),
+        db.from("dd_case_risks").select("impacto").eq("case_id",c.id)
       ])
       const r = (reqs as {estado:string}[]) ?? []
-      const rec = r.filter(x => x.estado === "Recibido").length
-      const par = r.filter(x => x.estado === "Parcial").length
-      const totalRiesgo = ((risks as {impacto:number}[]) ?? []).reduce((s,x) => s+(x.impacto??0), 0)
-      return { ...c, rec, par, pend: r.length-rec-par, total: r.length, totalRiesgo,
-        avance: r.length ? Math.round((rec+par*0.5)/r.length*100) : 0 } as Case
+      const rec = r.filter(x=>x.estado==="Recibido").length
+      const par = r.filter(x=>x.estado==="Parcial").length
+      const totalRiesgo = ((risks as {impacto:number}[])??[]).reduce((s,x)=>s+(x.impacto??0),0)
+      return {...c,rec,par,pend:r.length-rec-par,total:r.length,totalRiesgo,
+        avance:r.length?Math.round((rec+par*0.5)/r.length*100):0} as Case
     }))
-
     setCases(enriched); setLoading(false)
-  }
-
-  function confirmEmail() {
-    const e = emailInput.trim().toLowerCase()
-    if (!e || !e.includes("@")) return
-    handleIdentifiedEmail(e)
-    setEmailInput("")
   }
 
   function changeUser() {
     localStorage.removeItem(EMAIL_KEY)
     setEmail(""); setCases([]); setError("")
     if (window.google) window.google.accounts.id.disableAutoSelect()
-    setShowPrompt(true)
+    setWaiting(true)
+    setTimeout(() => initGoogle(), 100)
   }
 
   const isAdmin = email === ADMIN_EMAIL
 
   // ── Pantalla de identificación ─────────────────────────────────
-  if (!email && (showPrompt || !GOOGLE_CLIENT_ID)) return (
+  if (!email) return (
     <>
       <Script src="https://accounts.google.com/gsi/client"
-        onLoad={() => { setGoogleReady(true); initGoogle() }}/>
+        onLoad={() => { setGReady(true); initGoogle() }}/>
       <div className="min-h-screen bg-[#1a2744] flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl p-8 w-80 shadow-2xl">
-          <img src="/logo.png" alt="JL Advisory" className="h-10 mx-auto mb-6"/>
-          <h2 className="text-base font-bold text-gray-900 mb-1 text-center">Due Diligence M&A</h2>
-          <p className="text-xs text-gray-500 text-center mb-5">Ingresá tu email para continuar</p>
+        <div className="bg-white rounded-2xl p-8 w-full max-w-sm shadow-2xl text-center">
+          <img src="/logo.png" alt="JL Advisory" className="h-12 mx-auto mb-6"/>
+          <h2 className="text-base font-bold text-gray-900 mb-1">Due Diligence M&A</h2>
+          <p className="text-xs text-gray-500 mb-6">Plataforma de análisis privada</p>
 
-          {/* Google One Tap automático o botón manual */}
-          {GOOGLE_CLIENT_ID ? (
-            <div id="g_id_onload"
-              data-client_id={GOOGLE_CLIENT_ID}
-              data-auto_select="true"
-              data-callback="handleGoogleCallback"
-              className="mb-3"/>
-          ) : null}
+          {waiting && !error ? (
+            <div className="py-4">
+              <div className="w-6 h-6 border-2 border-[#1a2744] border-t-transparent rounded-full animate-spin mx-auto mb-3"/>
+              <p className="text-xs text-gray-400">Verificando con Google...</p>
+            </div>
+          ) : (
+            <>
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-xs text-red-700 mb-4 text-left">
+                  {error}
+                </div>
+              )}
+              <p className="text-xs text-gray-500 mb-4">
+                Ingresá con tu cuenta Google para acceder
+              </p>
+              {/* Botón de Google renderizado por la librería */}
+              <div ref={btnRef} className="flex justify-center mb-3"/>
+              {!gReady && (
+                <p className="text-xs text-gray-400">Cargando...</p>
+              )}
+            </>
+          )}
 
-          <input type="email" value={emailInput}
-            onChange={e => setEmailInput(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && confirmEmail()}
-            placeholder="tu@email.com"
-            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1a2744] mb-3"/>
-          {error && <p className="text-xs text-red-600 mb-2">{error}</p>}
-          <button onClick={confirmEmail} disabled={!emailInput}
-            className="w-full bg-[#1a2744] text-white font-bold py-2.5 rounded-xl text-sm hover:bg-[#0d1525] disabled:opacity-40">
-            Ingresar →
-          </button>
-          <p className="text-xs text-gray-400 text-center mt-3">
-            Si no tenés acceso, contactá a JL Advisory
+          <p className="text-xs text-gray-300 mt-4">
+            Acceso restringido · JL Advisory
           </p>
         </div>
       </div>
     </>
   )
 
-  // ── Cargando ───────────────────────────────────────────────────
-  if (!email) return (
+  // ── Cargando casos ─────────────────────────────────────────────
+  if (loading) return (
     <div className="min-h-screen bg-[#1a2744] flex items-center justify-center">
-      <div className="text-white text-sm">Detectando usuario...</div>
+      <div className="text-center text-white">
+        <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-3"/>
+        <p className="text-sm opacity-70">Cargando...</p>
+      </div>
     </div>
   )
 
   // ── Pantalla principal ─────────────────────────────────────────
   return (
     <>
-      <Script src="https://accounts.google.com/gsi/client" onLoad={() => setGoogleReady(true)}/>
+      <Script src="https://accounts.google.com/gsi/client" onLoad={() => setGReady(true)}/>
       <div className="min-h-screen bg-gray-50">
         <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <img src="/logo.png" alt="JL Advisory" className="h-12 w-auto"/>
@@ -204,7 +226,7 @@ export default function HomePage() {
             )}
             <button onClick={changeUser}
               className="text-xs text-gray-400 hover:text-gray-600 border border-gray-200 px-2.5 py-1 rounded-full">
-              Cambiar usuario
+              Cambiar cuenta
             </button>
             {isAdmin && (
               <Link href="/cases/new" className="btn-primary">+ Nuevo caso</Link>
@@ -215,14 +237,12 @@ export default function HomePage() {
         <main className="max-w-5xl mx-auto px-6 py-8">
           <div className="mb-5">
             <h2 className="text-lg font-bold text-gray-900">Casos activos</h2>
-            {loading
-              ? <p className="text-sm text-gray-400">Cargando...</p>
-              : <p className="text-sm text-gray-500">{cases.length} caso{cases.length!==1?"s":""} disponible{cases.length!==1?"s":""}</p>}
+            <p className="text-sm text-gray-500">
+              {cases.length} caso{cases.length!==1?"s":""} disponible{cases.length!==1?"s":""}
+            </p>
           </div>
 
-          {loading ? (
-            <div className="card text-center py-16 text-gray-400 text-sm">Cargando casos...</div>
-          ) : cases.length === 0 ? (
+          {cases.length === 0 ? (
             <div className="card text-center py-16">
               <div className="text-4xl mb-3">📋</div>
               <h3 className="font-semibold text-gray-700 mb-1">

@@ -88,6 +88,10 @@ export default function CaseShell({ children, caseData, caseId }: {
   function confirmEmail() {
     const e = emailInput.trim().toLowerCase()
     if (!e || !e.includes("@")) return
+    if (e === ADMIN_EMAIL) {
+      setError("El acceso de administrador requiere verificación con Google — ingresá desde la pantalla principal.")
+      return
+    }
     localStorage.setItem(EMAIL_KEY, e)
     setEmailInput("")
     loadPermissions(e)
@@ -119,22 +123,17 @@ export default function CaseShell({ children, caseData, caseId }: {
   // ── Modal de identificación ────────────────────────────────────
   if (showPrompt) return (
     <div className="flex h-screen items-center justify-center bg-[#1a2744]">
-      <div className="bg-white rounded-2xl p-8 w-80 shadow-2xl">
+      <div className="bg-white rounded-2xl p-8 w-80 shadow-2xl text-center">
         <img src="/logo.png" alt="JL Advisory" className="h-10 mx-auto mb-6"/>
-        <h2 className="text-base font-bold text-gray-900 mb-1 text-center">Due Diligence M&A</h2>
-        <p className="text-xs text-gray-500 text-center mb-5">Ingresá tu email para continuar</p>
-        <input type="email" value={emailInput}
-          onChange={e => setEmailInput(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && confirmEmail()}
-          placeholder="tu@email.com"
-          className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1a2744] mb-3"/>
-        <button onClick={confirmEmail} disabled={!emailInput}
-          className="w-full bg-[#1a2744] text-white font-bold py-2.5 rounded-xl text-sm hover:bg-[#0d1525] disabled:opacity-40">
-          Ingresar →
-        </button>
-        <p className="text-xs text-gray-400 text-center mt-3">
-          Si no tenés acceso, contactá a JL Advisory
+        <h2 className="text-base font-bold text-gray-900 mb-2">Sesión no iniciada</h2>
+        <p className="text-xs text-gray-500 mb-5">
+          Para acceder a este caso necesitás verificar tu identidad con Google desde la pantalla de inicio.
         </p>
+        <a href="/"
+          className="block w-full bg-[#1a2744] text-white font-bold py-2.5 rounded-xl text-sm hover:bg-[#0d1525]">
+          Ir al inicio →
+        </a>
+        <p className="text-xs text-gray-300 mt-3">Se requiere cuenta Google habilitada</p>
       </div>
     </div>
   )
