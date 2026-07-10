@@ -53,6 +53,7 @@ export default function CaseShell({ children, caseData, caseId }: {
   // ── Identificación por email (localStorage) ────────────────────
   const [userEmail, setUserEmail] = useState("")
   const [emailInput, setEmailInput] = useState("")
+  const [passInput,  setPassInput]  = useState("")
   const [canEdit, setCanEdit] = useState(true)
   const [hiddenNav, setHiddenNav] = useState<string[]>([])
   const [showPrompt, setShowPrompt] = useState(false)
@@ -85,15 +86,21 @@ export default function CaseShell({ children, caseData, caseId }: {
     }
   }
 
-  function confirmEmail() {
+  async function confirmEmail() {
     const e = emailInput.trim().toLowerCase()
-    if (!e || !e.includes("@")) return
-    if (e === ADMIN_EMAIL) {
-      setError("El acceso de administrador requiere verificación con Google — ingresá desde la pantalla principal.")
-      return
+    const p = passInput.trim()
+    if (!e || !e.includes("@") || !p) return
+    setError("")
+    const { data: perm } = await db.from("dd_user_permissions")
+      .select("is_enabled,password").eq("email", e).single()
+    if (!perm || !perm.is_enabled) {
+      setError("Este email no tiene acceso."); return
+    }
+    if (perm.password !== p) {
+      setError("Clave incorrecta."); return
     }
     localStorage.setItem(EMAIL_KEY, e)
-    setEmailInput("")
+    setEmailInput(""); setPassInput("")
     loadPermissions(e)
   }
 
@@ -127,13 +134,20 @@ export default function CaseShell({ children, caseData, caseId }: {
         <img src="/logo.png" alt="JL Advisory" className="h-10 mx-auto mb-6"/>
         <h2 className="text-base font-bold text-gray-900 mb-1 text-center">Due Diligence M&A</h2>
         <p className="text-xs text-gray-500 text-center mb-5">Ingresá tu email para continuar</p>
-        <input type="email" value={emailInput}
-          onChange={e => setEmailInput(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && confirmEmail()}
-          placeholder="tu@email.com"
-          className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1a2744] mb-3"/>
+        <div className="space-y-3 mb-3">
+          <input type="email" value={emailInput}
+            onChange={e => setEmailInput(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && confirmEmail()}
+            placeholder="tu@email.com"
+            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1a2744]"/>
+          <input type="password" value={passInput}
+            onChange={e => setPassInput(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && confirmEmail()}
+            placeholder="Clave"
+            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1a2744]"/>
+        </div>
         {error && <p className="text-xs text-red-600 mb-2">{error}</p>}
-        <button onClick={confirmEmail} disabled={!emailInput}
+        <button onClick={confirmEmail} disabled={!emailInput || !passInput}
           className="w-full bg-[#1a2744] text-white font-bold py-2.5 rounded-xl text-sm hover:bg-[#0d1525] disabled:opacity-40">
           Ingresar →
         </button>

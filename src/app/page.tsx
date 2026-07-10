@@ -3,6 +3,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 
+
 const ADMIN_EMAIL = "jorgeleonburgos@gmail.com"
 const EMAIL_KEY   = "jla_user_email"
 
@@ -18,10 +19,11 @@ export default function HomePage() {
   const db = createClient()
   const [email, setEmail]           = useState("")
   const [emailInput, setEmailInput] = useState("")
+  const [passInput,  setPassInput]  = useState("")
   const [showPrompt, setShowPrompt] = useState(false)
   const [cases, setCases]           = useState<Case[]>([])
   const [loading, setLoading]       = useState(true)
-  const [error, setError]           = useState("")
+  const [error, setError]           = useState("") // esperando confirmación Google
 
   useEffect(() => {
     const saved = localStorage.getItem(EMAIL_KEY) ?? ""
@@ -63,11 +65,25 @@ export default function HomePage() {
     setCases(enriched); setLoading(false)
   }
 
-  function confirmEmail() {
+  async function confirmEmail() {
     const e = emailInput.trim().toLowerCase()
-    if (!e || !e.includes("@")) return
+    const p = passInput.trim()
+    if (!e || !e.includes("@") || !p) return
+    setError("")
+
+    // Verificar email + clave contra la base
+    const { data: perm } = await db.from("dd_user_permissions")
+      .select("is_enabled,password,allowed_cases").eq("email", e).single()
+
+    if (!perm || !perm.is_enabled) {
+      setError("Este email no tiene acceso. Contactá al administrador."); return
+    }
+    if (perm.password !== p) {
+      setError("Clave incorrecta."); return
+    }
+
     localStorage.setItem(EMAIL_KEY, e)
-    setEmail(e); setEmailInput(""); setError(""); setShowPrompt(false)
+    setEmail(e); setEmailInput(""); setPassInput(""); setError(""); setShowPrompt(false)
     loadCases(e)
   }
 
@@ -83,18 +99,27 @@ export default function HomePage() {
       <div className="bg-white rounded-2xl p-8 w-80 shadow-2xl">
         <img src="/logo.png" alt="JL Advisory" className="h-10 mx-auto mb-6"/>
         <h2 className="text-base font-bold text-gray-900 mb-1 text-center">Due Diligence M&A</h2>
-        <p className="text-xs text-gray-500 text-center mb-5">Ingresá tu email para continuar</p>
-        <input type="email" value={emailInput}
-          onChange={e => setEmailInput(e.target.value)}
-          onKeyDown={e => e.key==="Enter" && confirmEmail()}
-          placeholder="tu@email.com"
-          className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1a2744] mb-3"/>
-        {error && <p className="text-xs text-red-600 mb-2">{error}</p>}
-        <button onClick={confirmEmail} disabled={!emailInput}
-          className="w-full bg-[#1a2744] text-white font-bold py-2.5 rounded-xl text-sm hover:bg-[#0d1525] disabled:opacity-40">
+        <p className="text-xs text-gray-500 text-center mb-5">Ingresá tus credenciales</p>
+        <div className="space-y-3">
+          <input type="email" value={emailInput}
+            onChange={e => setEmailInput(e.target.value)}
+            onKeyDown={e => e.key==="Enter" && confirmEmail()}
+            placeholder="tu@email.com"
+            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1a2744]"/>
+          <input type="password" value={passInput}
+            onChange={e => setPassInput(e.target.value)}
+            onKeyDown={e => e.key==="Enter" && confirmEmail()}
+            placeholder="Clave"
+            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1a2744]"/>
+        </div>
+        {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
+        <button onClick={confirmEmail} disabled={!emailInput || !passInput}
+          className="w-full bg-[#1a2744] text-white font-bold py-2.5 rounded-xl text-sm hover:bg-[#0d1525] disabled:opacity-40 mt-4">
           Ingresar →
         </button>
-        <p className="text-xs text-gray-400 text-center mt-3">Si no tenés acceso, contactá a JL Advisory</p>
+        <p className="text-xs text-gray-400 text-center mt-3">
+          Si no tenés acceso, contactá a JL Advisory
+        </p>
       </div>
     </div>
   )

@@ -64,7 +64,7 @@ export default function AdminPage() {
     setAdding(true)
     await db.from("dd_user_permissions").insert({
       email, is_enabled: true, allowed_cases: null,
-      hidden_nav: [], can_edit: true,
+      hidden_nav: [], can_edit: true, password: "1234",
       created_by: ADMIN_EMAIL
     })
     setNewEmail(""); await loadData()
@@ -76,6 +76,7 @@ export default function AdminPage() {
     await db.from("dd_user_permissions").update({
       is_enabled: u.is_enabled, allowed_cases: u.allowed_cases,
       hidden_nav: u.hidden_nav, can_edit: u.can_edit, notes: u.notes,
+      password: u.password || "1234",
       updated_at: new Date().toISOString()
     }).eq("id", u.id)
     setSaving(null); await loadData()
@@ -241,8 +242,20 @@ export default function AdminPage() {
                       <textarea value={u.notes ?? ""}
                         onChange={e => upd(u.id, "notes", e.target.value)}
                         placeholder="ej: cliente de Mendoza, solo lectura..."
-                        rows={5}
-                        className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#1a2744] resize-none"/>
+                        rows={3}
+                        className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#1a2744] resize-none mb-3"/>
+                      <div className="text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">Clave de acceso</div>
+                      <div className="flex gap-2">
+                        <input type="text" value={u.password ?? "1234"}
+                          onChange={e => upd(u.id, "password", e.target.value)}
+                          placeholder="clave"
+                          className="flex-1 text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#1a2744] font-mono"/>
+                        <button onClick={() => upd(u.id, "password", "1234")}
+                          className="text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg px-2 py-1">
+                          Reset 1234
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">El usuario la ingresa junto con su email para acceder.</p>
                     </div>
                   </div>
                 )}
