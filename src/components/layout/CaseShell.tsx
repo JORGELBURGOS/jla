@@ -33,6 +33,8 @@ const NAV: [string, string][] = [
   ["/assistant"   , "Asistente"],
   ["---"          , "ENTREGABLE"],
   ["/report"      , "📄 Informe Final"],
+  ["---"          , "REFERENCIA"],
+  ["/glossary"    , "📖 Diccionario"],
   ["/log"         , "Log Auditoría"],
 ]
 

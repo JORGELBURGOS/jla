@@ -11,7 +11,6 @@ const ALL_NAV = [
   { path: "/requirements",  label: "Requerimientos" },
   { path: "/triage",        label: "Triage de Docs" },
   { path: "/balance",       label: "Estados Contables" },
-  { path: "/assets",        label: "Valuación de Activos" },
   { path: "/environmental", label: "Síntesis Ambiental" },
   { path: "/fiscal",        label: "Análisis Fiscal" },
   { path: "/assumptions",   label: "Supuestos" },
