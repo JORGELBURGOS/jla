@@ -22,6 +22,7 @@ const ALL_NAV = [
   { path: "/assistant",     label: "Asistente" },
   { path: "/report",        label: "Informe Final" },
   { path: "/log",           label: "Log Auditoría" },
+  { path: "/glossary",      label: "📖 Diccionario" },
 ]
 
 interface UserPerm {
