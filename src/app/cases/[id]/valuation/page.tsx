@@ -930,9 +930,6 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
               </tfoot>
             </table>
           </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
