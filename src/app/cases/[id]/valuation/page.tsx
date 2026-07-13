@@ -323,19 +323,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const navAjust           = navAjustAsset  // reemplazar con lógica correcta
   const hayNAV             = totalActivosEstim > 0
 
-  // Football field: escala = precio pedido como referencia 100%
-  const escala = precio || 5_000_000
-  function barra(val:number) { return Math.max(0, Math.min(100, Math.abs(val)/escala*100)) }
 
-  const filasFutbol = [
-    { label:"Por flujos — bruto", sub:`EBITDA × ${multiplo}`, val:evFlujos, color:"bg-blue-400" },
-    { label:"Por flujos — ajustado por riesgos", sub:`Después de descontar riesgos identificados`, val:valorFlujosAjust, color:valorFlujosAjust>0?"bg-blue-700":"bg-red-400", negativo:valorFlujosAjust<0 },
-    ...(hayNAV ? [
-      { label:"Por activos — NAV estimado", sub:"Activos de mercado − pasivos reales", val:navEstimado, color:"bg-amber-400", negativo:navEstimado<0 },
-      { label:"Por activos — NAV ajust. por riesgos", sub:"NAV después de descontar riesgos", val:navAjust, color:navAjust>0?"bg-amber-600":"bg-red-400", negativo:navAjust<0 },
-    ] : []),
-    { label:"Patrimonio neto contable (EECC)", sub:"PN auditado EJ N°17 — valor contable RT6/17", val:pnContable, color:"bg-gray-400" },
-  ]
 
   return (
     <div className="p-5 max-w-5xl mx-auto space-y-8">
