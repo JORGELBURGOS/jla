@@ -21,7 +21,8 @@ export async function POST(req: NextRequest) {
         case 'actualizar_item': {
           const colMap: Record<string, string> = {
             'Estado': 'estado', 'Cobertura': 'cobertura', 'Faltantes': 'faltantes',
-            'Alertas': 'alertas', 'Notas': 'notas', 'notas': 'notas'
+            'Alertas': 'alertas', 'Notas': 'notas', 'notas': 'notas',
+            'ComoCumplimentar': 'como_cumplimentar', 'como_cumplimentar': 'como_cumplimentar'
           }
           const col = colMap[String(a.campo)]
           if (!col) { errores.push(`Campo no permitido: ${a.campo}`); break }

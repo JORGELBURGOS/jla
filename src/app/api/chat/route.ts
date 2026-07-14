@@ -125,7 +125,7 @@ Buscá impacto en TODOS los elementos. No solo el más obvio. Sé exhaustivo.
 Después de tu análisis, agregá al final. El usuario VE cada acción como un card con botón "Guardar", no como código.
 
 ACCIONES_JSON:[
-  {"tipo":"actualizar_item","n_item":N,"campo":"Estado|Cobertura|Faltantes|Alertas|Notas","valor":"...","descripcion":"texto claro para el usuario"},
+  {"tipo":"actualizar_item","n_item":N,"campo":"Estado|Cobertura|Faltantes|Alertas|Notas|ComoCumplimentar","valor":"...","descripcion":"texto claro para el usuario"},
   {"tipo":"editar_titulo_item","n_item":N,"nuevo_titulo":"título corregido","descripcion":"texto claro"},
   {"tipo":"editar_enunciado_riesgo","riesgo_existente":"texto EXACTO actual","nuevo_enunciado":"enunciado corregido","descripcion":"texto claro"},
   {"tipo":"actualizar_supuesto","label":"label EXACTO","valor":"valor nuevo","descripcion":"texto claro"},
@@ -140,7 +140,7 @@ ACCIONES_JSON:[
 ]
 
 CUÁNDO USAR CADA TIPO:
-- actualizar_item: modificar estado, cobertura, faltantes, alertas o notas de un item EXISTENTE
+- actualizar_item: modificar estado, cobertura, faltantes, alertas, notas o ComoCumplimentar de un item EXISTENTE. El campo 'ComoCumplimentar' edita las instrucciones de cómo obtener o cumplimentar el requerimiento.
 - editar_titulo_item: corregir o mejorar el título/enunciado de un requerimiento existente (campo 'documento'). Usar cuando el usuario pide renombrar, reformular o corregir el texto de un ítem.
 - editar_enunciado_riesgo: corregir o mejorar el enunciado de un riesgo existente. Usar cuando el usuario pide reformular, precisar o corregir el texto de un riesgo.
 - nuevo_item: el usuario identifica algo que NO está en el tracker todavía → crear item nuevo
