@@ -52,10 +52,18 @@ const SUGERENCIAS = [
 
 export default function AssistantPage({ params }: { params: { id: string } }) {
   const caseId = params.id
-  const [messages, setMessages] = useState<Message[]>([{
+  const CHAT_KEY = `jla_chat_${caseId}`
+  const BIENVENIDA: Message = {
     role: "assistant",
     content: "Hola! Estoy al tanto de todo el estado del caso: requerimientos, riesgos, supuestos, ambiental y validación del plan.\n\nContame lo que descubriste o preguntame lo que necesitás. Cuando haya algo para guardar, te voy a proponer los cambios en lenguaje claro y los aplicamos juntos."
-  }])
+  }
+  const [messages, setMessages] = useState<Message[]>(() => {
+    if (typeof window === "undefined") return [BIENVENIDA]
+    try {
+      const saved = localStorage.getItem(CHAT_KEY)
+      return saved ? JSON.parse(saved) : [BIENVENIDA]
+    } catch { return [BIENVENIDA] }
+  })
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [applying, setApplying] = useState(false)
@@ -64,6 +72,17 @@ export default function AssistantPage({ params }: { params: { id: string } }) {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }) }, [messages])
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    try { localStorage.setItem(CHAT_KEY, JSON.stringify(messages.slice(-60))) } catch {}
+  }, [messages, CHAT_KEY])
+
+  function clearChat() {
+    if (!confirm("¿Limpiar el historial de esta conversación?")) return
+    const bienvenida: Message = { role: "assistant", content: "Historial limpiado. ¿En qué te ayudo?" }
+    setMessages([bienvenida])
+    try { localStorage.removeItem(CHAT_KEY) } catch {}
+  }
 
   function showToast(msg: string, ok = true) {
     setToast({ msg, ok })
@@ -292,6 +311,12 @@ export default function AssistantPage({ params }: { params: { id: string } }) {
 
       {/* Input */}
       <div className="px-6 pb-5 pt-3 bg-white border-t border-gray-100 flex-shrink-0">
+        <div className="flex items-center justify-between mb-1.5 px-0.5">
+          <span className="text-xs text-gray-400">{messages.length - 1} mensaje{messages.length !== 2 ? "s" : ""} en el historial</span>
+          <button onClick={clearChat} className="text-xs text-gray-400 hover:text-red-500 transition-colors">
+            Limpiar chat ✕
+          </button>
+        </div>
         <div className="flex gap-3">
           <textarea
             value={input}
