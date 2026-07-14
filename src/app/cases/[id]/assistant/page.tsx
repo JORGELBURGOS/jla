@@ -7,6 +7,7 @@ interface Accion {
   descripcion?: string
   n_item?: number; campo?: string; valor?: string
   label?: string; riesgo_existente?: string; nuevo_impacto?: number; nueva_probabilidad?: string
+  nuevo_titulo?: string; nuevo_enunciado?: string; risk_id?: string
   hoja?: string; clave?: string; nota?: string; justificacion?: string
   _aplicado?: boolean
 }
@@ -24,6 +25,8 @@ function descripcionLegible(a: Accion): string {
     const campo = a.campo === "Notas" ? "nota interna" : a.campo === "Estado" ? "estado" : a.campo === "Cobertura" ? "cobertura" : a.campo === "Faltantes" ? "faltantes" : a.campo === "Alertas" ? "alertas" : a.campo ?? ""
     return `Ítem N°${a.n_item} — actualizar ${campo}${a.valor ? `: "${String(a.valor).slice(0, 60)}"` : ""}`
   }
+  if (a.tipo === "editar_titulo_item") return `Ítem N°${a.n_item} — renombrar título: "${String(a.nuevo_titulo ?? '').slice(0,80)}"`
+  if (a.tipo === "editar_enunciado_riesgo") return `Riesgo — nuevo enunciado: "${String(a.nuevo_enunciado ?? '').slice(0,80)}"`
   if (a.tipo === "actualizar_supuesto") return `Supuesto "${a.label}" → ${a.valor}`
   if (a.tipo === "actualizar_riesgo") {
     const parts = []

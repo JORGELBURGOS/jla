@@ -41,6 +41,45 @@ export async function POST(req: NextRequest) {
           break
         }
 
+        // ── EDITAR TÍTULO DE ÍTEM ─────────────────────────────────────────
+        case 'editar_titulo_item': {
+          const nuevoTitulo = String(a.nuevo_titulo ?? a.valor ?? '').trim()
+          if (!nuevoTitulo) { errores.push('Título vacío'); break }
+          const { error: e } = await db.from('dd_case_requirements')
+            .update({
+              documento: nuevoTitulo,
+              analizado_por: 'Due Diligence (IA, aprobado por usuario)',
+              fecha_analisis: fechaHoy,
+              updated_at: new Date().toISOString()
+            })
+            .eq('case_id', caseId).eq('n_item', Number(a.n_item))
+          if (e) { errores.push(`Error ítem ${a.n_item}: ${e.message}`); break }
+          aplicados.push(`Título ítem N°${a.n_item} → "${nuevoTitulo}"`)
+          break
+        }
+
+        // ── EDITAR ENUNCIADO DE RIESGO ────────────────────────────────────
+        case 'editar_enunciado_riesgo': {
+          const nuevoEnunciado = String(a.nuevo_enunciado ?? a.valor ?? '').trim()
+          if (!nuevoEnunciado) { errores.push('Enunciado vacío'); break }
+          // Buscar por risk_id si se provee, o por texto exacto
+          let query = db.from('dd_case_risks')
+            .update({
+              riesgo: nuevoEnunciado,
+              updated_at: new Date().toISOString()
+            })
+            .eq('case_id', caseId)
+          if (a.risk_id) {
+            query = query.eq('id', String(a.risk_id))
+          } else {
+            query = query.eq('riesgo', String(a.riesgo_existente ?? ''))
+          }
+          const { error: e } = await query
+          if (e) { errores.push(`Error riesgo: ${e.message}`); break }
+          aplicados.push(`Enunciado de riesgo actualizado → "${nuevoEnunciado.slice(0,60)}"`)
+          break
+        }
+
         // ── NUEVO REQUERIMIENTO ────────────────────────────────────────────
         case 'nuevo_item': {
           // Calcular el próximo n_item
