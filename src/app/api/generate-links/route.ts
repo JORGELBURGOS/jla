@@ -96,7 +96,8 @@ Solo vincular pares con relación clara y directa. Respondé SOLO con JSON váli
       return NextResponse.json({ ok: true, links: 0, msg: "Todos los vínculos ya existían" })
     }
 
-    const { error } = await db.from("dd_case_req_risk_links").insert(toInsert)
+    const { error } = await db.from("dd_case_req_risk_links")
+      .upsert(toInsert, { onConflict: 'case_id,n_item,risk_id', ignoreDuplicates: true })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
     return NextResponse.json({
