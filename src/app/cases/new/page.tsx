@@ -133,6 +133,15 @@ export default function NewCasePage() {
         )
       }
 
+      // Generar vínculos automáticos entre requerimientos y riesgos del template
+      try {
+        await fetch("/api/generate-links", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ caseId })
+        })
+      } catch { /* se pueden generar manualmente desde el tracker */ }
+
       router.push(`/cases/${caseId}`)
     } catch (e) {
       alert("Error: " + (e instanceof Error ? e.message : "desconocido"))
