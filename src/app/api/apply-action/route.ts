@@ -162,6 +162,14 @@ export async function POST(req: NextRequest) {
           })
           if (e) { errores.push(`Error creando riesgo: ${e.message}`); break }
           aplicados.push(`Nuevo riesgo: ${String(a.riesgo ?? a.descripcion).slice(0, 50)}`)
+          // Auto-generar vínculos para el nuevo riesgo
+          try {
+            const base = process.env.NEXT_PUBLIC_APP_URL ?? 'https://jla-ten.vercel.app'
+            await fetch(`${base}/api/generate-links`, {
+              method:'POST', headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({caseId})
+            })
+          } catch { /* vínculos se pueden generar manualmente */ }
           break
         }
 

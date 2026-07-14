@@ -263,6 +263,8 @@ export default function RequirementsPage({ params }: { params: { id: string } })
   const [items, setItems]     = useState<Req[]>([])
   const [linksMap, setLinksMap] = useState<LinksMap>({})
   const [tab, setTab]         = useState<"interna" | "vendedor">("interna")
+  const [generando, setGenerando] = useState(false)
+  const [genMsg, setGenMsg]       = useState("")
   const [highlightItem, setHighlightItem] = useState(0)
   useEffect(() => {
     const p = new URLSearchParams(window.location.search)
@@ -345,6 +347,19 @@ export default function RequirementsPage({ params }: { params: { id: string } })
             <button className="px-3 py-1 rounded text-xs bg-white text-[#1a2744] shadow-sm font-semibold">Vista para el vendedor</button>
           </div>
         </div>
+        {/* Generar vínculos IA */}
+        <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 mb-3">
+          <div className="flex-1 text-xs text-blue-700">
+            {genMsg
+              ? <span className={genMsg.startsWith("Error") ? "text-red-600 font-semibold" : "text-green-700 font-semibold"}>{genMsg}</span>
+              : "Vinculá automáticamente ítems y riesgos usando IA — funciona para cualquier caso"}
+          </div>
+          <button onClick={generarVinculos} disabled={generando}
+            className="flex items-center gap-2 text-xs bg-[#1a2744] text-white px-3 py-1.5 rounded-lg hover:bg-[#0d1525] disabled:opacity-50 flex-shrink-0 font-medium">
+            {generando ? <><span className="animate-spin inline-block">⟳</span> Generando...</> : "⟳ Generar vínculos con IA"}
+          </button>
+        </div>
+
         <div className="space-y-1">
           {pendientes.map(item => (
             <div key={item.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3">

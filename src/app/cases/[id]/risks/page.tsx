@@ -186,7 +186,39 @@ export default function RisksPage({ params }: { params: { id: string } }) {
   const [expandAll, setExpandAll]   = useState(false)
   const [itemLinksMap, setItemLinksMap] = useState<Record<string, ItemLink[]>>({})
   const [highlightId, setHighlightId]  = useState("")
+  const [generando, setGenerando]      = useState(false)
+  const [genMsg, setGenMsg]            = useState("")
   const db = createClient()
+
+  async function generarVinculos() {
+    setGenerando(true); setGenMsg("")
+    try {
+      const res = await fetch("/api/generate-links", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({caseId})
+      })
+      const data = await res.json()
+      setGenMsg(data.msg ?? (data.error ? `Error: ${data.error}` : "Listo"))
+      if (data.ok && data.links > 0) {
+        // Recargar links
+        Promise.all([
+          db.from("dd_case_req_risk_links").select("risk_id,n_item,efecto,descripcion").eq("case_id",caseId),
+          db.from("dd_case_requirements").select("n_item,documento,estado").eq("case_id",caseId)
+        ]).then(([{data:ld},{data:rd}]) => {
+          const reqIdx: Record<number,{documento:string;estado:string}> = {}
+          ;(rd??[]).forEach((r:Record<string,unknown>) => { reqIdx[r.n_item as number] = {documento:String(r.documento??"").slice(0,65),estado:r.estado as string} })
+          const map: Record<string,ItemLink[]> = {}
+          ;(ld??[]).forEach((l:Record<string,unknown>) => {
+            const rid=l.risk_id as string; const ni=l.n_item as number; const req=reqIdx[ni]; if(!req)return
+            if(!map[rid])map[rid]=[]
+            map[rid].push({n_item:ni,efecto:l.efecto as string,descripcion:l.descripcion as string,documento:req.documento,estado:req.estado})
+          })
+          setItemLinksMap(map)
+        })
+      }
+    } catch { setGenMsg("Error de conexión") }
+    finally { setGenerando(false) }
+  }
 
   useEffect(() => {
     // Leer el highlight del URL sin useSearchParams (evita problemas con Suspense)
@@ -250,7 +282,18 @@ export default function RisksPage({ params }: { params: { id: string } }) {
             className="text-xs text-gray-500 border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50">
             {expandAll ? "Colapsar todo" : "Expandir todo"}
           </button>
-          <div className="card p-3 text-right">
+          <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2">
+          <div className="flex-1 text-xs text-blue-700">
+            {genMsg
+              ? <span className={genMsg.startsWith("Error") ? "text-red-600 font-semibold" : "text-green-700 font-semibold"}>{genMsg}</span>
+              : "Vínculos automáticos ítems ↔ riesgos"}
+          </div>
+          <button onClick={generarVinculos} disabled={generando}
+            className="flex items-center gap-1.5 text-xs bg-[#1a2744] text-white px-3 py-1.5 rounded-lg hover:bg-[#0d1525] disabled:opacity-50 flex-shrink-0">
+            {generando ? <><span className="animate-spin inline-block">⟳</span> Generando...</> : "⟳ Generar con IA"}
+          </button>
+        </div>
+        <div className="card p-3 text-right">
             <div className="text-2xl font-black text-red-700">{fmtUSD(Math.abs(total))}</div>
             <div className="text-xs text-gray-500">{precio ? Math.round(Math.abs(total)/precio*100) : 0}% del precio pedido</div>
           </div>
