@@ -18,6 +18,7 @@ interface Case {
 export default function HomePage() {
   const db = createClient()
   const [email, setEmail]           = useState("")
+  const [canCreate, setCanCreate]   = useState(false)
   const [emailInput, setEmailInput] = useState("")
   const [passInput,  setPassInput]  = useState("")
   const [showPrompt, setShowPrompt] = useState(false)
@@ -34,15 +35,17 @@ export default function HomePage() {
   async function loadCases(userEmail: string) {
     setLoading(true)
     let allowedCases: string[] | null = null
+    if (userEmail === ADMIN_EMAIL) setCanCreate(true)
     if (userEmail !== ADMIN_EMAIL) {
       const { data: perm } = await db.from("dd_user_permissions")
-        .select("is_enabled,allowed_cases").eq("email", userEmail).single()
+        .select("is_enabled,allowed_cases,can_create_cases").eq("email", userEmail).single()
       if (!perm || !perm.is_enabled) {
         localStorage.removeItem(EMAIL_KEY)
         setEmail(""); setError("Este email no tiene acceso. Contactá al administrador.")
         setShowPrompt(true); setLoading(false); return
       }
-      allowedCases = (perm as {allowed_cases:string[]|null}).allowed_cases ?? null
+      allowedCases = (perm as {allowed_cases:string[]|null;can_create_cases?:boolean}).allowed_cases ?? null
+      setCanCreate((perm as {can_create_cases?:boolean}).can_create_cases ?? false)
     }
     let query = db.from("dd_cases")
       .select("*, industry:dd_industries(nombre,icono), sub_sector:dd_sub_sectors(nombre)")
@@ -83,6 +86,7 @@ export default function HomePage() {
     }
 
     localStorage.setItem(EMAIL_KEY, e)
+    setCanCreate((perm as {can_create_cases?:boolean})?.can_create_cases ?? false)
     setEmail(e); setEmailInput(""); setPassInput(""); setError(""); setShowPrompt(false)
     loadCases(e)
   }
@@ -144,7 +148,7 @@ export default function HomePage() {
           <button onClick={changeUser} className="text-xs text-gray-400 hover:text-gray-600 border border-gray-200 px-2.5 py-1 rounded-full">
             Cambiar usuario
           </button>
-          {isAdmin && <Link href="/cases/new" className="btn-primary">+ Nuevo caso</Link>}
+          {(isAdmin || canCreate) && <Link href="/cases/new" className="btn-primary">+ Nuevo caso</Link>}
         </div>
       </header>
       <main className="max-w-5xl mx-auto px-6 py-8">

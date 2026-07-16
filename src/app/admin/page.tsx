@@ -28,7 +28,7 @@ const ALL_NAV = [
 interface UserPerm {
   id: string; email: string; is_enabled: boolean
   allowed_cases: string[] | null; hidden_nav: string[]
-  can_edit: boolean; notes: string
+  can_edit: boolean; notes: string; can_create_cases?: boolean
 }
 interface Case { id: string; nombre: string }
 
@@ -77,6 +77,7 @@ export default function AdminPage() {
       is_enabled: u.is_enabled, allowed_cases: u.allowed_cases,
       hidden_nav: u.hidden_nav, can_edit: u.can_edit, notes: u.notes,
       password: u.password || "1234",
+      can_create_cases: u.can_create_cases ?? false,
       updated_at: new Date().toISOString()
     }).eq("id", u.id)
     setSaving(null); await loadData()
@@ -172,6 +173,14 @@ export default function AdminPage() {
                       onChange={e => !isAdmin_ && upd(u.id, "can_edit", e.target.checked)}
                       disabled={isAdmin_} className="rounded"/>
                     <span className="text-gray-600">Puede editar</span>
+                  </label>
+
+                  {/* Puede crear casos */}
+                  <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                    <input type="checkbox" checked={u.can_create_cases ?? false}
+                      onChange={e => upd(u.id, "can_create_cases", e.target.checked)}
+                      className="rounded accent-[#1a2744]"/>
+                    <span className="text-gray-600">Puede crear casos</span>
                   </label>
 
                   {/* Resumen */}
