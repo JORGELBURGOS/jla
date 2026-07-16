@@ -9,6 +9,8 @@ interface SubSector { id: string; nombre: string; descripcion: string | null }
 interface TplPreview { reqs: number; risks: number; sups: number }
 
 const STEPS = ["Empresa", "Sector", "Preview", "Confirmar"]
+const ADMIN_EMAIL = "jorgeleonburgos@gmail.com"
+const EMAIL_KEY   = "jla_user_email"
 
 export default function NewCasePage() {
   const router = useRouter()
@@ -141,6 +143,21 @@ export default function NewCasePage() {
           body: JSON.stringify({ caseId })
         })
       } catch { /* se pueden generar manualmente desde el tracker */ }
+
+      // Si el usuario no es admin, agregar el caso a su allowed_cases automáticamente
+      const userEmail = typeof window !== "undefined" ? localStorage.getItem(EMAIL_KEY) ?? "" : ""
+      if (userEmail && userEmail !== ADMIN_EMAIL) {
+        try {
+          const { data: perm } = await db.from("dd_user_permissions")
+            .select("allowed_cases").eq("email", userEmail).single()
+          const cur: string[] = (perm as {allowed_cases:string[]|null})?.allowed_cases ?? []
+          if (!cur.includes(caseId)) {
+            await db.from("dd_user_permissions")
+              .update({ allowed_cases: [...cur, caseId] })
+              .eq("email", userEmail)
+          }
+        } catch { /* silencioso */ }
+      }
 
       router.push(`/cases/${caseId}`)
     } catch (e) {
