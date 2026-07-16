@@ -95,7 +95,7 @@ export default function AdminPage() {
   function toggleCase(u: UserPerm, caseId: string) {
     const cur = u.allowed_cases ?? []
     const next = cur.includes(caseId) ? cur.filter(c => c !== caseId) : [...cur, caseId]
-    upd(u.id, "allowed_cases", next.length ? next : null)
+    upd(u.id, "allowed_cases", next)  // [] = sin casos, null = todos los casos
   }
   function toggleNav(u: UserPerm, path: string) {
     const hidden = u.hidden_nav ?? []
