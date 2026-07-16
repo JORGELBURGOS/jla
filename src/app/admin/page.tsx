@@ -63,7 +63,7 @@ export default function AdminPage() {
     if (!email || !email.includes("@")) return
     setAdding(true)
     await db.from("dd_user_permissions").insert({
-      email, is_enabled: true, allowed_cases: null,
+      email, is_enabled: true, allowed_cases: [],
       hidden_nav: [], can_edit: true, password: "1234",
       created_by: ADMIN_EMAIL
     })
