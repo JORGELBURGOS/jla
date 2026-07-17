@@ -24,6 +24,27 @@ export default function GlossaryPage({ params }: { params: { id: string } }) {
   const [catOpen, setCatOpen] = useState<Record<string,boolean>>({})
   const [openTerm, setOpenTerm] = useState<string|null>(null)
 
+  async function actualizarConIA() {
+    setGenerando(true); setGenMsg("")
+    try {
+      const res = await fetch("/api/generate-glossary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ caseId })
+      })
+      const data = await res.json()
+      setGenMsg(data.msg ?? (data.error ? `Error: ${data.error}` : "Listo"))
+      if (data.ok && data.agregados > 0) {
+        // Recargar el diccionario
+        db.from("dd_glossary").select("*").eq("org_id","jl-advisory")
+          .or(`case_id.is.null,case_id.eq.${caseId}`)
+          .order("categoria").order("orden")
+          .then(({ data: d }) => setTerminos((d ?? []) as GlosarioItem[]))
+      }
+    } catch { setGenMsg("Error de conexión") }
+    finally { setGenerando(false) }
+  }
+
   useEffect(() => {
     db.from("dd_glossary").select("*").eq("org_id","jl-advisory")
       .or(`case_id.is.null,case_id.eq.${caseId}`)
@@ -60,6 +81,20 @@ export default function GlossaryPage({ params }: { params: { id: string } }) {
           <span className="font-semibold text-gray-700">{terms.length} entradas</span>
         </p>
       </div>
+        </div>
+        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+          {genMsg && (
+            <span className={`text-xs font-semibold ${genMsg.startsWith("Error") ? "text-red-600" : "text-green-700"}`}>
+              {genMsg}
+            </span>
+          )}
+          <button onClick={actualizarConIA} disabled={generando}
+            className="flex items-center gap-2 bg-[#1a2744] text-white text-xs px-3 py-2 rounded-xl hover:bg-[#0d1525] disabled:opacity-50 font-medium">
+            {generando
+              ? <><span className="animate-spin inline-block">⟳</span> Analizando...</>
+              : <>🤖 Actualizar con IA</>}
+          </button>
+        </div>
 
       {/* Buscador */}
       <div className="relative">
