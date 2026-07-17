@@ -74,7 +74,7 @@ function ItemRow({ item, toggling, onToggle, linksMap, caseId, highlight, esON }
   const itemLinks = linksMap[item.n_item] ?? []
 
   return (
-    <div ref={ref} className={`border-b border-gray-50 last:border-0 ${highlight ? "ring-2 ring-amber-400 rounded" : ""} ${pendienteYSena ? "border-l-2 border-l-purple-400" : item.antes_visita ? "border-l-2 border-l-teal-400" : ""}`}>
+    <div ref={ref} className={`border-b border-gray-50 last:border-0 ${highlight ? "ring-2 ring-amber-400 rounded" : ""} ${(!esON && pendienteYSena) ? "border-l-2 border-l-purple-400" : item.antes_visita ? "border-l-2 border-l-teal-400" : ""}`}>
       <button
         className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-gray-50 transition-colors text-left"
         onClick={() => setOpen(o => !o)}
@@ -246,8 +246,9 @@ function SeccionRow({ sec, items, toggling, onToggle, linksMap, caseId, highligh
               item={item}
               toggling={toggling}
               onToggle={onToggle}
-              linksMap={linksMap}   // ← pasa el mapa
+              linksMap={linksMap}
               caseId={caseId}
+              esON={esON}
               highlight={item.n_item === highlightItem}
             />
           ))}
