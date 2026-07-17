@@ -156,7 +156,7 @@ export default function BalancePage({ params }: { params: { id: string } }) {
     setSaving(null);setSaved(ej);setTimeout(()=>setSaved(null),2500)
   }
 
-  const sel = EJS.filter(e=>selected.includes(e))
+  const sel = ejercicios.filter(e=>selected.includes(e))
 
   // Filas del balance
   const ACTIVO_C = [
@@ -621,7 +621,7 @@ export default function BalancePage({ params }: { params: { id: string } }) {
             <thead>
               <tr className="bg-[#1a2744] text-white">
                 <th className="text-left py-2 px-3">Concepto</th>
-                {EJS.map(ej => (
+                {ejercicios.map(ej => (
                   <th key={ej} className="text-right py-2 px-2 font-bold whitespace-nowrap">
                     {ej.replace("EJ N°","").replace(" (","\n(").split("\n")[0]}
                     <div className="text-blue-300 font-normal text-xs">{ej.match(/[(](\d+)[)]/)?.[1]}</div>
@@ -633,7 +633,7 @@ export default function BalancePage({ params }: { params: { id: string } }) {
               {/* Ingresos USD */}
               <tr className="border-b border-gray-100 hover:bg-gray-50">
                 <td className="py-1.5 px-3 text-gray-600 font-medium">Ingresos</td>
-                {EJS.map(ej => {
+                {ejercicios.map(ej => {
                   const b = get(ej); const tc = b.tc_promedio || 1
                   return <td key={ej} className="py-1.5 px-2 text-right font-mono text-gray-700">{b.ingresos ? usd(b.ingresos, tc) : "—"}</td>
                 })}
@@ -641,7 +641,7 @@ export default function BalancePage({ params }: { params: { id: string } }) {
               {/* EBITDA USD */}
               <tr className="bg-[#1a2744] text-white">
                 <td className="py-2 px-3 font-black">EBITDA</td>
-                {EJS.map(ej => {
+                {ejercicios.map(ej => {
                   const b = get(ej); const tc = b.tc_promedio || 1
                   const ebitda = (b.ingresos - b.costos_servicios - b.gastos_admin - b.gastos_comercial) + b.depreciacion
                   return <td key={ej} className="py-2 px-2 text-right font-black font-mono">{ebitda > 0 ? usd(ebitda, tc) : "—"}</td>
@@ -650,7 +650,7 @@ export default function BalancePage({ params }: { params: { id: string } }) {
               {/* Margen EBITDA */}
               <tr className="border-b border-gray-100 bg-gray-50">
                 <td className="py-1.5 px-3 text-gray-500 italic">Margen EBITDA</td>
-                {EJS.map(ej => {
+                {ejercicios.map(ej => {
                   const b = get(ej)
                   const ebitda = (b.ingresos - b.costos_servicios - b.gastos_admin - b.gastos_comercial) + b.depreciacion
                   const m = b.ingresos > 0 ? (ebitda / b.ingresos * 100) : 0
@@ -660,7 +660,7 @@ export default function BalancePage({ params }: { params: { id: string } }) {
               {/* Margen bruto */}
               <tr className="border-b border-gray-100 hover:bg-gray-50">
                 <td className="py-1.5 px-3 text-gray-600">Margen bruto</td>
-                {EJS.map(ej => {
+                {ejercicios.map(ej => {
                   const b = get(ej)
                   const m = b.ingresos > 0 ? ((b.ingresos - b.costos_servicios) / b.ingresos * 100) : 0
                   return <td key={ej} className="py-1.5 px-2 text-right font-mono text-gray-700">{b.ingresos ? `${m.toFixed(1)}%` : "—"}</td>
@@ -669,7 +669,7 @@ export default function BalancePage({ params }: { params: { id: string } }) {
               {/* Resultado neto USD */}
               <tr className="border-b border-gray-100 hover:bg-gray-50">
                 <td className="py-1.5 px-3 text-gray-600">Resultado neto</td>
-                {EJS.map(ej => {
+                {ejercicios.map(ej => {
                   const b = get(ej); const tc = b.tc_promedio || 1
                   return <td key={ej} className={`py-1.5 px-2 text-right font-bold font-mono ${b.resultado_neto < 0 ? "text-red-600" : "text-green-600"}`}>{b.resultado_neto ? usd(b.resultado_neto, tc) : "—"}</td>
                 })}
@@ -677,7 +677,7 @@ export default function BalancePage({ params }: { params: { id: string } }) {
               {/* Margen neto */}
               <tr className="border-b border-gray-100 bg-gray-50">
                 <td className="py-1.5 px-3 text-gray-500 italic">Margen neto</td>
-                {EJS.map(ej => {
+                {ejercicios.map(ej => {
                   const b = get(ej)
                   const m = b.ingresos > 0 ? (b.resultado_neto / b.ingresos * 100) : 0
                   return <td key={ej} className={`py-1.5 px-2 text-right font-bold ${m >= 5 ? "text-green-600" : m >= 0 ? "text-amber-600" : "text-red-500"}`}>{b.ingresos ? `${m.toFixed(1)}%` : "—"}</td>
@@ -686,7 +686,7 @@ export default function BalancePage({ params }: { params: { id: string } }) {
               {/* Deuda neta / TC cierre */}
               <tr className="hover:bg-gray-50">
                 <td className="py-1.5 px-3 text-gray-600">Activo total</td>
-                {EJS.map(ej => {
+                {ejercicios.map(ej => {
                   const b = get(ej); const t = tots(b); const tc = b.tc_cierre || 1
                   return <td key={ej} className="py-1.5 px-2 text-right font-mono text-gray-700">{t.actT ? usd(t.actT, tc) : "—"}</td>
                 })}
