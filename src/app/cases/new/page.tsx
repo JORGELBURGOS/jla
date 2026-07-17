@@ -81,7 +81,7 @@ export default function NewCasePage() {
         id: caseId, nombre, cuit: cuit || null,
         industry_id: industryId, sub_sector_id: subSectorId,
         precio_pedido: parseFloat(precio) || 0, moneda: "USD",
-        estado: "Activo", org_id: "jl-advisory"
+        estado: "Activo", org_id: "jl-advisory", tipo_caso: tipoCaso
       })
 
       // Instanciar templates — universales + sector
