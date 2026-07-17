@@ -279,9 +279,11 @@ export default function NewCasePage() {
                     className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a2744]"/>
                 </div>
                 <div>
+                  {tipoCaso !== "on" && <>
                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">Precio pedido (USD)</label>
                   <input type="number" value={precio} onChange={e => setPrecio(e.target.value)} placeholder="5000000"
                     className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a2744]"/>
+                  </>
                 </div>
               </div>
             </div>
