@@ -64,10 +64,11 @@ export default function NewCasePage() {
   const selectedSub = subSectors.find(s => s.id === subSectorId)
 
   const canNext = [
-    nombre.trim().length > 3,
-    !!industryId && !!subSectorId,
-    true,
-    true
+    !!tipoCaso,                          // step 0: Tipo — siempre true
+    nombre.trim().length > 3,            // step 1: Empresa
+    !!industryId && !!subSectorId,       // step 2: Sector
+    true,                                // step 3: Preview
+    true,                                // step 4: Confirmar
   ][step]
 
   async function create() {
