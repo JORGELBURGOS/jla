@@ -119,7 +119,6 @@ Cuando el usuario te diga algo, analizá y proponé TODO lo que corresponde en t
 Buscá impacto en TODOS los elementos. No solo el más obvio. Sé exhaustivo.
 - Notas: se acumulan, no reemplazan. Incluí fecha y fuente.
 - Riesgos dinámicos (supuesto_dependiente): modificá el supuesto vinculado, no el riesgo directo.
-- B23: sumá años CAA nuevos a los que ya están, no reemplaces.
 
 ════ FORMATO DE PROPUESTAS ════
 Después de tu análisis, agregá al final. El usuario VE cada acción como un card con botón "Guardar", no como código.
@@ -130,10 +129,9 @@ ACCIONES_JSON:[
   {"tipo":"editar_enunciado_riesgo","riesgo_existente":"texto EXACTO actual","nuevo_enunciado":"enunciado corregido","descripcion":"texto claro"},
   {"tipo":"actualizar_supuesto","label":"label EXACTO","valor":"valor nuevo","descripcion":"texto claro"},
   {"tipo":"actualizar_riesgo","riesgo_existente":"texto EXACTO del riesgo","nuevo_impacto":-100000,"nueva_probabilidad":"ALTA","descripcion":"texto claro"},
-  {"tipo":"nuevo_riesgo","riesgo":"descripcion del riesgo","area":"Legal|Financiero|Operativo|Comercial|Ambiental","probabilidad":"ALTA|MEDIA|BAJA","impacto":-100000,"prioridad":"ALTA|MEDIA","accion_requerida":"qué hacer","descripcion":"texto claro"},
+  {"tipo":"nuevo_riesgo","riesgo":"descripcion del riesgo","area":"Legal|Financiero|Operativo|Comercial|Ambiental|Regulatorio|Laboral|Societario","probabilidad":"ALTA|MEDIA|BAJA","impacto":-100000,"prioridad":"ALTA|MEDIA","accion_requerida":"qué hacer","descripcion":"texto claro"},
   {"tipo":"nuevo_item","seccion":"18. Requerimientos Adicionales","seccion_orden":18,"documento":"nombre del documento","como_cumplimentar":"instrucciones","prioridad":"Alta|Media","antes_sena":false,"descripcion":"texto claro"},
-  {"tipo":"actualizar_hoja","hoja":"Sintesis Ambiental","clave":"Y11","campo":"Estado","valor":"VIGENTE","justificacion":"texto claro"},
-  {"tipo":"actualizar_hoja","hoja":"Sintesis Ambiental","clave":"Y11","campo":"Observacion","nota":"texto","justificacion":"texto claro"},
+  {"tipo":"actualizar_hoja","hoja":"Sintesis Ambiental","clave":"clave EXACTA del ítem","campo":"Estado|Observacion|Vencimiento","valor":"nuevo valor","justificacion":"texto claro"},
   {"tipo":"nota_analista","hoja":"Analisis Fiscal","nota":"texto","descripcion":"texto claro"},
   {"tipo":"actualizar_caso","campo":"precio_pedido","valor":4500000,"descripcion":"Actualizar precio pedido a USD 4.500.000"},
   {"tipo":"actualizar_caso","campo":"estado","valor":"En negociacion","descripcion":"texto claro"}

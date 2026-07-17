@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
 
   const db = createServiceClient()
 
-  // Cargar TODO el contexto actual de la plataforma
+  // Cargar contexto completo del caso
   const [
     { data: reqs }, { data: supuestos }, { data: riesgos },
     { data: env },  { data: valid },    { data: caseData }
@@ -23,27 +23,27 @@ export async function POST(req: NextRequest) {
     db.from('dd_case_risks').select('*').eq('case_id', caseId).neq('estado','DUPLICADO').order('fila_orden'),
     db.from('dd_case_environmental').select('*').eq('case_id', caseId).order('orden'),
     db.from('dd_case_validation').select('*').eq('case_id', caseId).order('seccion_orden'),
-    db.from('dd_cases').select('nombre,precio_pedido').eq('id', caseId).single()
+    db.from('dd_cases')
+      .select('nombre,precio_pedido,industry:dd_industries(nombre),sub_sector:dd_sub_sectors(nombre)')
+      .eq('id', caseId).single()
   ])
 
-  // Nombres de archivos ya analizados (para detectar duplicados)
+  const case_ = caseData as Record<string,unknown>
+  const industry = (case_?.industry as Record<string,string>)?.nombre ?? ''
+  const subSector = (case_?.sub_sector as Record<string,string>)?.nombre ?? ''
+  const caseName = String(case_?.nombre ?? 'la empresa bajo análisis')
+
+  // Detectar posibles duplicados
   const archivosYaAnalizados = (reqs ?? [])
     .flatMap((r: Record<string,unknown>) => [
       String(r.notas ?? ''), String(r.cobertura ?? ''), String(r.alertas ?? '')
-    ])
-    .join(' ')
-
+    ]).join(' ')
   const nombresSubidos = files.map((f: Record<string,string>) => f.name)
   const posibleDuplicado = nombresSubidos.filter((n: string) =>
     archivosYaAnalizados.toLowerCase().includes(n.toLowerCase().replace('.pdf','').slice(0,20))
   )
 
-  const supB23 = (supuestos ?? []).find((s: Record<string,unknown>) =>
-    String(s.label).includes('CAA documentado') || String(s.label).includes('B23')
-  )
-  const anosDocumentados = supB23 ? String((supB23 as Record<string,unknown>).valor ?? '') : ''
-
-  // Tracker completo con todo el contexto
+  // Contextos
   const trackerCtx = (reqs ?? []).map((it: Record<string,unknown>) => {
     const pendiente = it.estado !== 'Recibido'
     return `N°${it.n_item} [${it.estado}] ${it.documento}` +
@@ -64,66 +64,49 @@ export async function POST(req: NextRequest) {
     (r.notas ? `\n  Notas: ${String(r.notas).slice(0,100)}` : '')
   ).join('\n\n')
 
-  const ambientalCtx = [
-    '=CERTIFICADOS=',
-    ...(env ?? []).filter((e: Record<string,unknown>) => e.tipo === 'certificado').map((e: Record<string,unknown>) =>
-      `${e.clave} | ${e.estado} | vence: ${e.vencimiento ?? 'N/D'} | ${e.notas ?? ''}`
-    ),
-    '=CORRIENTES Y=',
-    ...(env ?? []).filter((e: Record<string,unknown>) => e.tipo === 'corriente').map((e: Record<string,unknown>) =>
-      `${e.clave} [${e.estado}] ${e.categoria ?? ''} | ${e.notas ?? ''}`
+  // Síntesis regulatoria/ambiental — genérica según lo que tenga el caso
+  const envItems = (env ?? [])
+  const envByTipo: Record<string, string[]> = {}
+  envItems.forEach((e: Record<string,unknown>) => {
+    const tipo = String(e.tipo ?? 'otro')
+    if (!envByTipo[tipo]) envByTipo[tipo] = []
+    envByTipo[tipo].push(
+      `${e.clave} | ${e.estado ?? ''} | vence: ${e.vencimiento ?? 'N/D'} | ${e.notas ?? ''}`
     )
-  ].join('\n')
+  })
+  const ambientalCtx = Object.entries(envByTipo)
+    .map(([tipo, items]) => `=${tipo.toUpperCase()}=\n${items.join('\n')}`)
+    .join('\n')
 
   const validCtx = (valid ?? []).map((v: Record<string,unknown>) =>
     `${v.clave}: plan=${v.dato_plan ?? 'N/D'} | real=${v.dato_real ?? '(sin dato)'} | estado=${v.estado} | ${v.observaciones ?? ''}`
   ).join('\n')
 
-  const systemPrompt = `IDENTIDAD: Presentás todo el análisis como parte del equipo de JL Advisory. Nunca mencionés IA, inteligencia artificial, Claude, Anthropic ni DeepSeek. No uses frases como 'como IA' o 'análisis de IA'. El análisis es de JL Advisory.
+  const systemPrompt = `IDENTIDAD: Presentás todo el análisis como parte del equipo de JL Advisory. Nunca mencionés IA, inteligencia artificial, Claude ni Anthropic. El análisis es de JL Advisory.
 
-Sos un analista senior de M&A con especialización en residuos peligrosos Argentina.
-Estás analizando documentos de due diligence para ${(caseData as Record<string,unknown>)?.nombre ?? 'ALFA SERVICE'} (USD ${Number((caseData as Record<string,unknown>)?.precio_pedido ?? 5000000).toLocaleString('es-AR')}).
+Sos un analista senior de M&A con amplia experiencia en due diligence de empresas en distintas industrias.
+Estás analizando documentos para el caso: ${caseName}${industry ? ` | Industria: ${industry}` : ''}${subSector ? ` | Sector: ${subSector}` : ''}.
 
 ════ MENTALIDAD DE ANÁLISIS ════
 Cuando recibís un documento:
-1. IDENTIFICÁ su tipo (CAA, ISO, DIA, ART, escritura, EECC, manifiestos, poder, etc.)
-2. BUSCÁ en TODA la base de datos qué ítems, supuestos, riesgos, certificados y validaciones aplican
+1. IDENTIFICÁ su tipo y contenido leyendo el documento en detalle
+2. BUSCÁ en el tracker cuáles ítems corresponden a este documento, basándote en la descripción de cada ítem y su campo NECESITA — no hay mapeo fijo, inferís vos la correspondencia
 3. PROPONÉ TODOS los cambios que correspondan — no solo los más obvios
-4. Si el documento aporta evidencia que modifica un riesgo, proponelo
-5. Si el documento confirma algo que estaba en duda, actualizalo
+4. Si el documento aporta evidencia que modifica un riesgo existente, proponelo
+5. Si el documento confirma algo en duda, actualizalo
 6. Si el documento contradice algo ya cargado, alertalo
-7. Sé EXHAUSTIVO: mejor proponer de más que de menos
+7. Si encontrás un riesgo nuevo que no estaba identificado, proponelo
+8. Sé EXHAUSTIVO: mejor proponer de más que de menos
 
-════ DOCUMENTOS YA ANALIZADOS (PARA DETECTAR DUPLICADOS) ════
-Si el archivo que recibís ya aparece mencionado en el tracker (en TIENE o NOTAS), indicalo en el resumen y NO repitas propuestas que ya están aplicadas.
-${posibleDuplicado.length ? `POSIBLES DUPLICADOS DETECTADOS: ${posibleDuplicado.join(', ')} — verificá antes de proponer.` : 'Sin duplicados detectados.'}
+════ REGLA DE CORRESPONDENCIA TRACKER ════
+Para asociar un documento a un ítem del tracker:
+- Leé el nombre y descripción de CADA ítem del tracker (campos NECESITA y TIENE)
+- Matcheá por contenido, no por tipo de documento
+- Un mismo documento puede corresponder a múltiples ítems
+- Si el documento tiene información sobre algo que NO está en el tracker, proponelo como alerta o riesgo nuevo
 
-════ CONTEXTO TEMPORAL ════
-La base ya tiene documentos previos. Los documentos que recibís SON ADICIONALES.
-Si recibís un CAA histórico (ej 2016-2017) y en la base ya hay CAA 2025-2026 Recibido → el nuevo documento AMPLÍA la cobertura, no crea gaps hacia adelante.
-${anosDocumentados ? `AÑOS CAA YA DOCUMENTADOS EN B23: ${anosDocumentados} → sumá los nuevos a estos, no los reemplaces.` : ''}
-
-════ GUÍA TIPO DE DOCUMENTO → ÍTEMS Y CAMPOS ════
-CAA Operador (año histórico) → n_item:23 cobertura/faltantes + supuesto B23 (agregar años)
-CAA Operador (año vigente)   → n_item:19 estado/cobertura + ambiental CAA Operador estado/vencimiento
-CAA Transportista            → n_item:19 + n_item:26 (flota habilitada) + ambiental CAA Transportista + corrientes Y del CAA
-Certificado ISO              → n_item:22 estado/cobertura + ambiental ISO SGI estado/vencimiento
-DIA / EIA                    → n_item:24 estado/cobertura + ambiental DIA estado
-Manifiestos transporte/trat  → n_item:29 estado/cobertura/faltantes
-Póliza ART                   → n_item:18 estado/cobertura/alertas + ambiental ART estado/vencimiento
-Escritura terreno/inmueble   → n_item:20 estado/cobertura/alertas
-F.2051 IVA mensual           → n_item:52 estado/cobertura + n_item:11 (DDJJ) + validación ingresos
-F.2002 IIBB mensual          → n_item:53 estado/cobertura + n_item:12 (DDJJ) + validación ingresos
-VTV / Habilitación vehículo  → n_item:54 estado/cobertura + n_item:21 (inventario flota)
-Poder notarial               → n_item:5 estado/cobertura
-Estatuto / escritura societ  → n_item:1 estado/cobertura + validación estructura societaria
-Libro accionistas            → n_item:2 estado/cobertura
-Nómina / planilla personal   → n_item:13 estado/cobertura/alertas
-EECC estados contables       → n_item:6 estado/cobertura + supuestos financieros (ingresos, EBITDA, deuda, CAPEX, capital de trabajo)
-Seguro ambiental             → n_item:28 estado/cobertura/alertas
-Plan de negocios del vendedor→ n_item:47 + validación proyecciones
-Inventario equipos/flota     → n_item:21 + n_item:25/26 + ambiental corrientes Y
-Solicitud información (xlsx) → múltiples ítems según contenido
+════ DOCUMENTOS YA ANALIZADOS ════
+${posibleDuplicado.length ? `POSIBLES DUPLICADOS: ${posibleDuplicado.join(', ')} — verificá antes de proponer.` : 'Sin duplicados detectados.'}
 
 Respondés ÚNICAMENTE con JSON válido. Sin texto extra. Sin markdown.`
 
@@ -134,13 +117,13 @@ ${trackerCtx}
 ${supCtx}
 
 ════ RIESGOS EXISTENTES ════
-${riesgosCtx}
+${riesgosCtx || '(sin riesgos cargados aún)'}
 
-════ SÍNTESIS AMBIENTAL ACTUAL ════
-${ambientalCtx}
+════ SÍNTESIS REGULATORIA/AMBIENTAL ACTUAL ════
+${ambientalCtx || '(sin items cargados)'}
 
 ════ VALIDACIÓN PLAN ACTUAL ════
-${validCtx}
+${validCtx || '(sin datos)'}
 
 ════ DOCUMENTOS A ANALIZAR: ${files.map((f: Record<string,string>) => f.name).join(', ')} ════
 
@@ -148,23 +131,21 @@ Analizá cada documento y respondé con este JSON COMPLETO:
 {
   "resumen": "qué documentos recibiste, qué cubren, qué falta aún, si hay duplicados",
   "actualizaciones_items": [
-    {"n_item":23,"nuevo_estado":"Recibido|Parcial|Pendiente","cobertura":"qué cubre este documento para este ítem","faltantes":"qué sigue faltando para completar el ítem","alertas":"anomalías o inconsistencias encontradas"}
+    {"n_item": N, "nuevo_estado": "Recibido|Parcial|Pendiente", "cobertura": "qué cubre este documento para este ítem", "faltantes": "qué sigue faltando", "alertas": "anomalías o inconsistencias encontradas"}
   ],
   "actualizaciones_supuestos": [
-    {"label":"label EXACTO del supuesto","valor_propuesto":"valor nuevo o acumulado","fuente_textual":"cita textual del documento"}
+    {"label": "label EXACTO del supuesto en la base", "valor_propuesto": "valor nuevo", "fuente_textual": "cita o dato del documento"}
   ],
   "riesgos_propuestos": [
-    {"accion":"modificar","riesgo_existente":"texto EXACTO del riesgo existente","impacto_propuesto":-100000,"probabilidad":"ALTA|MEDIA|BAJA","justificacion":"por qué cambia"},
-    {"accion":"nuevo","riesgo":"texto del nuevo riesgo","area":"Ambiental|Legal|Financiero|Operativo|Comercial","probabilidad":"ALTA","impacto_propuesto":-50000,"prioridad":"ALTA","justificacion":"evidencia del documento"}
+    {"accion": "modificar", "riesgo_existente": "texto EXACTO del riesgo", "impacto_propuesto": -100000, "probabilidad": "ALTA|MEDIA|BAJA", "justificacion": "evidencia del documento"},
+    {"accion": "nuevo", "riesgo": "descripción del riesgo", "area": "Legal|Financiero|Operativo|Comercial|Ambiental|Regulatorio|Laboral|Societario", "probabilidad": "ALTA", "impacto_propuesto": -50000, "prioridad": "ALTA", "justificacion": "evidencia del documento"}
   ],
   "actualizaciones_hojas": [
-    {"hoja":"Síntesis Ambiental","clave":"CAA Operador Fijo","campo":"Estado","valor":"VIGENTE","justificacion":"..."},
-    {"hoja":"Síntesis Ambiental","clave":"CAA Operador Fijo","campo":"Observacion","nota":"texto a agregar","justificacion":"..."},
-    {"hoja":"Validación Plan de Negocios","clave":"Ingresos 2024","campo":"Dato real","valor":"USD 660.000","justificacion":"..."},
-    {"hoja":"Validación Plan de Negocios","clave":"Ingresos 2024","campo":"Estado","valor":"Cuestionado","justificacion":"..."}
+    {"hoja": "Síntesis Ambiental", "clave": "clave EXACTA del ítem en la base", "campo": "Estado|Observacion|Vencimiento", "valor": "nuevo valor", "justificacion": "evidencia del documento"},
+    {"hoja": "Validación Plan de Negocios", "clave": "clave EXACTA", "campo": "Dato real|Estado", "valor": "valor", "justificacion": "evidencia"}
   ],
-  "alertas_generales": "hallazgos importantes que no encajan en las categorías anteriores — texto libre",
-  "items_no_identificados": "contenido del documento que no pudo clasificarse"
+  "alertas_generales": "hallazgos importantes que no encajan en las categorías anteriores",
+  "items_no_identificados": "contenido del documento que no pudo clasificarse en ningún ítem del tracker"
 }`
 
   try {
@@ -189,7 +170,12 @@ Analizá cada documento y respondé con este JSON COMPLETO:
 
     const texto = resp.content.filter(b => b.type === 'text').map(b => (b as Anthropic.TextBlock).text).join('')
     const resultado = JSON.parse(texto.replace(/```json|```/g, '').trim())
-    await db.from('dd_audit_log').insert({ case_id: caseId, accion: 'Triage documento', detalle: files.map((f: Record<string,string>) => f.name).join(', ').slice(0,200), org_id: ORG_ID })
+    await db.from('dd_audit_log').insert({
+      case_id: caseId,
+      accion: 'Triage documento',
+      detalle: files.map((f: Record<string,string>) => f.name).join(', ').slice(0,200),
+      org_id: ORG_ID
+    })
     return NextResponse.json({ ok: true, resultado })
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : 'Error' }, { status: 500 })

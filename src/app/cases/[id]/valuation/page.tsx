@@ -177,7 +177,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const [costoRehabilitacion, setCostoRehabilitacion] = useState(150000)
   const [earnout1, setEarnout1] = useState(100000)  // meta facturación año 1
   const [earnout2, setEarnout2] = useState(100000)  // meta facturación año 2
-  const [earnoutYPF, setEarnoutYPF] = useState(150000) // contrato YPF
+  const [earnoutContrato, setEarnoutContrato] = useState(150000) // contrato clave pendiente
   // Riesgos individuales clave para el cuadro de oferta
   const [riesgoPorNombre, setRiesgoPorNombre] = useState<Record<string,number>>({})
   const [caseName, setCaseName]     = useState("")
@@ -213,14 +213,13 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
         ;(data as {riesgo:string;impacto:number}[]??[]).forEach(r => {
           const txt = r.riesgo.toLowerCase()
           if (txt.includes("extracción") || txt.includes("accionistas")) m.extraccion = (m.extraccion||0) + Math.abs(r.impacto)
-          if (txt.includes("horno rotativo")) m.horno = (m.horno||0) + Math.abs(r.impacto)
-          if (txt.includes("horno piroli") || txt.includes("pirolítico")) m.hornoPirolitico = (m.hornoPirolitico||0) + Math.abs(r.impacto)
+          // Patrones operativos genéricos
+          if (txt.includes("equipo") || txt.includes("maquinaria") || txt.includes("horno") || txt.includes("planta") || txt.includes("instalac")) m.equipos = (m.equipos||0) + Math.abs(r.impacto)
           if (txt.includes("afip") || txt.includes("planes afip") || txt.includes("presentacion")) m.afip = (m.afip||0) + Math.abs(r.impacto)
           if (txt.includes("sipa") || txt.includes("previsional")) m.sipa = (m.sipa||0) + Math.abs(r.impacto)
           if (txt.includes("art ")) m.art = (m.art||0) + Math.abs(r.impacto)
           if (txt.includes("dia ") || txt.includes("declaración de impacto") || txt.includes("dia:") || txt.includes("dia 2015")) m.dia = (m.dia||0) + Math.abs(r.impacto)
           if (txt.includes("servidumbre") || txt.includes("edemsa")) m.servidumbre = (m.servidumbre||0) + Math.abs(r.impacto)
-          if (txt.includes("y36") || txt.includes("amianto")) m.y36 = (m.y36||0) + Math.abs(r.impacto)
           if (txt.includes("vehículo") || txt.includes("sin habilitación") || txt.includes("gij") || txt.includes("hmc")) m.vehiculos = (m.vehiculos||0) + Math.abs(r.impacto)
           if (txt.includes("seguro ambiental")) m.seguroAmb = (m.seguroAmb||0) + Math.abs(r.impacto)
           if (txt.includes("pileta")) m.pileta = (m.pileta||0) + Math.abs(r.impacto)
@@ -740,7 +739,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                     { concepto:"Pago al cierre", val:evFlujos > 0 ? Math.round(evFlujos * 0.5) : 150000, edit:false },
                     { concepto:"Si factura meta año 1", val:earnout1, edit:true, setter:setEarnout1 },
                     { concepto:"Si factura meta año 2", val:earnout2, edit:true, setter:setEarnout2 },
-                    { concepto:"Si obtiene contrato YPF firmado", val:earnoutYPF, edit:true, setter:setEarnoutYPF },
+                    { concepto:"Si obtiene contrato YPF firmado", val:earnoutContrato, edit:true, setter:setEarnoutYPF },
                   ].map((row,i) => (
                     <div key={i} className="flex justify-between items-center border-b border-gray-50 py-0.5">
                       <span className="text-gray-500">{row.concepto}</span>
@@ -776,107 +775,18 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
+                {/* Factores dinámicos desde los riesgos reales del caso */}
                 {[
-                  {
-                    factor: "Horno rotativo 1.500 kg/h",
-                    cat: "⚙️ Operativo",
-                    estado: "Pendiente visita técnica",
-                    estadoCls: "text-amber-600",
-                    sube: riesgoPorNombre.horno || 100000,
-                    baja: riesgoPorNombre.horno || 100000,
-                    nota: "N°38 — Verificar operatividad y año de fabricación"
-                  },
-                  {
-                    factor: "Horno pirolítico",
-                    cat: "⚙️ Operativo",
-                    estado: "Sin documentación — verificar",
-                    estadoCls: "text-red-600",
-                    sube: riesgoPorNombre.hornoPirolitico || 80000,
-                    baja: riesgoPorNombre.hornoPirolitico || 80000,
-                    nota: "N°21/N°38 — Confirmar si existe, estado y habilitación en CAA"
-                  },
-                  {
-                    factor: "Créditos a accionistas",
-                    cat: "💰 Societario",
-                    estado: "Confirmado ARS $117,9M sin cancelar",
-                    estadoCls: "text-red-600",
-                    sube: riesgoPorNombre.extraccion || 140000,
-                    baja: riesgoPorNombre.extraccion || 140000,
-                    nota: "N°11 — Condición esencial: cancelar antes del cierre"
-                  },
-                  {
-                    factor: "DIA cubre corrientes actuales",
-                    cat: "♻️ Ambiental",
-                    estado: "DIA 2015 — corrientes Y11/Y18/Y31/Y36 no cubiertas",
-                    estadoCls: "text-red-600",
-                    sube: riesgoPorNombre.dia || 160000,
-                    baja: riesgoPorNombre.dia || 160000,
-                    nota: "N°27/N°41 — Requiere ampliación de DIA o confirmación DPA"
-                  },
-                  {
-                    factor: "Servidumbre EDEMSA",
-                    cat: "🏭 Inmueble",
-                    estado: "Servidumbre registrada — alcance desconocido",
-                    estadoCls: "text-amber-600",
-                    sube: riesgoPorNombre.servidumbre || 140000,
-                    baja: riesgoPorNombre.servidumbre || 140000,
-                    nota: "N°20/N°50 — Escritura muestra extensión y restricciones"
-                  },
-                  {
-                    factor: "Deuda fiscal (AFIP/ARBA/SIPA)",
-                    cat: "🏛️ Fiscal",
-                    estado: "Planes AFIP activos + SIPA ARS $10,8M",
-                    estadoCls: "text-red-600",
-                    sube: (riesgoPorNombre.afip||0)+(riesgoPorNombre.sipa||0) || 130000,
-                    baja: (riesgoPorNombre.afip||0)+(riesgoPorNombre.sipa||0) || 130000,
-                    nota: "N°17/N°52/N°53 — Certificado libre deuda condición de cierre"
-                  },
-                  {
-                    factor: "Vehículos sin habilitación CAA",
-                    cat: "🚛 Rodados",
-                    estado: "GIJ-234 y HMC-351 no figuran en CAA",
-                    estadoCls: "text-red-600",
-                    sube: riesgoPorNombre.vehiculos || 80000,
-                    baja: riesgoPorNombre.vehiculos || 80000,
-                    nota: "N°26/N°54 — Regularizar antes del cierre o descontar"
-                  },
-                  {
-                    factor: "Seguro ambiental",
-                    cat: "♻️ Ambiental",
-                    estado: "AUSENTE — incumplimiento Ley 24.051 Art.22",
-                    estadoCls: "text-red-600",
-                    sube: riesgoPorNombre.seguroAmb || 50000,
-                    baja: riesgoPorNombre.seguroAmb || 50000,
-                    nota: "N°28 — Contratar antes del cierre"
-                  },
-                  {
-                    factor: "ART vigente",
-                    cat: "⚖️ Laboral",
-                    estado: "Vence 31/07/2026 — renovación pendiente",
-                    estadoCls: "text-amber-600",
-                    sube: riesgoPorNombre.art || 10000,
-                    baja: riesgoPorNombre.art || 10000,
-                    nota: "N°19 — Condicionar cierre a renovación previa"
-                  },
-                  {
-                    factor: "Contratos de clientes firmados",
-                    cat: "👥 Comercial",
-                    estado: "Sin contratos — relaciones informales",
-                    estadoCls: "text-amber-600",
-                    sube: 80000,
-                    baja: 80000,
-                    nota: "N°23 — Clientes actuales sin compromiso documentado"
-                  },
-                  {
-                    factor: "Carta de intención YPF",
-                    cat: "👥 Comercial",
-                    estado: "Homologación no iniciada",
-                    estadoCls: "text-red-600",
-                    sube: earnoutYPF,
-                    baja: null,
-                    nota: "N°36 — Principal driver del precio pedido USD 5M"
-                  },
-                ].map(({factor,cat,estado,estadoCls,sube,baja,nota},i) => (
+                  riesgoPorNombre.extraccion ? { factor:"Créditos / préstamos a accionistas", cat:"💰 Societario", estado:"Identificado — verificar cancelación antes del cierre", estadoCls:"text-red-600", sube:riesgoPorNombre.extraccion, baja:riesgoPorNombre.extraccion, nota:"Condición esencial de cierre" } : null,
+                  riesgoPorNombre.equipos    ? { factor:"Estado de equipos y maquinaria clave", cat:"⚙️ Operativo", estado:"Pendiente verificación técnica en visita", estadoCls:"text-amber-600", sube:riesgoPorNombre.equipos, baja:riesgoPorNombre.equipos, nota:"Verificar operatividad en visita técnica" } : null,
+                  riesgoPorNombre.dia        ? { factor:"Habilitaciones regulatorias / ambientales", cat:"♻️ Regulatorio", estado:"Verificar cobertura de actividades actuales", estadoCls:"text-red-600", sube:riesgoPorNombre.dia, baja:riesgoPorNombre.dia, nota:"Confirmar con la autoridad competente" } : null,
+                  riesgoPorNombre.servidumbre ? { factor:"Restricciones sobre inmuebles", cat:"🏭 Inmueble", estado:"Servidumbre o restricción registrada", estadoCls:"text-amber-600", sube:riesgoPorNombre.servidumbre, baja:riesgoPorNombre.servidumbre, nota:"Verificar en escritura y matrícula" } : null,
+                  (riesgoPorNombre.afip||0)+(riesgoPorNombre.sipa||0) > 0 ? { factor:"Deuda fiscal (AFIP / organismos)", cat:"🏛️ Fiscal", estado:"Planes de pago activos o deuda pendiente", estadoCls:"text-red-600", sube:(riesgoPorNombre.afip||0)+(riesgoPorNombre.sipa||0), baja:(riesgoPorNombre.afip||0)+(riesgoPorNombre.sipa||0), nota:"Certificado libre deuda como condición de cierre" } : null,
+                  riesgoPorNombre.vehiculos  ? { factor:"Flota / transporte sin habilitación completa", cat:"🚛 Operativo", estado:"Unidades sin habilitación verificada", estadoCls:"text-red-600", sube:riesgoPorNombre.vehiculos, baja:riesgoPorNombre.vehiculos, nota:"Regularizar antes del cierre o descontar" } : null,
+                  riesgoPorNombre.seguroAmb  ? { factor:"Seguros obligatorios", cat:"🛡️ Legal", estado:"Seguro ausente o vencido", estadoCls:"text-red-600", sube:riesgoPorNombre.seguroAmb, baja:riesgoPorNombre.seguroAmb, nota:"Contratar antes del cierre" } : null,
+                  riesgoPorNombre.art        ? { factor:"ART / seguros laborales", cat:"⚖️ Laboral", estado:"Renovación pendiente", estadoCls:"text-amber-600", sube:riesgoPorNombre.art, baja:riesgoPorNombre.art, nota:"Condicionar cierre a renovación previa" } : null,
+                  earnoutContrato > 0        ? { factor:"Contrato o acuerdo clave pendiente", cat:"👥 Comercial", estado:"En negociación — sin firma", estadoCls:"text-amber-600", sube:earnoutContrato, baja:null, nota:"Principal driver del precio pedido" } : null,
+                ].filter(Boolean).map(({factor,cat,estado,estadoCls,sube,baja,nota}: {factor:string;cat:string;estado:string;estadoCls:string;sube:number;baja:number|null;nota:string},i:number) => (
                   <tr key={i} className="hover:bg-gray-50">
                     <td className="py-2 pr-2">
                       <div className="font-semibold text-gray-800">{factor}</div>
@@ -900,30 +810,27 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                   </td>
                   <td className="py-2 pl-2 text-right font-black text-green-700">
                     +{usd([
-                      riesgoPorNombre.horno||100000,
-                      riesgoPorNombre.hornoPirolitico||80000,
-                      riesgoPorNombre.extraccion||140000,
-                      riesgoPorNombre.dia||160000,
-                      riesgoPorNombre.servidumbre||140000,
-                      (riesgoPorNombre.afip||0)+(riesgoPorNombre.sipa||0)||130000,
-                      riesgoPorNombre.vehiculos||80000,
-                      riesgoPorNombre.seguroAmb||50000,
-                      riesgoPorNombre.art||10000,
-                      80000, earnoutYPF
+                      riesgoPorNombre.equipos||0,
+                      riesgoPorNombre.extraccion||0,
+                      riesgoPorNombre.dia||0,
+                      riesgoPorNombre.servidumbre||0,
+                      (riesgoPorNombre.afip||0)+(riesgoPorNombre.sipa||0),
+                      riesgoPorNombre.vehiculos||0,
+                      riesgoPorNombre.seguroAmb||0,
+                      riesgoPorNombre.art||0,
+                      earnoutContrato
                     ].reduce((s,v)=>s+v,0))}
                   </td>
                   <td className="py-2 pl-2 text-right font-black text-red-700">
                     −{usd([
-                      riesgoPorNombre.horno||100000,
-                      riesgoPorNombre.hornoPirolitico||80000,
-                      riesgoPorNombre.extraccion||140000,
-                      riesgoPorNombre.dia||160000,
-                      riesgoPorNombre.servidumbre||140000,
-                      (riesgoPorNombre.afip||0)+(riesgoPorNombre.sipa||0)||130000,
-                      riesgoPorNombre.vehiculos||80000,
-                      riesgoPorNombre.seguroAmb||50000,
-                      riesgoPorNombre.art||10000,
-                      80000
+                      riesgoPorNombre.equipos||0,
+                      riesgoPorNombre.extraccion||0,
+                      riesgoPorNombre.dia||0,
+                      riesgoPorNombre.servidumbre||0,
+                      (riesgoPorNombre.afip||0)+(riesgoPorNombre.sipa||0),
+                      riesgoPorNombre.vehiculos||0,
+                      riesgoPorNombre.seguroAmb||0,
+                      riesgoPorNombre.art||0
                     ].reduce((s,v)=>s+v,0))}
                   </td>
                 </tr>
