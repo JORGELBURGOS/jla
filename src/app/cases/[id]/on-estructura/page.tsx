@@ -63,7 +63,12 @@ export default function OnEstructuraPage({ params }: { params: { id: string } })
 
   useEffect(() => {
     db.from("dd_case_on_structure").select("*").eq("case_id", caseId).single()
-      .then(({ data: d }) => { if (d) setData({ ...DEFAULTS, ...d }) })
+      .then(({ data: d }) => {
+        if (d) {
+          const clean = Object.fromEntries(Object.entries(d).filter(([,v]) => v !== null && v !== undefined))
+          setData({ ...DEFAULTS, ...clean })
+        }
+      })
   }, [caseId])
 
   function upd<K extends keyof Estructura>(k: K, v: Estructura[K]) {
@@ -131,7 +136,7 @@ export default function OnEstructuraPage({ params }: { params: { id: string } })
                 {val:"Descuento",label:"A descuento"},
               ]}/>
           </Field>
-          <Field label={data.tasa_tipo.includes("+") || data.tasa_tipo === "Badlar" || data.tasa_tipo === "CER" ? "Spread (% anual)" : "Tasa (% anual)"}>
+          <Field label={(data.tasa_tipo ?? "").includes("+") || data.tasa_tipo === "Badlar" || data.tasa_tipo === "CER" ? "Spread (% anual)" : "Tasa (% anual)"}>
             <Input type="number" value={String(data.tasa_valor??"")}
               onChange={v => upd("tasa_valor", v ? parseFloat(v) : null)} placeholder="0.00"/>
           </Field>

@@ -15,7 +15,7 @@ type Bal = {
   ingresos: number; resultado_neto: number
 }
 
-const EJS = ["EJ N°13 (2021)","EJ N°14 (2022)","EJ N°15 (2023)","EJ N°16 (2024)","EJ N°17 (2025)"]
+// EJS ya no es constante — se construye dinámicamente desde la base de datos
 
 function tots(b: Bal) {
   const actC = b.caja + b.creditos_clientes + b.otros_creditos_corrientes + b.inventarios
@@ -103,7 +103,9 @@ export default function BalancePage({ params }: { params: { id: string } }) {
   const caseId = params.id
   const db = createClient()
   const [data, setData] = useState<Record<string, Bal>>({})
-  const [selected, setSelected] = useState<string[]>(["EJ N°17 (2025)"])
+  const [ejercicios, setEjercicios] = useState<string[]>([])
+  const [selected, setSelected]   = useState<string[]>([])
+  const [nuevoEj, setNuevoEj]     = useState("")
   const [saving, setSaving] = useState<string|null>(null)
   const [saved, setSaved]   = useState<string|null>(null)
   const [caseName, setCaseName] = useState("")
@@ -116,6 +118,18 @@ export default function BalancePage({ params }: { params: { id: string } }) {
         const m: Record<string,Bal> = {}
         ;(rows??[]).forEach((r:Record<string,unknown>)=>{ m[r.ejercicio as string]=r as unknown as Bal })
         setData(m)
+        // Construir lista de ejercicios desde los datos reales
+        const ejsEnBase = (rows??[]).map((r:Record<string,unknown>) => r.ejercicio as string)
+          .sort()
+        if (ejsEnBase.length) {
+          setEjercicios(ejsEnBase)
+          setSelected([ejsEnBase[ejsEnBase.length - 1]])
+        } else {
+          // Caso nuevo sin datos: ofrecer un ejercicio por defecto
+          const defaultEj = "Ejercicio 1"
+          setEjercicios([defaultEj])
+          setSelected([defaultEj])
+        }
       })
   },[caseId])
 
@@ -227,20 +241,35 @@ export default function BalancePage({ params }: { params: { id: string } }) {
         <p className="text-sm text-gray-500">{caseName} · Valores en ARS · Columna USD al TC de cierre de cada ejercicio · Hacé clic en cualquier valor para editarlo</p>
       </div>
 
-      {/* Selector */}
+      {/* Selector dinámico de ejercicios */}
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-xs font-semibold text-gray-500">Ver ejercicios:</span>
-        {EJS.map(ej=>{
+        <span className="text-xs font-semibold text-gray-500">Ejercicios:</span>
+        {ejercicios.map(ej=>{
           const isOn = selected.includes(ej)
           const hasData = !!data[ej]
           return (
             <button key={ej} onClick={()=>setSelected(p=>isOn?(p.length>1?p.filter(x=>x!==ej):p):[...p,ej])}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${isOn?"bg-[#1a2744] text-white border-[#1a2744]":"bg-white text-gray-600 border-gray-300 hover:border-[#1a2744]"}`}>
-              {ej.replace("EJ ","EJ ")}
+              {ej}
               <span className={`w-1.5 h-1.5 rounded-full ${hasData?(isOn?"bg-green-300":"bg-green-500"):"bg-gray-300"}`}/>
             </button>
           )
         })}
+        {/* Agregar nuevo ejercicio */}
+        <div className="flex items-center gap-1.5 ml-2">
+          <input value={nuevoEj} onChange={e=>setNuevoEj(e.target.value)}
+            placeholder="Ej: Ejercicio 2 (2024)"
+            className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#1a2744] w-40"/>
+          <button onClick={()=>{
+            if (!nuevoEj.trim() || ejercicios.includes(nuevoEj.trim())) return
+            const ej = nuevoEj.trim()
+            setEjercicios(p=>[...p,ej].sort())
+            setSelected(p=>[...p,ej])
+            setNuevoEj("")
+          }} className="text-xs bg-gray-100 hover:bg-[#1a2744] hover:text-white px-2 py-1 rounded-lg border border-gray-200 transition-all">
+            + Agregar
+          </button>
+        </div>
         <span className="text-xs text-gray-400">· verde = datos cargados</span>
       </div>
 
