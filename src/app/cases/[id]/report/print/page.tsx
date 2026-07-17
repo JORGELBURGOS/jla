@@ -288,7 +288,7 @@ export default async function PrintPage({ params, searchParams }: {
               <div className="alert-title">⚠ Múltiplo implícito: {multiplo.toFixed(0)}× EBITDA</div>
               <div className="alert-body">
                 El precio pedido de {fmtUSD(precio)} implica un múltiplo de {multiplo.toFixed(0)}× el EBITDA normalizado de {ebitda?fmtUSD(ebitda):"N/D"}.
-                El rango de referencia para empresas RRPP Argentina es 4×-8×. El precio pedido está significativamente fuera de mercado y requiere negociación sustancial o demostración de contratos específicos que justifiquen la prima.
+                El rango de referencia varía según industria y contexto de mercado. El precio pedido está significativamente fuera del valor calculado y requiere negociación sustancial o justificación documental.
               </div>
             </div>
           )}
@@ -404,7 +404,7 @@ export default async function PrintPage({ params, searchParams }: {
             </tbody>
           </table>
 
-          <h3 style={{marginBottom:"8px",color:"#1a2744"}}>Corrientes de Residuos Peligrosos — Ley 24.051 ({corrientes.length} habilitadas)</h3>
+          <h3 style={{marginBottom:"8px",color:"#1a2744"}}>Síntesis Regulatoria y Ambiental ({corrientes.length} ítems)</h3>
           <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:"6px"}}>
             {corrientes.map((corr,i)=>(
               <div key={i} style={{border:"1px solid #e2e8f0",borderRadius:"5px",padding:"6px",background:corr.estado==="VIGENTE"?"#f8fafc":"#fef2f2"}}>
