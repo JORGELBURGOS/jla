@@ -324,6 +324,20 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
 
 
 
+  // Factores dinámicos desde riesgos reales — calculado fuera del JSX
+  type Factor = { factor:string; cat:string; estado:string; estadoCls:string; sube:number; baja:number|null; nota:string }
+  const factores: Factor[] = [
+    riesgoPorNombre.extraccion ? { factor:"Créditos / préstamos a accionistas", cat:"💰 Societario", estado:"Identificado — verificar cancelación antes del cierre", estadoCls:"text-red-600", sube:riesgoPorNombre.extraccion, baja:riesgoPorNombre.extraccion, nota:"Condición esencial de cierre" } : null,
+    riesgoPorNombre.equipos    ? { factor:"Estado de equipos y maquinaria clave", cat:"⚙️ Operativo", estado:"Pendiente verificación técnica en visita", estadoCls:"text-amber-600", sube:riesgoPorNombre.equipos, baja:riesgoPorNombre.equipos, nota:"Verificar operatividad en visita técnica" } : null,
+    riesgoPorNombre.dia        ? { factor:"Habilitaciones regulatorias", cat:"♻️ Regulatorio", estado:"Verificar cobertura de actividades actuales", estadoCls:"text-red-600", sube:riesgoPorNombre.dia, baja:riesgoPorNombre.dia, nota:"Confirmar con la autoridad competente" } : null,
+    riesgoPorNombre.servidumbre ? { factor:"Restricciones sobre inmuebles", cat:"🏭 Inmueble", estado:"Servidumbre o restricción registrada", estadoCls:"text-amber-600", sube:riesgoPorNombre.servidumbre, baja:riesgoPorNombre.servidumbre, nota:"Verificar en escritura y matrícula" } : null,
+    (riesgoPorNombre.afip||0)+(riesgoPorNombre.sipa||0) > 0 ? { factor:"Deuda fiscal (AFIP / organismos)", cat:"🏛️ Fiscal", estado:"Planes de pago activos o deuda pendiente", estadoCls:"text-red-600", sube:(riesgoPorNombre.afip||0)+(riesgoPorNombre.sipa||0), baja:(riesgoPorNombre.afip||0)+(riesgoPorNombre.sipa||0), nota:"Certificado libre deuda como condición de cierre" } : null,
+    riesgoPorNombre.vehiculos  ? { factor:"Flota / transporte sin habilitación", cat:"🚛 Operativo", estado:"Unidades sin habilitación verificada", estadoCls:"text-red-600", sube:riesgoPorNombre.vehiculos, baja:riesgoPorNombre.vehiculos, nota:"Regularizar antes del cierre o descontar" } : null,
+    riesgoPorNombre.seguroAmb  ? { factor:"Seguros obligatorios", cat:"🛡️ Legal", estado:"Seguro ausente o vencido", estadoCls:"text-red-600", sube:riesgoPorNombre.seguroAmb, baja:riesgoPorNombre.seguroAmb, nota:"Contratar antes del cierre" } : null,
+    riesgoPorNombre.art        ? { factor:"ART / seguros laborales", cat:"⚖️ Laboral", estado:"Renovación pendiente", estadoCls:"text-amber-600", sube:riesgoPorNombre.art, baja:riesgoPorNombre.art, nota:"Condicionar cierre a renovación previa" } : null,
+    earnoutContrato > 0        ? { factor:"Contrato o acuerdo comercial clave", cat:"👥 Comercial", estado:"En negociación — sin firma", estadoCls:"text-amber-600", sube:earnoutContrato, baja:null, nota:"Principal driver del precio pedido" } : null,
+  ].filter((f): f is Factor => f !== null)
+
   return (
     <div className="p-5 max-w-5xl mx-auto space-y-8">
 
@@ -786,7 +800,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                   riesgoPorNombre.seguroAmb  ? { factor:"Seguros obligatorios", cat:"🛡️ Legal", estado:"Seguro ausente o vencido", estadoCls:"text-red-600", sube:riesgoPorNombre.seguroAmb, baja:riesgoPorNombre.seguroAmb, nota:"Contratar antes del cierre" } : null,
                   riesgoPorNombre.art        ? { factor:"ART / seguros laborales", cat:"⚖️ Laboral", estado:"Renovación pendiente", estadoCls:"text-amber-600", sube:riesgoPorNombre.art, baja:riesgoPorNombre.art, nota:"Condicionar cierre a renovación previa" } : null,
                   earnoutContrato > 0        ? { factor:"Contrato o acuerdo clave pendiente", cat:"👥 Comercial", estado:"En negociación — sin firma", estadoCls:"text-amber-600", sube:earnoutContrato, baja:null, nota:"Principal driver del precio pedido" } : null,
-                ].filter(Boolean).map(({factor,cat,estado,estadoCls,sube,baja,nota}: {factor:string;cat:string;estado:string;estadoCls:string;sube:number;baja:number|null;nota:string},i:number) => (
+                ](c => c !== null).map(({factor,cat,estado,estadoCls,sube,baja,nota}: {factor:string;cat:string;estado:string;estadoCls:string;sube:number;baja:number|null;nota:string},i:number) => (
                   <tr key={i} className="hover:bg-gray-50">
                     <td className="py-2 pr-2">
                       <div className="font-semibold text-gray-800">{factor}</div>
