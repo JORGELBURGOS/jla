@@ -74,13 +74,13 @@ export default function GlossaryPage({ params }: { params: { id: string } }) {
   return (
     <div className="p-5 max-w-4xl mx-auto space-y-5">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-gray-900">Diccionario</h1>
-        <p className="text-sm text-gray-500">
-          Siglas, términos técnicos, normas y certificaciones del proceso de Due Diligence ·{" "}
-          <span className="font-semibold text-gray-700">{terms.length} entradas</span>
-        </p>
-      </div>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">Diccionario</h1>
+          <p className="text-sm text-gray-500">
+            Siglas y términos técnicos del proceso de Due Diligence
+            {" "}<span className="font-semibold text-gray-700">{terms.length} entradas</span>
+          </p>
         </div>
         <div className="flex flex-col items-end gap-1 flex-shrink-0">
           {genMsg && (
@@ -90,12 +90,10 @@ export default function GlossaryPage({ params }: { params: { id: string } }) {
           )}
           <button onClick={actualizarConIA} disabled={generando}
             className="flex items-center gap-2 bg-[#1a2744] text-white text-xs px-3 py-2 rounded-xl hover:bg-[#0d1525] disabled:opacity-50 font-medium">
-            {generando
-              ? <><span className="animate-spin inline-block">⟳</span> Analizando...</>
-              : <>🤖 Actualizar con IA</>}
+            {generando ? "Analizando..." : "Actualizar con IA"}
           </button>
         </div>
-
+      </div>
       {/* Buscador */}
       <div className="relative">
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
