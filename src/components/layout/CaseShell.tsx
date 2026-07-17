@@ -12,31 +12,60 @@ export function usePermissions() { return useContext(PermissionsContext) }
 const ADMIN_EMAIL = "jorgeleonburgos@gmail.com"
 const EMAIL_KEY   = "jla_user_email"
 
-const NAV: [string, string][] = [
-  [""             , "Dashboard"],
-  ["---"          , "RECOLECCIÓN"],
-  ["/requirements", "Requerimientos"],
-  ["/triage"      , "Triage de Docs"],
-  ["---"          , "ANÁLISIS"],
-  ["/balance"     , "Estados Contables"],
+// Menú DD M&A (tipo_caso: 'dd_ma' o 'ambos')
+const NAV_DD: [string, string][] = [
+  [""              , "Dashboard"],
+  ["---"           , "RECOLECCIÓN"],
+  ["/requirements" , "Requerimientos"],
+  ["/triage"       , "Triage de Docs"],
+  ["---"           , "ANÁLISIS"],
+  ["/balance"      , "Estados Contables"],
   ["/environmental", "Síntesis Ambiental"],
-  ["/fiscal"      , "Análisis Fiscal"],
-  ["---"          , "MODELO FINANCIERO"],
-  ["/assumptions" , "Supuestos"],
-  ["/ebitda"      , "Borrador EBITDA"],
-  ["/financial"   , "Modelo Financiero"],
-  ["/valuation"   , "Valuación"],
-  ["---"          , "RIESGOS"],
-  ["/risks"       , "Mapa de Riesgos"],
-  ["/validation"  , "Validación Plan"],
-  ["---"          , "HERRAMIENTAS"],
-  ["/assistant"   , "Asistente"],
-  ["---"          , "ENTREGABLE"],
-  ["/report"      , "📄 Informe Final"],
-  ["---"          , "REFERENCIA"],
-  ["/glossary"    , "📖 Diccionario"],
-  ["/log"         , "Log Auditoría"],
+  ["/fiscal"       , "Análisis Fiscal"],
+  ["---"           , "MODELO FINANCIERO"],
+  ["/assumptions"  , "Supuestos"],
+  ["/ebitda"       , "Borrador EBITDA"],
+  ["/financial"    , "Modelo Financiero"],
+  ["/valuation"    , "Valuación"],
+  ["---"           , "RIESGOS"],
+  ["/risks"        , "Mapa de Riesgos"],
+  ["/validation"   , "Validación Plan"],
+  ["---"           , "HERRAMIENTAS"],
+  ["/assistant"    , "Asistente"],
+  ["---"           , "ENTREGABLE"],
+  ["/report"       , "📄 Informe Final"],
+  ["---"           , "REFERENCIA"],
+  ["/glossary"     , "📖 Diccionario"],
+  ["/log"          , "Log Auditoría"],
 ]
+
+// Menú ON (tipo_caso: 'on')
+const NAV_ON: [string, string][] = [
+  [""              , "Dashboard"],
+  ["---"           , "RECOLECCIÓN"],
+  ["/requirements" , "Requerimientos"],
+  ["/triage"       , "Triage de Docs"],
+  ["---"           , "ANÁLISIS FINANCIERO"],
+  ["/balance"      , "Estados Contables"],
+  ["/fiscal"       , "Análisis Fiscal"],
+  ["/on-repago"    , "Capacidad de Repago"],
+  ["---"           , "ESTRUCTURA DE LA ON"],
+  ["/on-estructura", "Estructura y Términos"],
+  ["/on-garantias" , "Análisis de Garantías"],
+  ["/on-regulatorio","Marco Regulatorio CNV"],
+  ["---"           , "RIESGOS"],
+  ["/risks"        , "Riesgos del Emisor"],
+  ["---"           , "HERRAMIENTAS"],
+  ["/assistant"    , "Asistente"],
+  ["---"           , "ENTREGABLE"],
+  ["/on-potable"   , "¿Es potable? 🚦"],
+  ["/report"       , "📄 Informe Final"],
+  ["---"           , "REFERENCIA"],
+  ["/glossary"     , "📖 Diccionario"],
+  ["/log"          , "Log Auditoría"],
+]
+
+const NAV = NAV_DD // default — se sobreescribe por tipo_caso en el componente
 
 export default function CaseShell({ children, caseData, caseId }: {
   children: React.ReactNode
@@ -56,6 +85,8 @@ export default function CaseShell({ children, caseData, caseId }: {
   const [passInput,  setPassInput]  = useState("")
   const [canEdit, setCanEdit] = useState(true)
   const [hiddenNav, setHiddenNav] = useState<string[]>([])
+  const tipoCaso = String(caseData.tipo_caso ?? 'dd_ma')
+  const navItems = tipoCaso === 'on' ? NAV_ON : NAV_DD
   const [showPrompt, setShowPrompt] = useState(false)
 
   useEffect(() => {
@@ -123,7 +154,7 @@ export default function CaseShell({ children, caseData, caseId }: {
   const subSector = caseData.sub_sector as { nombre: string }                 | undefined
   const isAdmin   = userEmail === ADMIN_EMAIL
 
-  const visibleNav = NAV.filter(([href]) =>
+  const visibleNav = navItems.filter(([href]) =>
     href === "---" || href === "" || !hiddenNav.includes(href)
   )
 

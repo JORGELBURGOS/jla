@@ -8,7 +8,7 @@ interface Industry { id: string; nombre: string; icono: string }
 interface SubSector { id: string; nombre: string; descripcion: string | null }
 interface TplPreview { reqs: number; risks: number; sups: number }
 
-const STEPS = ["Empresa", "Sector", "Preview", "Confirmar"]
+const STEPS = ["Tipo", "Empresa", "Sector", "Preview", "Confirmar"]
 const ADMIN_EMAIL = "jorgeleonburgos@gmail.com"
 const EMAIL_KEY   = "jla_user_email"
 
@@ -16,8 +16,9 @@ export default function NewCasePage() {
   const router = useRouter()
   const db = createClient()
 
-  const [step, setStep] = useState(0)
-  const [saving, setSaving] = useState(false)
+  const [step, setStep]       = useState(0)
+  const [saving, setSaving]   = useState(false)
+  const [tipoCaso, setTipoCaso] = useState<"dd_ma"|"on"|"ambos">("dd_ma")
 
   // Paso 1: datos empresa
   const [nombre, setNombre] = useState("")
@@ -144,6 +145,47 @@ export default function NewCasePage() {
         })
       } catch { /* se pueden generar manualmente desde el tracker */ }
 
+      // Si es ON o Ambos: cargar template de requerimientos de ON
+      if (tipoCaso === 'on' || tipoCaso === 'ambos') {
+        const { data: onReqs } = await db.from('dd_on_req_template')
+          .select('*').eq('org_id','jl-advisory').order('orden')
+        if (onReqs?.length) {
+          const caseIdON = tipoCaso === 'on' ? caseId : caseId + '-on'
+          // Para tipo 'on': usar el mismo caseId; para 'ambos': crear segundo caso
+          if (tipoCaso === 'ambos') {
+            const { data: caseON } = await db.from('dd_cases').insert({
+              id: caseIdON,
+              nombre, cuit, precio_pedido: precioNum,
+              industry_id: industryId, sub_sector_id: subSectorId,
+              org_id: 'jl-advisory', tipo_caso: 'on',
+              linked_case_id: caseId
+            }).select().single()
+            if (caseON) {
+              // Actualizar el caso DD con el vínculo
+              await db.from('dd_cases').update({ linked_case_id: caseIdON }).eq('id', caseId)
+            }
+          }
+          const targetId = tipoCaso === 'on' ? caseId : caseIdON
+          await db.from('dd_case_requirements').insert(
+            onReqs.map((t: Record<string,unknown>, i: number) => ({
+              case_id: targetId,
+              n_item: t.n_item ?? (i + 1),
+              documento: t.documento,
+              como_cumplimentar: t.como_cumplimentar,
+              seccion: t.categoria,
+              seccion_orden: Number(t.orden ?? i),
+              estado: 'Pendiente',
+              antes_sena: t.antes_sena ?? false,
+              org_id: 'jl-advisory'
+            }))
+          )
+          // Crear estructura ON vacía
+          await db.from('dd_case_on_structure').insert({
+            case_id: targetId, org_id: 'jl-advisory'
+          })
+        }
+      }
+
       // Si el usuario no es admin, agregar el caso a su allowed_cases automáticamente
       const userEmail = typeof window !== "undefined" ? localStorage.getItem(EMAIL_KEY) ?? "" : ""
       if (userEmail && userEmail !== ADMIN_EMAIL) {
@@ -195,7 +237,33 @@ export default function NewCasePage() {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
 
           {/* Paso 0 — Datos de la empresa */}
-          {step === 0 && (
+          {/* ── STEP 0: TIPO DE CASO ──────────────────────── */}
+            {step === 0 && (
+              <div className="space-y-4">
+                <h2 className="text-xl font-bold text-gray-900">Tipo de análisis</h2>
+                <p className="text-sm text-gray-500">Qué tipo de trabajo vas a realizar con esta empresa</p>
+                <div className="grid grid-cols-1 gap-3 mt-2">
+                  {([
+                    { val:"dd_ma" as const, icon:"🏭", title:"Due Diligence M&A", desc:"Análisis integral para una adquisición. Tracker, mapa de riesgos, valuación y oferta de compra." },
+                    { val:"on"    as const, icon:"📊", title:"Estructuración de ON", desc:"Análisis de capacidad de repago y estructuración de Obligaciones Negociables para salir al mercado." },
+                    { val:"ambos" as const, icon:"🔄", title:"DD M&A + Estructuración ON", desc:"Se crean dos casos vinculados. Los documentos compartidos se marcan automáticamente en ambos." },
+                  ]).map(opt => (
+                    <button key={opt.val} onClick={() => setTipoCaso(opt.val)}
+                      className={`flex items-start gap-4 p-4 rounded-xl border-2 text-left transition-all ${tipoCaso === opt.val ? "border-[#1a2744] bg-blue-50" : "border-gray-200 hover:border-gray-300"}`}>
+                      <span className="text-3xl flex-shrink-0">{opt.icon}</span>
+                      <div className="flex-1">
+                        <div className="font-bold text-gray-900">{opt.title}</div>
+                        <div className="text-sm text-gray-500 mt-0.5">{opt.desc}</div>
+                      </div>
+                      {tipoCaso === opt.val && <span className="text-[#1a2744] font-black text-lg flex-shrink-0">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── STEP 1: EMPRESA ──────────────────────────────────────── */}
+            {step === 1 && (
             <div className="space-y-5">
               <h2 className="text-xl font-bold text-gray-900">¿Qué empresa vas a analizar?</h2>
               <div>
@@ -219,7 +287,7 @@ export default function NewCasePage() {
           )}
 
           {/* Paso 1 — Sector */}
-          {step === 1 && (
+          {step === 2 && (
             <div className="space-y-5">
               <h2 className="text-xl font-bold text-gray-900">¿En qué sector opera?</h2>
               <div>
@@ -255,7 +323,7 @@ export default function NewCasePage() {
           )}
 
           {/* Paso 2 — Preview de lo que se va a generar */}
-          {step === 2 && (
+          {step === 3 && (
             <div className="space-y-5">
               <h2 className="text-xl font-bold text-gray-900">
                 {selectedIndustry?.icono} Lo que se genera automáticamente
@@ -299,7 +367,7 @@ export default function NewCasePage() {
           )}
 
           {/* Paso 3 — Confirmar */}
-          {step === 3 && (
+          {step === 4 && (
             <div className="space-y-5">
               <h2 className="text-xl font-bold text-gray-900">Confirmá los datos</h2>
               <div className="bg-gray-50 rounded-xl border border-gray-200 divide-y divide-gray-200">
@@ -322,7 +390,7 @@ export default function NewCasePage() {
 
           {/* Navegación */}
           <div className="flex justify-between mt-8 pt-6 border-t border-gray-100">
-            <button onClick={() => setStep(s => s - 1)} disabled={step === 0}
+            <button onClick={() => setStep(s => s - 1)} disabled={step === 1}
               className="px-5 py-2.5 text-sm font-semibold text-gray-600 border border-gray-300 rounded-xl hover:bg-gray-50 disabled:opacity-30 transition-colors">
               ← Atrás
             </button>
