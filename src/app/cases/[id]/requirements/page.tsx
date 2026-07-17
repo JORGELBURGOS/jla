@@ -58,7 +58,7 @@ function DetailField({ label, value, danger, warn, accent }: {
 }
 
 // ── ItemRow recibe linksMap como prop explícita ────────────────────
-function ItemRow({ item, toggling, onToggle, linksMap, caseId, highlight }: {
+function ItemRow({ item, toggling, onToggle, linksMap, caseId, highlight, esON }: {
   item: Req
   toggling: string | null
   onToggle: (item: Req, campo: "antes_sena" | "antes_visita") => void
@@ -89,7 +89,7 @@ function ItemRow({ item, toggling, onToggle, linksMap, caseId, highlight }: {
           {item.faltantes  && <span className="text-amber-400 text-xs" title="Tiene faltantes">⊘</span>}
           {item.notas      && <span className="text-blue-400 text-xs" title="Tiene notas internas">✎</span>}
           {itemLinks.length > 0 && <span className="text-purple-400 text-xs" title="Riesgos vinculados">⚠🔗</span>}
-          {item.antes_sena && pendienteYSena && (
+          {!esON && item.antes_sena && pendienteYSena && (
             <span className="text-xs bg-purple-100 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded-full font-bold">Antes Seña</span>
           )}
           {item.antes_visita && item.estado !== "Recibido" && (
@@ -106,7 +106,7 @@ function ItemRow({ item, toggling, onToggle, linksMap, caseId, highlight }: {
           <div className="flex gap-2 flex-wrap pt-3 pb-2">
             {pendienteYSena && (
               <span className="text-xs bg-red-100 text-red-700 border border-red-300 px-2.5 py-1 rounded-full font-bold">
-                Incumplido — comprometido antes de la seña
+                {!esON && "Incumplido — comprometido antes de la seña"}
               </span>
             )}
             {item.antes_visita && item.estado !== "Recibido" && (
@@ -158,12 +158,12 @@ function ItemRow({ item, toggling, onToggle, linksMap, caseId, highlight }: {
                   className={`text-xs px-2.5 py-1.5 rounded-lg font-medium border transition-colors ${item.antes_visita ? "bg-teal-100 text-teal-700 border-teal-300" : "bg-white text-gray-500 border-gray-300 hover:bg-teal-50"}`}>
                   {item.antes_visita ? "Antes Visita ✓" : "Marcar Antes Visita"}
                 </button>
-                <button
+                {!esON && <button
                   onClick={e => { e.stopPropagation(); onToggle(item, "antes_sena") }}
                   disabled={toggling === item.id}
                   className={`text-xs px-2.5 py-1.5 rounded-lg font-medium border transition-colors ${item.antes_sena ? "bg-purple-100 text-purple-700 border-purple-300" : "bg-white text-gray-500 border-gray-300 hover:bg-purple-50"}`}>
                   {item.antes_sena ? "Antes Seña ✓" : "Marcar Antes Seña"}
-                </button>
+                </button>}
               </div>
             </div>
           </div>
@@ -207,12 +207,12 @@ function ItemRow({ item, toggling, onToggle, linksMap, caseId, highlight }: {
 }
 
 // ── SeccionRow recibe linksMap y la pasa a ItemRow ─────────────────
-function SeccionRow({ sec, items, toggling, onToggle, linksMap, caseId, highlightItem }: {
+function SeccionRow({ sec, items, toggling, onToggle, linksMap, caseId, highlightItem, esON }: {
   sec: string; items: Req[]; toggling: string | null
   onToggle: (item: Req, campo: "antes_sena" | "antes_visita") => void
   linksMap: LinksMap
   caseId: string
-  highlightItem?: number
+  highlightItem?: number; esON?: boolean
 }) {
   const [open, setOpen] = useState(true)
   const rec = items.filter(x => x.estado === "Recibido").length
@@ -260,6 +260,7 @@ function SeccionRow({ sec, items, toggling, onToggle, linksMap, caseId, highligh
 // ── Componente principal ───────────────────────────────────────────
 export default function RequirementsPage({ params }: { params: { id: string } }) {
   const caseId = params.id
+  const [tipoCaso, setTipoCaso] = useState<string>("dd_ma")
   const [items, setItems]     = useState<Req[]>([])
   const [linksMap, setLinksMap] = useState<LinksMap>({})
   const [tab, setTab]         = useState<"interna" | "vendedor">("interna")
@@ -291,6 +292,8 @@ export default function RequirementsPage({ params }: { params: { id: string } })
   }
 
   useEffect(() => {
+    db.from("dd_cases").select("tipo_caso").eq("id", caseId).single()
+      .then(({ data }) => { if (data) setTipoCaso(String((data as Record<string,unknown>).tipo_caso ?? "dd_ma")) })
     db.from("dd_case_requirements").select("*").eq("case_id", caseId)
       .order("seccion_orden").order("n_item")
       .then(({ data }) => setItems((data ?? []) as Req[]))
@@ -379,7 +382,7 @@ export default function RequirementsPage({ params }: { params: { id: string } })
           </div>
           <p className="text-sm text-gray-500">
             {total} ítems · <span className="text-green-700 font-medium">{rec} recibidos</span> · <span className="text-amber-700 font-medium">{par} parciales</span> · {pend} pendientes
-            {pendSena.length > 0 && <span className="ml-2 text-red-600 font-bold"> · ⚠ {pendSena.length} bloqueados antes de la seña</span>}
+            {!tipoCaso.startsWith("on") && pendSena.length > 0 && <span className="ml-2 text-red-600 font-bold"> · ⚠ {pendSena.length} bloqueados antes de la seña</span>}
           </p>
         </div>
         <div className="card p-3 text-center flex-shrink-0">
@@ -418,6 +421,7 @@ export default function RequirementsPage({ params }: { params: { id: string } })
             linksMap={linksMap}   // ← pasa el mapa a cada sección
             caseId={caseId}
             highlightItem={highlightItem}
+          esON={tipoCaso === "on" || tipoCaso === "ambos"}
           />
         ))}
       </div>
