@@ -25,7 +25,9 @@ export default function GlossaryPage({ params }: { params: { id: string } }) {
   const [openTerm, setOpenTerm] = useState<string|null>(null)
 
   useEffect(() => {
-    db.from("dd_glossary").select("*").eq("org_id","jl-advisory").order("categoria").order("orden")
+    db.from("dd_glossary").select("*").eq("org_id","jl-advisory")
+      .or(`case_id.is.null,case_id.eq.${caseId}`)
+      .order("categoria").order("orden")
       .then(({ data }) => {
         const t = (data ?? []) as Term[]
         setTerms(t)
