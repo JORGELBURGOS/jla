@@ -213,7 +213,7 @@ export default function TriagePage({ params }: { params: { id: string } }) {
             <Upload size={32} className="mx-auto text-gray-400 mb-3"/>
             <p className="text-sm font-semibold text-gray-700 mb-1">Arrastrá archivos o hacé clic</p>
             <p className="text-xs text-gray-500">PDF · Imágenes · XLSX · hasta 5 archivos · ~20MB total</p>
-            <p className="text-xs text-gray-400 mt-1">Balances, CAA, ISO, DIA, ART, VTV, escrituras, DDJJ, contratos...</p>
+            <p className="text-xs text-gray-400 mt-1">Balances, habilitaciones, certificaciones, escrituras, contratos, DDJJ...</p>
           </div>
           <input ref={inputRef} type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.xlsx,.csv,.docx,.txt" className="hidden"
             onChange={e => e.target.files && readFiles(e.target.files)}/>

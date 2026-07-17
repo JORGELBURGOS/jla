@@ -24,8 +24,8 @@ const REGLAS: ReglaDinamica[] = [
     }
   },
   {
-    // Supuesto B21 — Estado del horno rotativo
-    matchSupuesto: ["B21", "horno", "equipo principal"],
+    // Supuesto B21 — Estado del equipo o activo operativo principal
+    matchSupuesto: ["B21", "equipo principal", "equipo clave", "activo principal"],
     calcular: (valor) => {
       if (valor === "OPERATIVO - HABILITADO")     return 0       // riesgo resuelto
       if (valor === "OPERATIVO - NO HABILITADO")  return -200000 // opera pero con riesgo regulatorio
@@ -34,8 +34,8 @@ const REGLAS: ReglaDinamica[] = [
     }
   },
   {
-    // Supuesto B23 — Años con CAA documentado
-    matchSupuesto: ["B23", "CAA documentado", "brecha CAA"],
+    // Supuesto B23 — Documentación histórica acumulada
+    matchSupuesto: ["B23", "documentación histórica", "años documentados"],
     calcular: (valor) => {
       if (!valor || valor.trim() === "") return -200000  // ningún año documentado
       const anios = valor.split(",").map(a => a.trim()).filter(a => a.length > 0)

@@ -334,7 +334,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
               </div>
               <div style={{ fontSize:"11px", color:"#7f1d1d" }}>
                 El precio pedido de {fmtUSD(precio)} implica un múltiplo de {multiploImplicito.toFixed(0)}x el EBITDA normalizado de {ebitda ? fmtUSD(ebitda) : "N/D"}. 
-                El rango de referencia para empresas RRPP en Argentina es 4x-8x. 
+                El rango de referencia varía según industria: empresas de servicios 4x-6x, industriales 5x-8x. 
                 {multiploImplicito > 10 ? " El precio pedido está significativamente fuera del rango de mercado y requiere negociación sustancial." : " El precio requiere validación de los supuestos de crecimiento del vendedor."}
               </div>
             </div>
@@ -495,7 +495,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
           {/* Corrientes Y */}
           <div>
             <div style={{ fontWeight:700, fontSize:"11px", marginBottom:"10px" }}>
-              Corrientes de Residuos Peligrosos — Ley 24.051
+              Síntesis Regulatoria y Ambiental
               <span style={{ fontWeight:400, color:"#6b7280", marginLeft:"8px" }}>({corrientes.length} corrientes habilitadas)</span>
             </div>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"8px" }}>
