@@ -214,7 +214,30 @@ export async function POST(req: NextRequest) {
               detalle: `(${fechaHoy} — ${arch}): ${valor}`, org_id: ORG_ID
             })
           } else {
-            errores.push(`Hoja no reconocida: "${hoja}"`)
+            // Hoja no reconocida — si tiene datos de activo, intentar cargarlo como activo
+            const esActivo = hoja.toLowerCase().includes('flota') ||
+              hoja.toLowerCase().includes('activo') ||
+              hoja.toLowerCase().includes('inventario') ||
+              hoja.toLowerCase().includes('tasaci') ||
+              hoja.toLowerCase().includes('rodado') ||
+              hoja.toLowerCase().includes('inmueble') ||
+              hoja.toLowerCase().includes('maquinaria')
+            if (esActivo && clave) {
+              // clave = nombre del activo, valor = valor
+              const valorNum = parseFloat(String(valor).replace(/[^0-9.]/g,''))
+              const { error: eA } = await db.from('dd_case_assets').insert({
+                case_id: caseId,
+                nombre: clave,
+                categoria: hoja.toLowerCase().includes('rodado') || hoja.toLowerCase().includes('flota') ? 'Rodados' : 'Otros',
+                descripcion: String(valor ?? ''),
+                valor_mercado: !isNaN(valorNum) && valorNum > 0 ? valorNum : null,
+                org_id: ORG_ID
+              })
+              if (eA) { errores.push(`Error creando activo desde hoja: ${eA.message}`); break }
+              aplicados.push(`Activo cargado desde hoja: ${clave}`)
+            } else {
+              errores.push(`Hoja no reconocida: "${hoja}"`)
+            }
             break
           }
           aplicados.push(`Hoja ${hoja} → ${clave} → ${campo}`)
