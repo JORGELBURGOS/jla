@@ -253,6 +253,45 @@ export async function POST(req: NextRequest) {
           break
         }
 
+        // ── ACTIVOS / VALUACIÓN ───────────────────────────────────────────
+        case 'agregar_activo': {
+          const { error: e } = await db.from('dd_case_assets').insert({
+            case_id: caseId,
+            nombre:      String(a.nombre ?? a.descripcion ?? 'Activo sin nombre'),
+            categoria:   String(a.categoria ?? 'Otros'),
+            descripcion: String(a.descripcion ?? ''),
+            año:         a.año ? Number(a.año) : null,
+            dominio:     a.dominio ? String(a.dominio) : null,
+            estado_bien: String(a.estado_bien ?? 'Bueno'),
+            valor_libro: a.valor_libro ? Number(a.valor_libro) : null,
+            valor_mercado: a.valor_mercado ? Number(a.valor_mercado) : null,
+            metodologia: String(a.metodologia ?? ''),
+            notas:       a.notas ? `(${fechaHoy} — ${arch}): ${String(a.notas)}` : null,
+            org_id: ORG_ID
+          })
+          if (e) { errores.push(`Error creando activo: ${e.message}`); break }
+          aplicados.push(`Activo agregado: ${a.nombre ?? a.descripcion}`)
+          break
+        }
+
+        case 'actualizar_activo': {
+          const { data: existing } = await db.from('dd_case_assets')
+            .select('id').eq('case_id', caseId)
+            .ilike('nombre', `%${String(a.nombre ?? '').slice(0,30)}%`).limit(1)
+          const row = (existing ?? [])[0] as Record<string,unknown> | undefined
+          if (!row) { errores.push(`Activo no encontrado: ${a.nombre}`); break }
+          const upd: Record<string,unknown> = { updated_at: new Date().toISOString() }
+          if (a.valor_mercado !== undefined) upd.valor_mercado = Number(a.valor_mercado)
+          if (a.valor_libro   !== undefined) upd.valor_libro   = Number(a.valor_libro)
+          if (a.metodologia)  upd.metodologia  = String(a.metodologia)
+          if (a.estado_bien)  upd.estado_bien   = String(a.estado_bien)
+          if (a.notas)        upd.notas         = `(${fechaHoy} — ${arch}): ${String(a.notas)}`
+          const { error: e } = await db.from('dd_case_assets').update(upd).eq('id', row.id)
+          if (e) { errores.push(`Error actualizando activo: ${e.message}`); break }
+          aplicados.push(`Activo actualizado: ${a.nombre}`)
+          break
+        }
+
         default:
           errores.push(`Tipo desconocido: ${a.tipo}`)
       }

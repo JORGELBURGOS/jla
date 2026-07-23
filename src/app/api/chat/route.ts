@@ -20,21 +20,23 @@ export async function POST(req: NextRequest) {
 
   const [
     { data: caseData }, { data: reqs }, { data: risks },
-    { data: supuestos }, { data: env }, { data: valid }
+    { data: supuestos }, { data: env }, { data: valid }, { data: assets }
   ] = await Promise.all([
     db.from('dd_cases').select('*, industry:dd_industries(nombre), sub_sector:dd_sub_sectors(nombre)').eq('id', caseId).single(),
     db.from('dd_case_requirements').select('*').eq('case_id', caseId).order('n_item'),
     db.from('dd_case_risks').select('*').eq('case_id', caseId).neq('estado','DUPLICADO').order('fila_orden'),
     db.from('dd_case_assumptions').select('*').eq('case_id', caseId).order('orden'),
     db.from('dd_case_environmental').select('*').eq('case_id', caseId).order('orden'),
-    db.from('dd_case_validation').select('*').eq('case_id', caseId).order('seccion_orden')
+    db.from('dd_case_validation').select('*').eq('case_id', caseId).order('seccion_orden'),
+    db.from('dd_case_assets').select('*').eq('case_id', caseId).order('categoria')
   ])
 
   const allReqs = (reqs ?? []) as Record<string,unknown>[]
   const allRisks = (risks ?? []) as Record<string,unknown>[]
   const allSups = (supuestos ?? []) as Record<string,unknown>[]
   const allEnv = (env ?? []) as Record<string,unknown>[]
-  const allValid = (valid ?? []) as Record<string,unknown>[]
+  const allValid  = (valid  ?? []) as Record<string,unknown>[]
+  const allAssets = (assets ?? []) as Record<string,unknown>[]
   const caseD = caseData as Record<string,unknown> & { industry?: {nombre:string}; sub_sector?: {nombre:string} }
 
   const total = allReqs.length
@@ -54,6 +56,20 @@ export async function POST(req: NextRequest) {
     (it.notas ? `\n  Notas: ${String(it.notas).slice(0, 300)}` : '') +
     (it.analizado_por ? `\n  Analizado: ${it.analizado_por} ${it.fecha_analisis}` : '')
   ).join('\n\n')
+
+  // Activos / Valuación
+  const ctxAssets = allAssets.length
+    ? allAssets.map(a =>
+        `[${a.categoria}] ${a.nombre}` +
+        (a.año ? ` (${a.año})` : '') +
+        (a.dominio ? ` Dominio: ${a.dominio}` : '') +
+        (a.estado_bien ? ` Estado: ${a.estado_bien}` : '') +
+        (a.valor_mercado ? ` ValMercado: USD ${Number(a.valor_mercado).toLocaleString('es-AR')}` : '') +
+        (a.valor_libro   ? ` ValLibro: USD ${Number(a.valor_libro).toLocaleString('es-AR')}` : '') +
+        (a.metodologia ? `\n  Metodología: ${String(a.metodologia).slice(0, 150)}` : '') +
+        (a.notas ? `\n  Notas: ${String(a.notas).slice(0, 200)}` : '')
+      ).join('\n')
+    : 'Sin activos cargados aún.'
 
   // Riesgos completos
   const ctxRiesgos = allRisks.map(r =>
@@ -134,7 +150,9 @@ ACCIONES_JSON:[
   {"tipo":"actualizar_hoja","hoja":"Sintesis Ambiental","clave":"clave EXACTA del ítem","campo":"Estado|Observacion|Vencimiento","valor":"nuevo valor","justificacion":"texto claro"},
   {"tipo":"nota_analista","hoja":"Analisis Fiscal","nota":"texto","descripcion":"texto claro"},
   {"tipo":"actualizar_caso","campo":"precio_pedido","valor":4500000,"descripcion":"Actualizar precio pedido a USD 4.500.000"},
-  {"tipo":"actualizar_caso","campo":"estado","valor":"En negociacion","descripcion":"texto claro"}
+  {"tipo":"actualizar_caso","campo":"estado","valor":"En negociacion","descripcion":"texto claro"},
+  {"tipo":"agregar_activo","nombre":"Nombre del activo","categoria":"Rodados|Inmuebles|Maquinaria|Intangibles|Capital de Trabajo|Otros","descripcion":"descripcion","año":2020,"dominio":"ABC123","estado_bien":"Bueno|Regular|Malo","valor_mercado":50000,"valor_libro":30000,"metodologia":"Como se valuó","descripcion":"texto claro"},
+  {"tipo":"actualizar_activo","nombre":"nombre EXACTO del activo","valor_mercado":55000,"metodologia":"nueva metodología","descripcion":"texto claro"}
 ]
 
 CUÁNDO USAR CADA TIPO:
@@ -146,6 +164,8 @@ CUÁNDO USAR CADA TIPO:
 - nuevo_riesgo: el usuario identifica un riesgo que NO está en el mapa → crear riesgo nuevo
 - actualizar_caso: editar precio_pedido, nombre o estado del proceso
 - actualizar_supuesto: cargar o actualizar valor de un supuesto
+- agregar_activo: el usuario menciona un activo (inmueble, vehículo, maquinaria, etc.) que NO está en valuación → crear activo nuevo con sus datos técnicos y valor
+- actualizar_activo: modificar valor, metodología o estado de un activo YA cargado en valuación
 
 REGLAS: "descripcion" es lo que VE el usuario. Lenguaje claro, máx 100 caracteres.
 Si el usuario dice "el precio bajó a 4,5M" → actualizar_caso campo:precio_pedido valor:4500000
