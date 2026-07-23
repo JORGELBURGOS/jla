@@ -531,6 +531,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                     <div className="flex justify-between"><span className="text-gray-500">Precio base</span><span className="font-bold text-gray-800">{usd(precioBase)}</span></div>
                     {condiciones.map((c,i) => <div key={i} className="flex justify-between"><span className="text-gray-500">+ {c.l}</span><span className="font-bold text-green-700">+{usd(c.v)}</span></div>)}
                     <div className="flex justify-between border-t pt-1 mt-1"><span className="font-semibold">Total si se cumplen condiciones</span><span className="font-black text-[#1a2744]">{usd(precioBase+total)}</span></div>
+                    <div className="mt-2 text-xs text-gray-400 italic">El Escenario D (escrow y earn-out) usa este precio como referencia.</div>
                   </div>
                 )
               })()}
@@ -568,39 +569,111 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
           </div>
         </div>
 
-        {/* D */}
-        <div className="card p-4 border-l-4 border-l-gray-300">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs font-black uppercase tracking-wide text-gray-700">D · Precio con escrow o earn-out</span>
-            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-bold">Alternativa sofisticada</span>
+        {/* D — Estructura de pago condicionada */}
+        <div className="card p-5 border-l-4 border-l-blue-400">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-black uppercase tracking-wide text-gray-700">D · Estructura de pago condicionada</span>
+            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">Se aplica sobre el precio del Escenario B</span>
           </div>
-          <div className="grid grid-cols-2 gap-6 text-xs">
-            <div>
-              <div className="font-semibold text-gray-600 mb-1">Escrow</div>
-              {[
-                {l:"Pago al cierre", v:evFlujos>0?evFlujos:200000},
-                {l:"En escrow (riesgos)", v:riesgosAbs},
-                {l:"Liberación 12 meses", v:Math.round(riesgosAbs*0.5)},
-                {l:"Liberación 24 meses", v:Math.round(riesgosAbs*0.5)},
-              ].map((r,i) => <div key={i} className="flex justify-between border-b border-gray-50 py-0.5"><span className="text-gray-500">{r.l}</span><span className="font-bold text-gray-700">{usd(r.v)}</span></div>)}
-            </div>
-            <div>
-              <div className="font-semibold text-gray-600 mb-1">Earn-out</div>
-              {[
-                {l:"Pago al cierre", v:evFlujos>0?Math.round(evFlujos*0.5):150000, edit:false},
-                {l:"Meta año 1", v:earnout1, edit:true, set:setEarnout1},
-                {l:"Meta año 2", v:earnout2, edit:true, set:setEarnout2},
-                {l:"Condición clave cumplida", v:earnoutK, edit:true, set:setEarnoutK},
-              ].map((r,i) => (
-                <div key={i} className="flex justify-between items-center border-b border-gray-50 py-0.5">
-                  <span className="text-gray-500">{r.l}</span>
-                  {r.edit
-                    ? <input type="number" value={r.v} onChange={e => r.set && r.set(parseInt(e.target.value)||0)} className="w-24 border border-gray-200 rounded px-1.5 py-0.5 text-xs font-bold text-right focus:outline-none"/>
-                    : <span className="font-bold text-gray-700">{usd(r.v)}</span>}
+          <p className="text-xs text-gray-500 mb-4">
+            No es una cuarta valuación — es una forma de distribuir en el tiempo el precio del Escenario B.
+            El precio máximo sigue siendo el mismo. Lo que cambia es cuándo y bajo qué condiciones se paga.
+          </p>
+          {(() => {
+            const base = Math.max(0, Math.round(evFlujos * 0.4))
+            const conds = [
+              rn.extraccion  ? {l:"Cancelación créditos a accionistas",    v:rn.extraccion}                  : null,
+              rn.equipos     ? {l:"Equipos operativos confirmados en visita", v:rn.equipos}                   : null,
+              (rn.afip||0)+(rn.sipa||0) ? {l:"Libre deuda fiscal certificada", v:(rn.afip||0)+(rn.sipa||0)} : null,
+              rn.art         ? {l:"ART renovada antes del cierre",            v:rn.art}                       : null,
+              rn.regulatorio ? {l:"Habilitaciones verificadas",               v:rn.regulatorio}               : null,
+              rn.seguroAmb   ? {l:"Seguro obligatorio contratado",            v:rn.seguroAmb}                 : null,
+            ].filter((c): c is {l:string;v:number} => c !== null)
+            const escrowTotal = conds.reduce((s,c) => s+c.v, 0)
+            const precioMaxB  = base + escrowTotal
+            const earnBase    = Math.round(base * 0.5)
+            const earnMax     = base + earnout1 + earnout2 + earnoutK
+
+            return (
+              <div className="grid grid-cols-2 gap-6">
+
+                {/* OPCIÓN ESCROW */}
+                <div>
+                  <div className="font-bold text-gray-700 text-xs mb-3 flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-[#1a2744] text-white text-xs flex items-center justify-center font-black">1</span>
+                    Opción escrow — precio retenido hasta cumplir condiciones
+                  </div>
+                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 mb-3">
+                    <div className="text-xs text-blue-700 font-semibold mb-1">Precio de referencia: Escenario B</div>
+                    <div className="flex justify-between text-xs mb-0.5"><span className="text-gray-600">Precio máximo Escenario B</span><span className="font-black text-[#1a2744]">{usd(precioMaxB)}</span></div>
+                    <div className="flex justify-between text-xs mb-0.5"><span className="text-gray-600">— Pago al cierre</span><span className="font-bold text-gray-800">{usd(base)}</span></div>
+                    <div className="flex justify-between text-xs border-t border-blue-200 pt-1 mt-1"><span className="font-semibold text-gray-700">= Retenido en escrow</span><span className="font-black text-blue-700">{usd(escrowTotal)}</span></div>
+                  </div>
+                  <div className="text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Liberación por condición cumplida</div>
+                  <div className="space-y-1">
+                    {conds.map((cd,i) => (
+                      <div key={i} className="flex justify-between items-center bg-white border border-gray-100 rounded-lg px-3 py-1.5">
+                        <span className="text-xs text-gray-600">✓ {cd.l}</span>
+                        <span className="text-xs font-bold text-green-700">+{usd(cd.v)}</span>
+                      </div>
+                    ))}
+                    <div className="flex justify-between items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 mt-1">
+                      <span className="text-xs font-semibold text-gray-700">Total liberado si se cumplen todas</span>
+                      <span className="text-xs font-black text-[#1a2744]">{usd(precioMaxB)}</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2 italic">
+                    Las condiciones de habilitación, deuda fiscal y ART se resuelven ANTES del cierre.
+                    El escrow cubre contingencias post-cierre: maquinaria, pasivos ocultos y reclamos de hechos previos.
+                  </p>
                 </div>
-              ))}
-            </div>
-          </div>
+
+                {/* OPCIÓN EARN-OUT */}
+                <div>
+                  <div className="font-bold text-gray-700 text-xs mb-3 flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-[#1a2744] text-white text-xs flex items-center justify-center font-black">2</span>
+                    Opción earn-out — precio variable por resultados futuros
+                  </div>
+                  <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 mb-3">
+                    <div className="text-xs text-amber-700 font-semibold mb-1">Base: precio fijo al cierre</div>
+                    <div className="flex justify-between text-xs mb-0.5"><span className="text-gray-600">Pago fijo al cierre</span><span className="font-black text-[#1a2744]">{usd(earnBase)}</span></div>
+                    <div className="flex justify-between text-xs mb-0.5"><span className="text-gray-600">+ Pago variable máximo</span><span className="font-bold text-amber-700">{usd(earnMax - earnBase)}</span></div>
+                    <div className="flex justify-between text-xs border-t border-amber-200 pt-1 mt-1"><span className="font-semibold text-gray-700">= Precio total máximo</span><span className="font-black text-amber-700">{usd(earnMax)}</span></div>
+                  </div>
+                  <div className="text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Pagos variables por meta alcanzada</div>
+                  <div className="space-y-2">
+                    {[
+                      {l:"Si EBITDA año 1 ≥ objetivo", target:earnout1, field:"earnout1", set:setEarnout1},
+                      {l:"Si EBITDA año 2 ≥ objetivo", target:earnout2, field:"earnout2", set:setEarnout2},
+                      {l:"Si condición estratégica cumplida", target:earnoutK, field:"earnoutK", set:setEarnoutK},
+                    ].map((r,i) => (
+                      <div key={i} className="bg-white border border-gray-100 rounded-lg px-3 py-2">
+                        <div className="text-xs text-gray-500 mb-1">{r.l}</div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1">
+                            <div className="text-xs text-gray-400 mb-0.5">Objetivo (USD)</div>
+                            <input type="number" value={r.target}
+                              onChange={e => r.set(parseInt(e.target.value)||0)}
+                              className="w-full border border-gray-200 rounded px-2 py-1 text-xs font-bold focus:outline-none focus:border-[#1a2744]"/>
+                          </div>
+                          <div className="text-gray-300 text-sm mt-4">→</div>
+                          <div className="flex-1">
+                            <div className="text-xs text-gray-400 mb-0.5">El vendedor cobra</div>
+                            <div className="text-sm font-black text-green-700 pt-1">{usd(r.target)}</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2 italic">
+                    El vendedor cobra cada pago variable solo si la empresa alcanza el objetivo en ese período.
+                    Si no lo alcanza, ese pago no se realiza. Los objetivos son acumulativos.
+                  </p>
+                </div>
+
+              </div>
+            )
+          })()}
         </div>
 
         {/* Tabla de factores */}
