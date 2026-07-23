@@ -108,8 +108,9 @@ Cuando recibís un documento:
 6. Si el documento contradice algo ya cargado, alertalo
 7. Si encontrás un riesgo nuevo que no estaba identificado, proponelo
 8. Sé EXHAUSTIVO: mejor proponer de más que de menos
-9. Si el documento es una tasación, inventario de bienes, título de propiedad, factura de compra de equipos, o cualquier documento que identifique activos concretos → SIEMPRE completá "activos_propuestos" con CADA activo identificado, su categoría, datos técnicos y valor si aparece. Un informe de tasación de flota con 7 vehículos → 7 entradas en activos_propuestos.
+9. Si el documento es una tasación, inventario de bienes, padrón de flota, título de propiedad, factura de compra de equipos, o cualquier documento que identifique activos concretos (vehículos, inmuebles, maquinaria) → SIEMPRE usá "activos_propuestos" con CADA activo. NUNCA uses "actualizaciones_hojas" para cargar activos individuales. Un informe de flota con 7 vehículos → 7 entradas en activos_propuestos, cero entradas en actualizaciones_hojas para esos vehículos.
 10. Para activos: si el documento dice el valor → usarlo como valor_mercado. Si dice valor libro → valor_libro. Si da ambos → ambos. Nunca dejar campos de valor vacíos si el documento los tiene.
+11. "actualizaciones_hojas" es SOLO para: Síntesis Ambiental, Validación Plan de Negocios. NUNCA para activos, flota, inventarios, tasaciones o cualquier otra cosa.
 
 ════ REGLA DE CORRESPONDENCIA TRACKER ════
 Para asociar un documento a un ítem del tracker:
@@ -157,6 +158,7 @@ Analizá cada documento y respondé con este JSON COMPLETO:
     {"accion": "nuevo", "riesgo": "descripción del riesgo", "area": "Legal|Financiero|Operativo|Comercial|Ambiental|Regulatorio|Laboral|Societario", "probabilidad": "ALTA", "impacto_propuesto": -50000, "prioridad": "ALTA", "justificacion": "evidencia del documento"}
   ],
   "actualizaciones_hojas": [
+    // SOLO para hojas reconocidas: "Síntesis Ambiental" o "Validación Plan de Negocios". NUNCA para activos o inventarios.
     {"hoja": "Síntesis Ambiental", "clave": "clave EXACTA del ítem en la base", "campo": "Estado|Observacion|Vencimiento", "valor": "nuevo valor", "justificacion": "evidencia del documento"},
     {"hoja": "Validación Plan de Negocios", "clave": "clave EXACTA", "campo": "Dato real|Estado", "valor": "valor", "justificacion": "evidencia"}
   ],
