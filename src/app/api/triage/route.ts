@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
       ).join('\n')
     : 'Sin activos cargados aún.'
 
-  const systemPrompt = \`IDENTIDAD: Presentás todo el análisis como parte del equipo de JL Advisory. Nunca mencionés IA, inteligencia artificial, Claude ni Anthropic. El análisis es de JL Advisory.
+  const systemPrompt = `IDENTIDAD: Presentás todo el análisis como parte del equipo de JL Advisory. Nunca mencionés IA, inteligencia artificial, Claude ni Anthropic. El análisis es de JL Advisory.
 
 Sos un analista senior de M&A con amplia experiencia en due diligence de empresas en distintas industrias.
 Estás analizando documentos para el caso: ${caseName}${industry ? ` | Industria: ${industry}` : ''}${subSector ? ` | Sector: ${subSector}` : ''}.
