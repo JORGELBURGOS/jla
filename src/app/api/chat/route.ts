@@ -151,7 +151,7 @@ ACCIONES_JSON:[
   {"tipo":"nota_analista","hoja":"Analisis Fiscal","nota":"texto","descripcion":"texto claro"},
   {"tipo":"actualizar_caso","campo":"precio_pedido","valor":4500000,"descripcion":"Actualizar precio pedido a USD 4.500.000"},
   {"tipo":"actualizar_caso","campo":"estado","valor":"En negociacion","descripcion":"texto claro"},
-  {"tipo":"agregar_activo","nombre":"Nombre del activo","categoria":"Rodados|Inmuebles|Maquinaria|Intangibles|Capital de Trabajo|Otros","descripcion":"descripcion","año":2020,"dominio":"ABC123","estado_bien":"Bueno|Regular|Malo","valor_mercado":50000,"valor_libro":30000,"metodologia":"Como se valuó","descripcion":"texto claro"},
+  {"tipo":"agregar_activo","nombre":"Nombre del activo","categoria":"Rodados|Inmuebles|Maquinaria|Intangibles|Capital de Trabajo|Otros","descripcion_tecnica":"descripcion tecnica del activo","año":2020,"dominio":"ABC123","estado_bien":"Bueno|Regular|Malo","valor_mercado":50000,"valor_libro":30000,"metodologia":"Como se determino el valor"},
   {"tipo":"actualizar_activo","nombre":"nombre EXACTO del activo","valor_mercado":55000,"metodologia":"nueva metodología","descripcion":"texto claro"}
 ]
 

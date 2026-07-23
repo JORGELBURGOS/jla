@@ -225,12 +225,15 @@ export async function POST(req: NextRequest) {
             if (esActivo && clave) {
               // clave = nombre del activo, valor = valor
               const valorNum = parseFloat(String(valor).replace(/[^0-9.]/g,''))
+              const valNum2 = !isNaN(valorNum) && valorNum > 0 ? valorNum : null
               const { error: eA } = await db.from('dd_case_assets').insert({
                 case_id: caseId,
                 nombre: clave,
                 categoria: hoja.toLowerCase().includes('rodado') || hoja.toLowerCase().includes('flota') ? 'Rodados' : 'Otros',
                 descripcion: String(valor ?? ''),
-                valor_mercado: !isNaN(valorNum) && valorNum > 0 ? valorNum : null,
+                valor_mercado: valNum2,
+                valor_usd: valNum2 ?? 0,
+                estado: 'Estimado',
                 org_id: ORG_ID
               })
               if (eA) { errores.push(`Error creando activo desde hoja: ${eA.message}`); break }
@@ -278,18 +281,21 @@ export async function POST(req: NextRequest) {
 
         // ── ACTIVOS / VALUACIÓN ───────────────────────────────────────────
         case 'agregar_activo': {
+          const valorMercado = a.valor_mercado ? Number(a.valor_mercado) : null
           const { error: e } = await db.from('dd_case_assets').insert({
             case_id: caseId,
-            nombre:      String(a.nombre ?? a.descripcion ?? 'Activo sin nombre'),
-            categoria:   String(a.categoria ?? 'Otros'),
-            descripcion: String(a.descripcion ?? ''),
-            año:         a.año ? Number(a.año) : null,
-            dominio:     a.dominio ? String(a.dominio) : null,
-            estado_bien: String(a.estado_bien ?? 'Bueno'),
-            valor_libro: a.valor_libro ? Number(a.valor_libro) : null,
-            valor_mercado: a.valor_mercado ? Number(a.valor_mercado) : null,
-            metodologia: String(a.metodologia ?? ''),
-            notas:       a.notas ? `(${fechaHoy} — ${arch}): ${String(a.notas)}` : null,
+            nombre:        String(a.nombre ?? 'Activo sin nombre'),
+            categoria:     String(a.categoria ?? 'Otros'),
+            descripcion:   String(a.descripcion_tecnica ?? a.descripcion ?? ''),
+            año:           a.año ? Number(a.año) : null,
+            dominio:       a.dominio ? String(a.dominio) : null,
+            estado_bien:   String(a.estado_bien ?? 'Bueno'),
+            valor_libro:   a.valor_libro ? Number(a.valor_libro) : null,
+            valor_mercado: valorMercado,
+            valor_usd:     valorMercado ?? (a.valor_libro ? Number(a.valor_libro) : 0),
+            estado:        'Estimado',
+            metodologia:   String(a.metodologia ?? ''),
+            notas:         a.notas ? String(a.notas) : null,
             org_id: ORG_ID
           })
           if (e) { errores.push(`Error creando activo: ${e.message}`); break }
@@ -304,8 +310,11 @@ export async function POST(req: NextRequest) {
           const row = (existing ?? [])[0] as Record<string,unknown> | undefined
           if (!row) { errores.push(`Activo no encontrado: ${a.nombre}`); break }
           const upd: Record<string,unknown> = { updated_at: new Date().toISOString() }
-          if (a.valor_mercado !== undefined) upd.valor_mercado = Number(a.valor_mercado)
-          if (a.valor_libro   !== undefined) upd.valor_libro   = Number(a.valor_libro)
+          if (a.valor_mercado !== undefined) {
+            upd.valor_mercado = Number(a.valor_mercado)
+            upd.valor_usd     = Number(a.valor_mercado)
+          }
+          if (a.valor_libro !== undefined) upd.valor_libro = Number(a.valor_libro)
           if (a.metodologia)  upd.metodologia  = String(a.metodologia)
           if (a.estado_bien)  upd.estado_bien   = String(a.estado_bien)
           if (a.notas)        upd.notas         = `(${fechaHoy} — ${arch}): ${String(a.notas)}`

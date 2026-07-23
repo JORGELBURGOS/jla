@@ -203,6 +203,35 @@ Analizá cada documento y respondé con este JSON COMPLETO:
 
     const texto = resp.content.filter(b => b.type === 'text').map(b => (b as Anthropic.TextBlock).text).join('')
     const resultado = JSON.parse(texto.replace(/```json|```/g, '').trim())
+
+    // Sanear hojas inválidas: si la IA mandó un activo como hoja, rescatarlo
+    const hojasValidas = ['Síntesis Ambiental', 'Validación Plan de Negocios', 'Análisis Fiscal']
+    if (Array.isArray(resultado.actualizaciones_hojas)) {
+      const hojasOk: unknown[] = []
+      const activosRescatados: unknown[] = []
+      for (const h of resultado.actualizaciones_hojas) {
+        const hojaStr = String(h.hoja ?? '')
+        if (hojasValidas.some(v => hojaStr.includes(v.split(' ')[0]))) {
+          hojasOk.push(h)
+        } else {
+          // Rescatar como activo
+          const valNum = parseFloat(String(h.valor ?? '').replace(/[^0-9.]/g,''))
+          activosRescatados.push({
+            accion: 'nuevo',
+            nombre: String(h.clave ?? h.valor ?? 'Activo'),
+            categoria: hojaStr.toLowerCase().includes('flota') || hojaStr.toLowerCase().includes('rodado') ? 'Rodados' : 'Otros',
+            descripcion: String(h.justificacion ?? ''),
+            valor_mercado: !isNaN(valNum) && valNum > 0 ? valNum : undefined,
+            justificacion: `Rescatado de hoja inválida: ${hojaStr}`
+          })
+        }
+      }
+      resultado.actualizaciones_hojas = hojasOk
+      if (activosRescatados.length) {
+        resultado.activos_propuestos = [...(resultado.activos_propuestos ?? []), ...activosRescatados]
+      }
+    }
+
     await db.from('dd_audit_log').insert({
       case_id: caseId,
       accion: 'Triage documento',
