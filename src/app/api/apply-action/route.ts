@@ -226,6 +226,13 @@ export async function POST(req: NextRequest) {
               // clave = nombre del activo, valor = valor
               const valorNum = parseFloat(String(valor).replace(/[^0-9.]/g,''))
               const valNum2 = !isNaN(valorNum) && valorNum > 0 ? valorNum : null
+              // Anti-duplicado en fallback
+              const { data: existeFallback } = await db.from('dd_case_assets')
+                .select('id').eq('case_id', caseId).ilike('nombre', '%' + clave.slice(0,20) + '%').limit(1)
+              if (existeFallback?.length) {
+                aplicados.push(`Activo ya existe (ignorado): ${clave}`)
+                break
+              }
               const { error: eA } = await db.from('dd_case_assets').insert({
                 case_id: caseId,
                 nombre: clave,
@@ -282,9 +289,37 @@ export async function POST(req: NextRequest) {
         // ── ACTIVOS / VALUACIÓN ───────────────────────────────────────────
         case 'agregar_activo': {
           const valorMercado = a.valor_mercado ? Number(a.valor_mercado) : null
+          const nombreActivo = String(a.nombre ?? 'Activo sin nombre')
+          const dominioActivo = a.dominio ? String(a.dominio).toUpperCase().replace(/[^A-Z0-9]/g,'') : null
+
+          // Anti-duplicado: verificar si ya existe por nombre exacto o por dominio
+          const { data: existente } = await db.from('dd_case_assets')
+            .select('id, nombre')
+            .eq('case_id', caseId)
+            .or(
+              dominioActivo
+                ? `nombre.ilike.%${nombreActivo.slice(0,30)}%,dominio.eq.${dominioActivo}`
+                : `nombre.ilike.%${nombreActivo.slice(0,30)}%`
+            )
+            .limit(1)
+
+          if (existente?.length) {
+            // Ya existe — actualizar en lugar de duplicar
+            const upd: Record<string,unknown> = { updated_at: new Date().toISOString() }
+            if (valorMercado) { upd.valor_mercado = valorMercado; upd.valor_usd = valorMercado }
+            if (a.valor_libro) upd.valor_libro = Number(a.valor_libro)
+            if (a.metodologia) upd.metodologia = String(a.metodologia)
+            if (a.estado_bien) upd.estado_bien = String(a.estado_bien)
+            if (a.año) upd.año = Number(a.año)
+            if (dominioActivo) upd.dominio = dominioActivo
+            await db.from('dd_case_assets').update(upd).eq('id', (existente[0] as Record<string,unknown>).id)
+            aplicados.push(`Activo actualizado (ya existía): ${nombreActivo}`)
+            break
+          }
+
           const { error: e } = await db.from('dd_case_assets').insert({
             case_id: caseId,
-            nombre:        String(a.nombre ?? 'Activo sin nombre'),
+            nombre:        nombreActivo,
             categoria:     String(a.categoria ?? 'Otros'),
             descripcion:   String(a.descripcion_tecnica ?? a.descripcion ?? ''),
             año:           a.año ? Number(a.año) : null,
