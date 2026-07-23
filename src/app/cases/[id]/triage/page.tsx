@@ -10,6 +10,12 @@ interface TriajeResultado {
   actualizaciones_supuestos?: Array<{ label: string; valor_propuesto: unknown; fuente_textual: string }>
   riesgos_propuestos?: Array<{ accion: string; riesgo?: string; riesgo_existente?: string; area: string; probabilidad: string; impacto_propuesto: number; prioridad: string; justificacion: string }>
   actualizaciones_hojas?: Array<{ hoja: string; clave: string; campo: string; valor?: string; nota?: string; justificacion?: string }>
+  activos_propuestos?: Array<{
+    accion: string; nombre: string; categoria: string; descripcion?: string
+    año?: number; dominio?: string; estado_bien?: string
+    valor_mercado?: number; valor_libro?: number
+    metodologia?: string; justificacion?: string
+  }>
   alertas_generales?: string
   items_no_identificados?: string
 }
@@ -33,7 +39,8 @@ export default function TriagePage({ params }: { params: { id: string } }) {
   const [selItems, setSelItems] = useState(new Set<number>())
   const [selSups, setSelSups] = useState(new Set<number>())
   const [selRiesgos, setSelRiesgos] = useState(new Set<number>())
-  const [selHojas, setSelHojas] = useState(new Set<number>())
+  const [selHojas, setSelHojas]     = useState(new Set<number>())
+  const [selActivos, setSelActivos] = useState(new Set<number>())
   const [impactosEdit, setImpactosEdit] = useState<Record<number, string>>({})
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
   const [msgEspera, setMsgEspera] = useState(0)
@@ -112,6 +119,7 @@ export default function TriagePage({ params }: { params: { id: string } }) {
         const r: TriajeResultado = data.resultado
         setResultado(r)
         setSelItems(new Set((r.actualizaciones_items ?? []).map((_: unknown, i: number) => i)))
+        setSelActivos(new Set((r.activos_propuestos ?? []).map((_: unknown, i: number) => i)))
         setSelSups(new Set((r.actualizaciones_supuestos ?? []).map((_: unknown, i: number) => i)))
         setSelRiesgos(new Set<number>())  // Riesgos destildados por default (son estimaciones)
         setSelHojas(new Set((r.actualizaciones_hojas ?? []).map((_: unknown, i: number) => i)))
@@ -179,6 +187,17 @@ export default function TriagePage({ params }: { params: { id: string } }) {
       const h = resultado.actualizaciones_hojas![i]
       if (h) acciones.push({ tipo: "actualizar_hoja", ...h })
     })
+    Array.from(selActivos).forEach(i => {
+      const a = resultado.activos_propuestos![i]
+      if (!a) return
+      acciones.push({
+        tipo: a.accion === "actualizar" ? "actualizar_activo" : "agregar_activo",
+        nombre: a.nombre, categoria: a.categoria,
+        descripcion: a.descripcion, año: a.año, dominio: a.dominio,
+        estado_bien: a.estado_bien, valor_mercado: a.valor_mercado,
+        valor_libro: a.valor_libro, metodologia: a.metodologia,
+      })
+    })
 
     try {
       const res = await fetch("/api/apply-action", {
@@ -193,7 +212,7 @@ export default function TriagePage({ params }: { params: { id: string } }) {
     setApplying(false)
   }
 
-  const totalSel = selItems.size + selSups.size + selRiesgos.size + selHojas.size
+  const totalSel = selItems.size + selSups.size + selRiesgos.size + selHojas.size + selActivos.size
   const iconoHoja = (h: string) => h.includes("Ambiental") ? "🌿" : h.includes("Validaci") ? "✅" : h.includes("Fiscal") ? "🧾" : h.includes("Valuaci") ? "💰" : "📋"
 
   return (
@@ -411,6 +430,49 @@ export default function TriagePage({ params }: { params: { id: string } }) {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Activos propuestos para valuación */}
+          {(resultado.activos_propuestos?.length ?? 0) > 0 && (
+            <div className="card p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-bold text-sm">Activos para Valuacion — {resultado.activos_propuestos!.length}</h3>
+                <button onClick={() => {
+                  const all = new Set((resultado.activos_propuestos ?? []).map((_,i) => i))
+                  setSelActivos(selActivos.size === all.size ? new Set<number>() : all)
+                }} className="text-xs text-blue-600 hover:underline">
+                  {selActivos.size === resultado.activos_propuestos!.length ? "Destildar todo" : "Tildar todo"}
+                </button>
+              </div>
+              <p className="text-xs text-green-700 mb-3">Tildados por default — identificados en el documento.</p>
+              {resultado.activos_propuestos!.map((a, i) => (
+                <div key={i}
+                  className={"flex gap-3 p-3 rounded-xl border cursor-pointer transition-colors mb-2 " + (selActivos.has(i) ? "border-green-300 bg-green-50" : "border-gray-100 hover:bg-gray-50")}
+                  onClick={() => setSelActivos(prev => { const n=new Set(prev); n.has(i)?n.delete(i):n.add(i); return n })}>
+                  <input type="checkbox" checked={selActivos.has(i)}
+                    onChange={() => setSelActivos(prev => { const n=new Set(prev); n.has(i)?n.delete(i):n.add(i); return n })}
+                    onClick={e => e.stopPropagation()} className="mt-0.5"/>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className={"text-xs font-bold px-2 py-0.5 rounded-full " + (a.accion === "actualizar" ? "bg-amber-100 text-amber-800" : "bg-green-100 text-green-800")}>
+                        {a.accion === "actualizar" ? "Actualizar" : "Nuevo"}
+                      </span>
+                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{a.categoria}</span>
+                      <span className="text-xs font-semibold text-gray-900">{a.nombre}</span>
+                      {a.dominio && <span className="text-xs font-mono text-gray-500">{a.dominio}</span>}
+                      {a.año && <span className="text-xs text-gray-500">{a.año}</span>}
+                    </div>
+                    <div className="flex gap-4 flex-wrap text-xs mb-1">
+                      {a.valor_mercado && <span className="font-semibold text-green-700">Mercado: USD {Number(a.valor_mercado).toLocaleString("es-AR")}</span>}
+                      {a.valor_libro   && <span className="text-gray-600">Libro: USD {Number(a.valor_libro).toLocaleString("es-AR")}</span>}
+                      {a.estado_bien   && <span className="text-gray-500">Estado: {a.estado_bien}</span>}
+                    </div>
+                    {a.metodologia   && <p className="text-xs text-gray-500">Metodologia: {a.metodologia}</p>}
+                    {a.justificacion && <p className="text-xs text-blue-600 mt-1">{a.justificacion}</p>}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 

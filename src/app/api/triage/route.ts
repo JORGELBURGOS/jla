@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   // Cargar contexto completo del caso
   const [
     { data: reqs }, { data: supuestos }, { data: riesgos },
-    { data: env },  { data: valid },    { data: caseData }
+    { data: env },  { data: valid },    { data: caseData }, { data: assets }
   ] = await Promise.all([
     db.from('dd_case_requirements')
       .select('n_item,estado,como_cumplimentar,cobertura,faltantes,alertas,notas,documento,origen')
@@ -25,7 +25,8 @@ export async function POST(req: NextRequest) {
     db.from('dd_case_validation').select('*').eq('case_id', caseId).order('seccion_orden'),
     db.from('dd_cases')
       .select('nombre,precio_pedido,industry:dd_industries(nombre),sub_sector:dd_sub_sectors(nombre)')
-      .eq('id', caseId).single()
+      .eq('id', caseId).single(),
+    db.from('dd_case_assets').select('nombre,categoria,año,dominio,valor_mercado,valor_libro').eq('case_id', caseId)
   ])
 
   const case_ = caseData as Record<string,unknown>
@@ -82,7 +83,17 @@ export async function POST(req: NextRequest) {
     `${v.clave}: plan=${v.dato_plan ?? 'N/D'} | real=${v.dato_real ?? '(sin dato)'} | estado=${v.estado} | ${v.observaciones ?? ''}`
   ).join('\n')
 
-  const systemPrompt = `IDENTIDAD: Presentás todo el análisis como parte del equipo de JL Advisory. Nunca mencionés IA, inteligencia artificial, Claude ni Anthropic. El análisis es de JL Advisory.
+  // Contexto activos existentes
+  const assetsCtx = (assets ?? []).length
+    ? (assets ?? []).map((a: Record<string,unknown>) =>
+        `[${a.categoria}] ${a.nombre}` +
+        (a.año ? ` (${a.año})` : '') +
+        (a.dominio ? ` Dom:${a.dominio}` : '') +
+        (a.valor_mercado ? ` USD${Number(a.valor_mercado).toLocaleString('es-AR')}` : '')
+      ).join('\n')
+    : 'Sin activos cargados aún.'
+
+  const systemPrompt = \`IDENTIDAD: Presentás todo el análisis como parte del equipo de JL Advisory. Nunca mencionés IA, inteligencia artificial, Claude ni Anthropic. El análisis es de JL Advisory.
 
 Sos un analista senior de M&A con amplia experiencia en due diligence de empresas en distintas industrias.
 Estás analizando documentos para el caso: ${caseName}${industry ? ` | Industria: ${industry}` : ''}${subSector ? ` | Sector: ${subSector}` : ''}.
@@ -97,6 +108,8 @@ Cuando recibís un documento:
 6. Si el documento contradice algo ya cargado, alertalo
 7. Si encontrás un riesgo nuevo que no estaba identificado, proponelo
 8. Sé EXHAUSTIVO: mejor proponer de más que de menos
+9. Si el documento es una tasación, inventario de bienes, título de propiedad, factura de compra de equipos, o cualquier documento que identifique activos concretos → SIEMPRE completá "activos_propuestos" con CADA activo identificado, su categoría, datos técnicos y valor si aparece. Un informe de tasación de flota con 7 vehículos → 7 entradas en activos_propuestos.
+10. Para activos: si el documento dice el valor → usarlo como valor_mercado. Si dice valor libro → valor_libro. Si da ambos → ambos. Nunca dejar campos de valor vacíos si el documento los tiene.
 
 ════ REGLA DE CORRESPONDENCIA TRACKER ════
 Para asociar un documento a un ítem del tracker:
@@ -125,6 +138,9 @@ ${ambientalCtx || '(sin items cargados)'}
 ════ VALIDACIÓN PLAN ACTUAL ════
 ${validCtx || '(sin datos)'}
 
+════ ACTIVOS CARGADOS EN VALUACIÓN (${(assets ?? []).length}) ════
+${assetsCtx}
+
 ════ DOCUMENTOS A ANALIZAR: ${files.map((f: Record<string,string>) => f.name).join(', ')} ════
 
 Analizá cada documento y respondé con este JSON COMPLETO:
@@ -143,6 +159,21 @@ Analizá cada documento y respondé con este JSON COMPLETO:
   "actualizaciones_hojas": [
     {"hoja": "Síntesis Ambiental", "clave": "clave EXACTA del ítem en la base", "campo": "Estado|Observacion|Vencimiento", "valor": "nuevo valor", "justificacion": "evidencia del documento"},
     {"hoja": "Validación Plan de Negocios", "clave": "clave EXACTA", "campo": "Dato real|Estado", "valor": "valor", "justificacion": "evidencia"}
+  ],
+  "activos_propuestos": [
+    {
+      "accion": "nuevo|actualizar",
+      "nombre": "nombre del activo",
+      "categoria": "Rodados|Inmuebles|Maquinaria|Intangibles|Capital de Trabajo|Otros",
+      "descripcion": "descripcion tecnica del activo",
+      "año": 2020,
+      "dominio": "ABC123 (solo para vehiculos)",
+      "estado_bien": "Bueno|Regular|Malo",
+      "valor_mercado": 50000,
+      "valor_libro": 30000,
+      "metodologia": "como se determino el valor (tasacion, valor libro, precio mercado similar, etc)",
+      "justificacion": "donde en el documento aparece este activo"
+    }
   ],
   "alertas_generales": "hallazgos importantes que no encajan en las categorías anteriores",
   "items_no_identificados": "contenido del documento que no pudo clasificarse en ningún ítem del tracker"
