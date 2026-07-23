@@ -167,7 +167,9 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const [adding, setAdding]         = useState(false)
   const [dirty, setDirty]           = useState<Set<string>>(new Set())
   const [autoSaving, setAutoSaving] = useState(false)
-  const [ebitda, setEbitda]         = useState(0)
+  const [ebitda, setEbitda]             = useState(0)
+  const [ebitdaNorm, setEbitdaNorm]     = useState(0)
+  const [ebitdaMode, setEbitdaMode]     = useState<"contable"|"normalizado">("normalizado")
   const [precio, setPrecio]         = useState(0)
   const [pasivos, setPasivos]       = useState(0)
   const [pnContable, setPnContable] = useState(0)
@@ -198,6 +200,10 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
     db.from("dd_case_assumptions").select("valor")
       .eq("case_id",caseId).eq("label","EBITDA real último ejercicio cerrado (USD)").single()
       .then(({data}) => setEbitda(Number((data as Record<string,unknown>)?.valor ?? 0)))
+
+    db.from("dd_case_assumptions").select("valor")
+      .eq("case_id",caseId).eq("label","EBITDA normalizado — puente completo (USD)").single()
+      .then(({data}) => setEbitdaNorm(Number((data as Record<string,unknown>)?.valor ?? 0)))
 
     db.from("dd_case_balance_sheet").select("*")
       .eq("case_id",caseId).eq("ejercicio","EJ N°17 (2025)").single()
@@ -295,7 +301,8 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const riesgosAbs   = Math.abs(riesgos)
   const riesgoAstAbs = Math.abs(riesgosAsset)
   const riesgoPatAbs = Math.abs(riesgosPatrim)
-  const evFlujos     = ebitda * multiplo
+  const ebitdaBase   = ebitdaMode === "normalizado" && ebitdaNorm > 0 ? ebitdaNorm : ebitda
+  const evFlujos     = ebitdaBase * multiplo
   const valorFlujAdj = evFlujos - riesgosAbs
   const navBruto     = totalEstim
   const navAjAsset   = navBruto - riesgoAstAbs - costoRehab
@@ -337,12 +344,25 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
       <div className="card p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-bold text-gray-800">Comparativa de metodologías</h2>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3 flex-wrap justify-end">
+            {/* Selector de EBITDA */}
+            <div className="flex items-center gap-1.5 bg-gray-100 rounded-lg p-1">
+              <button onClick={() => setEbitdaMode("normalizado")}
+                className={"text-xs px-3 py-1.5 rounded-md font-semibold transition-all " + (ebitdaMode==="normalizado" ? "bg-white shadow text-[#1a2744]" : "text-gray-500")}>
+                EBITDA Normalizado <span className="font-black">{usd(ebitdaNorm)}</span>
+              </button>
+              <button onClick={() => setEbitdaMode("contable")}
+                className={"text-xs px-3 py-1.5 rounded-md font-semibold transition-all " + (ebitdaMode==="contable" ? "bg-white shadow text-gray-700" : "text-gray-400")}>
+                EBITDA Contable <span className="font-black">{usd(ebitda)}</span>
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
             <span className="text-xs text-gray-500">Múltiplo EBITDA:</span>
             <input type="number" value={multiplo} min={1} max={20} step={0.5}
               onChange={e=>setMultiplo(parseFloat(e.target.value)||6)}
               className="w-12 border border-gray-200 rounded px-2 py-1 text-sm font-bold text-center focus:outline-none focus:border-[#1a2744]"/>
             <span className="text-xs text-gray-400">× · Precio pedido: <strong className="text-red-700">{usd(precio)}</strong></span>
+          </div>
           </div>
         </div>
         <table className="w-full text-xs">
@@ -417,12 +437,20 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
 
       {/* ── TRES BRIDGES ── */}
       <div>
-        <h2 className="text-sm font-semibold text-gray-700 mb-3">Tres formas de llegar al valor</h2>
+        <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold text-gray-700">Tres formas de llegar al valor</h2>
+        {ebitdaMode === "normalizado" && ebitdaNorm > 0 && (
+          <div className="text-xs bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 text-green-800">
+            <span className="font-bold">EBITDA normalizado activo</span>
+            {" — "}elimina USD {(ebitdaNorm - ebitda).toLocaleString("es-AR")} en retiros de accionistas
+          </div>
+        )}
+      </div>
         <div className="grid grid-cols-3 gap-4">
           {[
             { title:"Stock Deal — por flujos", color:"border-t-2 border-t-gray-200",
               rows:[
-                {l:`EBITDA anual normalizado`,v:ebitda,c:"text-gray-800"},
+                {l:`EBITDA ${ebitdaMode === "normalizado" ? "normalizado" : "contable"}`,v:ebitdaBase,c:"text-gray-800"},
                 {l:`× Múltiplo M&A (${multiplo}×)`,v:null,c:"text-gray-400",nota:true},
                 {l:"= Valor operativo bruto",v:evFlujos,c:"text-blue-700",bold:true},
                 {l:"− Todos los riesgos",v:-riesgosAbs,c:"text-red-600"},
@@ -491,7 +519,11 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                 <span className="text-xs font-black uppercase tracking-wide text-gray-700">A · Stock Deal — precio actual</span>
                 <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">Difícil de defender</span>
               </div>
-              <p className="text-xs text-gray-500">EV por flujos ajustado por todos los riesgos. Con los números actuales el valor ajustado es {valorFlujAdj<0?"negativo — el vendedor debería absorber riesgos como condición":"positivo pero muy por debajo del precio pedido"}.</p>
+              <p className="text-xs text-gray-500">
+                EV por flujos ajustado por todos los riesgos.
+                Usando EBITDA <strong>{ebitdaMode === "normalizado" ? "normalizado" : "contable"}</strong> de <strong>{usd(ebitdaBase)}</strong> × {multiplo}×.
+                {valorFlujAdj<0 ? " El valor ajustado es negativo — el vendedor debería absorber riesgos como condición." : " El valor ajustado está muy por debajo del precio pedido."}
+              </p>
               <div className="flex gap-4 mt-1 text-xs text-gray-500">
                 <span>EBITDA × {multiplo}: <strong>{usd(evFlujos)}</strong></span>
                 <span>Riesgos: <strong className="text-red-600">−{usd(riesgosAbs)}</strong></span>
