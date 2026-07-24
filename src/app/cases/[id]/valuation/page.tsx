@@ -60,11 +60,11 @@ function Num({ val, onChange, placeholder }: { val: number|null; onChange:(v:num
 }
 
 // ─── Fila de activo ───────────────────────────────────────────────
-function AssetRow({ a, onUpdate, onSave, onDelete, saving, caseId }: {
+function AssetRow({ a, onUpdate, onSave, onDelete, saving, caseId, defaultOpen }: {
   a: Asset; onUpdate:(f:keyof Asset,v:unknown)=>void
-  onSave:()=>void; onDelete:()=>void; saving:boolean; caseId:string
+  onSave:()=>void; onDelete:()=>void; saving:boolean; caseId:string; defaultOpen?:boolean
 }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(!!defaultOpen)
   const calculado  = a.cantidad!=null && a.precio_unitario!=null ? Math.round(a.cantidad*a.precio_unitario) : null
   const valorFinal = calculado ?? a.valor_usd
 
@@ -148,7 +148,8 @@ function AssetRow({ a, onUpdate, onSave, onDelete, saving, caseId }: {
               className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none text-gray-500">
               {CATEGORIAS.map(c => <option key={c}>{c}</option>)}
             </select>
-            <input value={a.nombre} onChange={e => onUpdate("nombre",e.target.value)}
+            <input value={a.nombre} onChange={e => onUpdate("nombre",e.target.value)} autoFocus={defaultOpen}
+              onFocus={e => defaultOpen && e.target.select()}
               className="flex-1 text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-[#1a2744]"/>
           </div>
         </div>
@@ -165,6 +166,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const [assets, setAssets]         = useState<Asset[]>([])
   const [saving, setSaving]         = useState<string|null>(null)
   const [adding, setAdding]         = useState(false)
+  const [justAdded, setJustAdded]   = useState<string|null>(null)
   const [dirty, setDirty]           = useState<Set<string>>(new Set())
   const [autoSaving, setAutoSaving] = useState(false)
   const [ebitda, setEbitda]         = useState(0)
@@ -370,13 +372,16 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
     }).eq("id",a.id)
     setSaving(null); setDirty(prev => { const s=new Set(prev); s.delete(a.id); return s })
   }
-  async function addAsset() {
+  async function addAsset(categoria:string = "Otro") {
     setAdding(true)
     const {data} = await db.from("dd_case_assets").insert({
-      case_id:caseId,categoria:"Otro",nombre:"Nuevo activo",
+      case_id:caseId,categoria,nombre:"Nuevo activo — click para editar",
       valor_usd:0,estado:"Pendiente",orden:999,org_id:"jl-advisory"
     }).select().single()
-    if (data) setAssets(prev=>[...prev,data as Asset])
+    if (data) {
+      setAssets(prev=>[...prev,data as Asset])
+      setJustAdded((data as Asset).id)
+    }
     setAdding(false)
   }
   async function deleteAsset(id:string) {
@@ -401,7 +406,8 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const totalMaquinaria= sumCat("Maquinaria")
   const totalIntangLive= sumCat("Intangible regulatorio")
   const totalCarteraLive= sumCat("Cartera comercial")
-  const activosRevalu  = totalInmueble + totalMaquinaria + flotaVal + totalIntangLive + totalCarteraLive
+  const totalOtros     = assets.filter(a => !["Rodados","Inmueble","Maquinaria","Intangible regulatorio","Cartera comercial"].includes(a.categoria)).reduce((s,a)=>s+getVal(a),0)
+  const activosRevalu  = assets.reduce((s,a) => s + getVal(a), 0)  // TODOS los activos, cualquier categoría — nada puede quedar afuera
   const riesgosAjust   = rDIA + rPrendas + rCreditos + rY36 + rLaboral + rFlotaAdj + rFiscalAdj + rSeguroAdj
   const activosNetos   = activosRevalu - riesgosAjust
   const fondoComercio     = ebitdaBase2 * multFondo
@@ -572,6 +578,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                   <div>· Flota — {assets.filter(a=>a.categoria==="Rodados").length} unidades valor mercado: {usd(flotaVal)}</div>
                   <div>· Intangibles regulatorios: {usd(totalIntangLive)}</div>
                   <div>· Cartera comercial: {usd(totalCarteraLive)}</div>
+                  {totalOtros > 0 && <div>· Otros activos: {usd(totalOtros)}</div>}
                   <div className="border-t pt-1 mt-1">= Activos: {usd(activosRevalu)}</div>
                   <div>− Riesgos ajustados: −{usd(riesgosAjust)}</div>
                   <div className="font-semibold">= Activos netos: {usd(activosNetos)}</div>
@@ -803,6 +810,10 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                   {catTotal ? usd(catTotal) : "Sin valor cargado"}
                 </span>
               </button>
+              <button onClick={(e) => { e.stopPropagation(); addAsset(cat) }} disabled={adding}
+                className="text-xs text-[#1a2744] hover:text-[#0d1525] font-semibold flex items-center gap-1 mt-1 ml-1 disabled:opacity-50">
+                <Plus size={11}/> Agregar {cat.toLowerCase()}
+              </button>
               {isOpen && (
                 <div className="space-y-2 ml-2">
                   {catAssets.map(a => (
@@ -810,7 +821,8 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                       onUpdate={(f,v)=>updAsset(a.id,f,v)}
                       onSave={()=>saveAsset(a)}
                       onDelete={()=>deleteAsset(a.id)}
-                      saving={saving===a.id}/>
+                      saving={saving===a.id}
+                      defaultOpen={a.id===justAdded}/>
                   ))}
                 </div>
               )}
