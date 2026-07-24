@@ -178,6 +178,8 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const [earnout1, setEarnout1] = useState(100000)  // meta facturación año 1
   const [earnout2, setEarnout2] = useState(100000)  // meta facturación año 2
   const [earnoutYPF, setEarnoutYPF] = useState(150000) // contrato YPF
+  const [ebitdaNorm,   setEbitdaNorm]  = useState(0)
+  const [ebitdaMode,   setEbitdaMode]  = useState<"contable"|"normalizado">("normalizado")
   // Supuestos del modelo de valuación — desde dd_case_assumptions
   const [ingresos,     setIngresos]    = useState(660000)
   const [multBase,     setMultBase]    = useState(10)
@@ -231,6 +233,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
         "Valor intangibles regulatorios (USD)","Valor cartera de clientes revaluada (USD)",
         "Descuento por liquidación forzada (%)","Precio de oferta inicial (USD)",
         "Precio máximo de negociación (USD)",
+        "EBITDA normalizado — puente completo (USD)",
       ])
       .then(({data}) => {
         if (!data) return
@@ -256,7 +259,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
         set("Precio de oferta inicial (USD)",                 setPrecioOferta)
         set("Precio máximo de negociación (USD)",             setPrecioMax)
         if (sup["Tasa de descuento flujo de fondos (%)"]) setTasaDCF(sup["Tasa de descuento flujo de fondos (%)"]/100)
-        if (sup["EBITDA normalizado — puente completo (USD)"]) setEbitdaNorm?.(sup["EBITDA normalizado — puente completo (USD)"])
+        if (sup["EBITDA normalizado — puente completo (USD)"]) setEbitdaNorm(sup["EBITDA normalizado — puente completo (USD)"])
       })
     db.from("dd_case_balance_sheet").select("*").eq("case_id",caseId).eq("ejercicio","EJ N°17 (2025)").single()
       .then(({data}) => {
@@ -365,9 +368,10 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const riesgosAbs         = Math.abs(riesgos)        // todos — stock deal
   const riesgosAssetAbs    = Math.abs(riesgosAsset)  // ambientales/operativos — asset deal
   const riesgosPatrimAbs   = Math.abs(riesgosPatrim) // off-balance — patrimonio
+  const rn             = riesgoPorNombre
   const ebitdaBase2    = ebitdaNorm > 0 ? ebitdaNorm : ebitda
   const evFlujos       = (ebitdaMode === "normalizado" && ebitdaNorm > 0 ? ebitdaNorm : ebitda) * multiplo
-  const activosRevalu  = vTerreno + vPlanta + vHornos + vEquipos + totalEstim + vIntang + vCartera
+  const activosRevalu  = vTerreno + vPlanta + vHornos + vEquipos + totalActivosEstim + vIntang + vCartera
   const riesgosAjust   = Math.round(riesgosAbs * 0.34)
   const activosNetos   = activosRevalu - riesgosAjust
   const fondoComercio  = ebitdaBase2 * multFondo
@@ -703,7 +707,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                 <div>· Planta industrial: {usd(vPlanta)}</div>
                 <div>· Hornos y maquinaria: {usd(vHornos)}</div>
                 <div>· Equipos planta: {usd(vEquipos)}</div>
-                <div>· Flota (mercado): {usd(totalEstim)}</div>
+                <div>· Flota (mercado): {usd(totalActivosEstim)}</div>
                 <div>· Intangibles regulatorios: {usd(vIntang)}</div>
                 <div>· Cartera clientes: {usd(vCartera)}</div>
                 <div className="border-t pt-1 mt-1">= Activos: {usd(activosRevalu)}</div>
@@ -835,7 +839,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
             Total riesgos activos: <strong>{usd(riesgosAbs)}</strong> · Ajustados con mitigantes: <strong>{usd(riesgosAjust)}</strong> ({Math.round(riesgosAjust/riesgosAbs*100)}% del total).
             No reducen el precio de oferta — ya están contemplados en el descuento respecto al promedio.
           </p>
-          {Object.keys(riesgoNombres||{}).length > 0 && (
+          {Object.keys(riesgoPorNombre||{}).length > 0 && (
             <div className="grid grid-cols-2 gap-1.5">
               {[
                 rn?.regulatorio ? {l:"Habilitaciones ambientales — DIA, CAA y corrientes", v:Math.round((rn.regulatorio||0)*0.40)} : null,
@@ -859,7 +863,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
 
       </div>
 
-
+      {/* ── TABLA DE ACTIVOS ── */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <div>
