@@ -108,6 +108,20 @@ Respondé ÚNICAMENTE con este JSON (sin markdown, sin texto extra):
     if (start === -1 || end === -1) throw new Error('Respuesta sin JSON')
 
     const resultado = JSON.parse(txt.slice(start, end + 1))
+
+    // Persistir — así la próxima vez que entren al informe no hace falta gastar de nuevo en la IA
+    await db.from('dd_case_executive_summary').upsert({
+      case_id: caseId,
+      semaforo: resultado.semaforo,
+      recomendacion: resultado.recomendacion,
+      precio_sugerido: resultado.precio_sugerido,
+      resumen_ejecutivo: resultado.resumen_ejecutivo,
+      hallazgos_criticos: resultado.hallazgos_criticos,
+      condiciones_cierre: resultado.condiciones_cierre,
+      org_id: 'jl-advisory',
+      generated_at: new Date().toISOString(),
+    })
+
     return NextResponse.json({ ok: true, resultado })
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : 'Error' }, { status: 500 })

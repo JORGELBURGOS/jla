@@ -12,6 +12,7 @@ interface Props {
   env: Record<string,unknown>[]
   valid: Record<string,unknown>[]
   valuation: ValuationResult
+  savedNarrativa: Record<string,unknown> | null
 }
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -36,8 +37,16 @@ const ESTADO_COLOR: Record<string, { bg: string; text: string }> = {
   Pendiente: { bg:"#fee2e2", text:"#991b1b" },
 }
 
-export default function ReportClient({ caseId, caso, reqs, risks, sups, env, valid, valuation: v }: Props) {
+export default function ReportClient({ caseId, caso, reqs, risks, sups, env, valid, valuation: v, savedNarrativa }: Props) {
   const [generating, setGenerating] = useState(false)
+  const initial = savedNarrativa && savedNarrativa.resumen_ejecutivo ? {
+    recomendacion: String(savedNarrativa.recomendacion ?? ""),
+    resumen_ejecutivo: String(savedNarrativa.resumen_ejecutivo ?? ""),
+    hallazgos_criticos: (savedNarrativa.hallazgos_criticos as string[]) ?? [],
+    condiciones_cierre: (savedNarrativa.condiciones_cierre as string[]) ?? [],
+    precio_sugerido: String(savedNarrativa.precio_sugerido ?? ""),
+    semaforo: (savedNarrativa.semaforo as "VERDE"|"AMARILLO"|"ROJO") ?? "AMARILLO",
+  } : null
   const [narrativa, setNarrativa] = useState<{
     recomendacion: string
     resumen_ejecutivo: string
@@ -45,7 +54,8 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
     condiciones_cierre: string[]
     precio_sugerido: string
     semaforo: "VERDE" | "AMARILLO" | "ROJO"
-  } | null>(null)
+  } | null>(initial)
+  const [lastGenerated] = useState<string | null>(savedNarrativa?.generated_at ? String(savedNarrativa.generated_at) : null)
   const reportRef = useRef<HTMLDivElement>(null)
 
   // ── Calcular KPIs ─────────────────────────────────────────────────
@@ -115,12 +125,15 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
           <span className="text-sm font-bold text-gray-700">Vista previa del informe</span>
         </div>
         <div className="flex items-center gap-3">
-          {!narrativa && (
-            <button onClick={generarNarrativa} disabled={generating}
-              className="flex items-center gap-2 bg-amber-500 text-white text-sm font-bold px-4 py-2 rounded-lg hover:bg-amber-600 disabled:opacity-50">
-              {generating ? <><Loader size={13} className="animate-spin"/> Generando análisis IA...</> : "✨ Generar análisis ejecutivo"}
-            </button>
+          {lastGenerated && (
+            <span className="text-xs text-gray-400">
+              Análisis ejecutivo actualizado: {new Date(lastGenerated).toLocaleDateString("es-AR", { day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" })}
+            </span>
           )}
+          <button onClick={generarNarrativa} disabled={generating}
+            className={`flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-lg disabled:opacity-50 ${narrativa ? "bg-gray-100 text-gray-700 hover:bg-gray-200" : "bg-amber-500 text-white hover:bg-amber-600"}`}>
+            {generating ? <><Loader size={13} className="animate-spin"/> Generando análisis IA...</> : narrativa ? "🔄 Actualizar análisis ejecutivo" : "✨ Generar análisis ejecutivo"}
+          </button>
           <button onClick={imprimir}
             className="flex items-center gap-2 bg-[#1a2744] text-white text-sm font-bold px-5 py-2 rounded-lg hover:bg-[#0d1525]">
             ⬇ Descargar PDF
@@ -610,46 +623,55 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
           </div>
         </div>
 
-        {/* ══════════ S8: CONCLUSIONES ══════════ */}
+        {/* ══════════ S8: RECOMENDACIÓN FINAL Y HOJA DE RUTA ══════════ */}
         <div className="page-break" style={{ padding:"40px 50px" }}>
-          <div className="section-header">Sección 8 — Conclusiones y Recomendaciones</div>
+          <div className="section-header">Sección 8 — Recomendación Final y Hoja de Ruta</div>
 
           {narrativa ? (
             <>
               <div style={{ background:"#1a2744", borderRadius:"12px", padding:"24px", marginBottom:"24px" }}>
-                <div style={{ color:"#f59e0b", fontSize:"10px", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:"8px" }}>Recomendación JL Advisory</div>
-                <div style={{ color:"white", fontSize:"22px", fontWeight:800, marginBottom:"12px" }}>{narrativa.recomendacion}</div>
-                <div style={{ color:"#e2e8f0", fontSize:"12px", lineHeight:1.7 }}>{narrativa.resumen_ejecutivo}</div>
+                <div style={{ color:"#f59e0b", fontSize:"10px", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:"8px" }}>Síntesis de cierre</div>
+                <div style={{ color:"white", fontSize:"13px", lineHeight:1.7 }}>
+                  Sobre la base del análisis financiero, la valuación por tres métodos y el mapa de riesgos relevado,
+                  JL Advisory sostiene la recomendación de la Sección 1 ({narrativa.semaforo}). La oferta se estructura
+                  para que el vendedor cobre el valor real del negocio hoy demostrado, y capture el resto solo si las
+                  condiciones que siguen se cumplen — no antes.
+                </div>
                 <div style={{ marginTop:"16px", paddingTop:"16px", borderTop:"1px solid rgba(255,255,255,0.15)" }}>
-                  <span style={{ color:"#f59e0b", fontWeight:700, fontSize:"11px" }}>Precio de oferta sugerido: </span>
+                  <span style={{ color:"#f59e0b", fontWeight:700, fontSize:"11px" }}>Precio de oferta: </span>
                   <span style={{ color:"white", fontWeight:800, fontSize:"16px" }}>{narrativa.precio_sugerido}</span>
                 </div>
               </div>
 
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"20px" }}>
-                <div style={{ border:"1px solid #fecaca", borderRadius:"8px", padding:"16px" }}>
-                  <div style={{ fontWeight:700, color:"#dc2626", fontSize:"11px", marginBottom:"10px" }}>⚠ Hallazgos Críticos</div>
-                  {narrativa.hallazgos_criticos.map((h, i) => (
-                    <div key={i} style={{ display:"flex", gap:"8px", marginBottom:"8px", fontSize:"11px" }}>
-                      <span style={{ color:"#dc2626", fontWeight:700 }}>{i+1}.</span>
-                      <span style={{ color:"#374151" }}>{h}</span>
+              {/* Hoja de ruta por momento del cierre */}
+              <div style={{ fontWeight:700, fontSize:"11px", color:"#1a2744", marginBottom:"12px" }}>Hoja de ruta — condiciones por momento</div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"14px" }}>
+                {[
+                  { titulo:"Antes del cierre", sub:"condición precedente", estado:"Condición", color:"#dc2626", bg:"#fef2f2" },
+                  { titulo:"Al cierre", sub:"negociar o descontar", estado:"Vigente", color:"#d97706", bg:"#fffbeb" },
+                  { titulo:"Post-cierre", sub:"monitoreo, ya mitigado", estado:null, color:"#16a34a", bg:"#f0fdf4" },
+                ].map(({titulo,sub,estado,color,bg}) => {
+                  const items = v.riesgoAjustesLive.filter(r =>
+                    estado ? r.estado === estado : (r.estado === "Reducido" || r.estado === "Resoluble")
+                  )
+                  return (
+                    <div key={titulo} style={{ border:`1px solid ${color}33`, background:bg, borderRadius:"8px", padding:"14px" }}>
+                      <div style={{ fontWeight:800, fontSize:"11px", color, marginBottom:"2px" }}>{titulo}</div>
+                      <div style={{ fontSize:"8px", color:"#6b7280", marginBottom:"10px", textTransform:"uppercase", letterSpacing:"0.05em" }}>{sub}</div>
+                      {items.length === 0 && <div style={{ fontSize:"9px", color:"#9ca3af" }}>Sin ítems en esta etapa</div>}
+                      {items.slice(0,5).map(r => (
+                        <div key={r.id} style={{ fontSize:"9px", color:"#374151", marginBottom:"6px", lineHeight:1.4 }}>
+                          · {r.descripcion.length > 70 ? r.descripcion.slice(0,70)+"…" : r.descripcion}
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-                <div style={{ border:"1px solid #bbf7d0", borderRadius:"8px", padding:"16px" }}>
-                  <div style={{ fontWeight:700, color:"#16a34a", fontSize:"11px", marginBottom:"10px" }}>✓ Condiciones de Cierre Obligatorias</div>
-                  {narrativa.condiciones_cierre.map((c, i) => (
-                    <div key={i} style={{ display:"flex", gap:"8px", marginBottom:"8px", fontSize:"11px" }}>
-                      <span style={{ color:"#16a34a", fontWeight:700 }}>{i+1}.</span>
-                      <span style={{ color:"#374151" }}>{c}</span>
-                    </div>
-                  ))}
-                </div>
+                  )
+                })}
               </div>
             </>
           ) : (
             <div style={{ textAlign:"center", padding:"48px", color:"#6b7280" }}>
-              Generá el análisis ejecutivo para ver las conclusiones y recomendaciones.
+              Generá el análisis ejecutivo en la Sección 1 para ver la recomendación final y la hoja de ruta.
             </div>
           )}
 
@@ -669,6 +691,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
             </div>
           </div>
         </div>
+
       </div>
     </>
   )
