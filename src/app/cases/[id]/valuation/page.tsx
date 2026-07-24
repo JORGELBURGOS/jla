@@ -395,8 +395,13 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const rn             = riesgoPorNombre
   const ebitdaBase2    = ebitdaNorm > 0 ? ebitdaNorm : ebitda
   const evFlujos       = (ebitdaMode === "normalizado" && ebitdaNorm > 0 ? ebitdaNorm : ebitda) * multiplo
-  const flotaVal       = assets.filter(a => a.categoria === "Rodados").reduce((s,a) => s + getVal(a), 0)
-  const activosRevalu  = vTerreno + vPlanta + vHornos + vEquipos + flotaVal + vIntang + vCartera
+  const sumCat         = (cat:string) => assets.filter(a => a.categoria === cat).reduce((s,a) => s + getVal(a), 0)
+  const flotaVal       = sumCat("Rodados")
+  const totalInmueble  = sumCat("Inmueble")
+  const totalMaquinaria= sumCat("Maquinaria")
+  const totalIntangLive= sumCat("Intangible regulatorio")
+  const totalCarteraLive= sumCat("Cartera comercial")
+  const activosRevalu  = totalInmueble + totalMaquinaria + flotaVal + totalIntangLive + totalCarteraLive
   const riesgosAjust   = rDIA + rPrendas + rCreditos + rY36 + rLaboral + rFlotaAdj + rFiscalAdj + rSeguroAdj
   const activosNetos   = activosRevalu - riesgosAjust
   const fondoComercio     = ebitdaBase2 * multFondo
@@ -562,13 +567,11 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
               <div className="grid grid-cols-2 gap-6">
                 <div className="text-xs text-gray-500 space-y-0.5">
                   <div className="font-semibold text-gray-600">Activos revaluados:</div>
-                  <div>· Terreno 56.635 m² (c/ servidumbre): {usd(vTerreno)}</div>
-                  <div>· Planta industrial 1.800 m²: {usd(vPlanta)}</div>
-                  <div>· Hornos y maquinaria: {usd(vHornos)}</div>
-                  <div>· Otros equipos planta: {usd(vEquipos)}</div>
-                  <div>· Flota — 8 unidades valor mercado: {usd(flotaVal)}</div>
-                  <div>· Intangibles regulatorios: {usd(vIntang)}</div>
-                  <div>· Cartera 39 clientes abonados: {usd(vCartera)}</div>
+                  <div>· Inmuebles — terreno y planta: {usd(totalInmueble)}</div>
+                  <div>· Maquinaria — hornos y equipos: {usd(totalMaquinaria)}</div>
+                  <div>· Flota — {assets.filter(a=>a.categoria==="Rodados").length} unidades valor mercado: {usd(flotaVal)}</div>
+                  <div>· Intangibles regulatorios: {usd(totalIntangLive)}</div>
+                  <div>· Cartera comercial: {usd(totalCarteraLive)}</div>
                   <div className="border-t pt-1 mt-1">= Activos: {usd(activosRevalu)}</div>
                   <div>− Riesgos ajustados: −{usd(riesgosAjust)}</div>
                   <div className="font-semibold">= Activos netos: {usd(activosNetos)}</div>
