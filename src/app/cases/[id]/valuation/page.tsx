@@ -243,6 +243,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
         const set = (label:string, fn:(v:number)=>void) => { if (sup[label]) fn(sup[label]) }
         set("Ingresos reales último ejercicio cerrado (USD)", setIngresos)
         set("Múltiplo base de valuación (×)",                 setMultBase)
+        if (sup["Múltiplo base de valuación (×)"]) setMultiplo(sup["Múltiplo base de valuación (×)"])
         set("Múltiplo fondo de comercio — Método 1 (×)",      setMultFondo)
         set("Múltiplo mínimo comparable — Método 3 (×)",      setMultMinComp)
         set("Múltiplo máximo comparable — Método 3 (×)",      setMultMaxComp)
@@ -396,11 +397,11 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const multImpl       = ebitdaBase2  > 0 ? Math.round(ofertaInic/ebitdaBase2) : 0
 
   // Stock Deal: EV por flujos menos TODOS los riesgos menos deuda neta
-  const valorFlujosAjust   = evFlujos - riesgosAbs
+  const valorFlujosAjust   = evFlujos - riesgosAjust
 
   // Asset Deal: activos a valor de mercado (SIN restar pasivos — el comprador no los hereda)
   // menos solo riesgos ambientales/operativos y costo de re-habilitación
-  const navBruto           = totalActivosEstim                                    // sin pasivos
+  const navBruto           = activosRevalu                                        // mismo criterio que Método 1 — sin doble conteo
   const navAjustAsset      = navBruto - riesgosAssetAbs - costoRehabilitacion   // solo riesgos del activo
   const navVerifBruto      = totalActivosVerif
   const navVerifAjust      = navVerifBruto - riesgosAssetAbs - costoRehabilitacion
@@ -411,8 +412,8 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   // Para compatibilidad con código anterior
   const navEstimado        = totalActivosEstim - pasivos  // referencia con pasivos
   const navVerificado      = totalActivosVerif - pasivos
-  const navAjust           = navAjustAsset  // reemplazar con lógica correcta
-  const hayNAV             = totalActivosEstim > 0
+  const navAjust           = navAjustAsset
+  const hayNAV             = activosRevalu > 0
 
 
 
@@ -438,7 +439,17 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
       <div className="card p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-bold text-gray-800">Comparativa de metodologías de valuación</h2>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
+              <button onClick={() => setEbitdaMode("normalizado")}
+                className={"text-xs px-2.5 py-1 rounded-md font-semibold transition-all " + (ebitdaMode==="normalizado" ? "bg-white shadow text-[#1a2744]" : "text-gray-400")}>
+                Normalizado {usd(ebitdaNorm)}
+              </button>
+              <button onClick={() => setEbitdaMode("contable")}
+                className={"text-xs px-2.5 py-1 rounded-md font-semibold transition-all " + (ebitdaMode==="contable" ? "bg-white shadow text-gray-700" : "text-gray-400")}>
+                Contable {usd(ebitda)}
+              </button>
+            </div>
             <span className="text-xs text-gray-500">Múltiplo EBITDA:</span>
             <input type="number" value={multiplo} min={1} max={20} step={0.5}
               onChange={e=>setMultiplo(parseFloat(e.target.value)||6)}
@@ -473,8 +484,8 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
               </td>
               <td className="py-2.5 text-right font-mono text-gray-700">{usd(evFlujos)}</td>
               <td className="py-2.5 text-right text-red-600 text-xs">
-                <div className="font-mono">−{usd(riesgosAbs)}</div>
-                <div className="text-gray-400">40 riesgos</div>
+                <div className="font-mono">−{usd(riesgosAjust)}</div>
+                <div className="text-gray-400">ajustados con mitigantes</div>
               </td>
               <td className={`py-2.5 text-right font-bold ${valorFlujosAjust<0?"text-red-600":"text-[#1a2744]"}`}>
                 {valorFlujosAjust<0?`−${usd(Math.abs(valorFlujosAjust))}`:usd(valorFlujosAjust)}
@@ -548,11 +559,11 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
             <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-100 pb-2 mb-1">Por flujos de caja</div>
             <div className="text-xs text-gray-500 mb-3">Cuánto vale el negocio como generador de caja</div>
             {[
-              { label:"EBITDA anual normalizado", val:ebitda, color:"text-gray-800" },
+              { label:`EBITDA ${ebitdaMode === "normalizado" && ebitdaNorm > 0 ? "normalizado" : "contable"}`, val:ebitdaMode === "normalizado" && ebitdaNorm > 0 ? ebitdaNorm : ebitda, color:"text-gray-800" },
               { label:`× Múltiplo M&A (${multiplo}×)`, val:null, color:"text-gray-400", op:true },
               { label:"= Valor operativo bruto", val:evFlujos, color:"text-blue-700", bold:true },
-              { label:"− Riesgos identificados", val:-riesgosAbs, color:"text-red-600" },
-              { label:"(Todos los riesgos: fiscal+ambiental+laboral+societario)", val:null, color:"text-gray-400", nota:true },
+              { label:"− Riesgos ajustados con mitigantes", val:-riesgosAjust, color:"text-red-600" },
+              { label:`(Exposición bruta sin mitigar: ${usd(riesgosAbs)} — detalle en Riesgos vigentes)`, val:null, color:"text-gray-400", nota:true },
               { label:"= Valor para el comprador", val:valorFlujosAjust, color:valorFlujosAjust<0?"text-red-700":"text-blue-900", bold:true, grande:true },
             ].map((row,i) => (
               <div key={i} className={`flex justify-between items-center ${i===4?"border-t-2 border-blue-200 pt-2 mt-1":""}`}>
@@ -568,7 +579,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
             <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-100 pb-2 mb-1">Por activos (NAV)</div>
             <div className="text-xs text-gray-500 mb-3">Cuánto valen los activos a precio de mercado</div>
             {[
-              { label:"Activos a valor de mercado", val:totalActivosEstim||null, color:"text-gray-800", pending:!hayNAV },
+              { label:"Activos a valor de mercado", val:activosRevalu||null, color:"text-gray-800", pending:!hayNAV },
               { label:"(El comprador no hereda los pasivos del balance)", val:null, color:"text-green-700", nota:true },
               { label:"= NAV sin pasivos", val:hayNAV?navBruto:null, color:"text-amber-700", bold:true },
               { label:"− Riesgos ambientales y operativos", val:riesgosAssetAbs?-riesgosAssetAbs:null, color:"text-red-600" },
