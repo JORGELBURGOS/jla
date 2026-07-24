@@ -13,10 +13,11 @@ type Asset = {
 }
 
 type RiskAdj = {
-  id: string; descripcion: string; monto: number; estado: string; nota: string; orden: number
-  origen_riesgo_id: string|null; impacto_original: number|null; porcentaje: number|null
+  id: string; origen_riesgo_id: string; porcentaje: number; estado: string; orden: number
 }
 type RiesgoFull = { id: string; riesgo: string; area: string; impacto: number; accion: string }
+// Riesgo ajustado con sus datos en vivo, ya cruzado con el riesgo original del mapa
+type RiskAdjLive = RiskAdj & { descripcion:string; area:string; nota:string; impactoActual:number; monto:number }
 const RIESGO_ESTADOS = ["Vigente","Reducido","Resoluble","Condición"]
 const RIESGO_ESTADO_CLS: Record<string,string> = {
   "Vigente":   "bg-red-100 text-red-700",
@@ -173,17 +174,18 @@ function AssetRow({ a, onUpdate, onSave, onDelete, saving, caseId, defaultOpen }
 
 // ─── Fila de riesgo ajustado ───────────────────────────────────────
 function RiskAdjRow({ r, onUpdate, onSave, onDelete, saving, defaultOpen }: {
-  r: RiskAdj; onUpdate:(f:keyof RiskAdj,v:unknown)=>void
+  r: RiskAdjLive; onUpdate:(f:"porcentaje"|"estado",v:unknown)=>void
   onSave:()=>void; onDelete:()=>void; saving:boolean; defaultOpen?:boolean
 }) {
   const [open, setOpen] = useState(!!defaultOpen)
+  const sinVinculo = r.impactoActual === 0 && !r.nota
   return (
     <div className="border-b border-gray-50 py-1">
       <div className="w-full flex items-center gap-2 text-xs">
         <button onClick={() => setOpen(o=>!o)} className="text-gray-300 flex-shrink-0">
           <Info size={11}/>
         </button>
-        <span className="text-gray-600 flex-1 min-w-0 truncate">{r.descripcion || "Sin descripción — click para editar"}</span>
+        <span className={`flex-1 min-w-0 truncate ${sinVinculo?"text-amber-600 italic":"text-gray-600"}`}>{r.descripcion}</span>
         <select value={r.estado} onChange={e => onUpdate("estado", e.target.value)}
           className={`shrink-0 whitespace-nowrap text-xs px-1.5 py-0.5 rounded font-semibold border-0 cursor-pointer focus:outline-none ${RIESGO_ESTADO_CLS[r.estado]??"bg-gray-100 text-gray-600"}`}>
           {RIESGO_ESTADOS.map(s => <option key={s}>{s}</option>)}
@@ -193,41 +195,33 @@ function RiskAdjRow({ r, onUpdate, onSave, onDelete, saving, defaultOpen }: {
         </span>
       </div>
       {open && (
-        <div className="mt-1.5 ml-5 mr-2 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2.5 space-y-2">
-          <div>
-            <div className="text-xs font-semibold text-gray-500 mb-1">Descripción del riesgo</div>
-            <input value={r.descripcion} onChange={e => onUpdate("descripcion",e.target.value)}
-              placeholder="Ej: Multa AFIP por presentación tardía"
-              className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-[#1a2744] bg-white"/>
+        <div className="mt-1.5 ml-5 mr-2 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2.5 space-y-2.5">
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">{r.area}</span>
           </div>
-          {r.impacto_original != null && (
-            <div className="bg-white rounded-lg border border-gray-200 px-2.5 py-2 flex items-center gap-3 text-xs">
-              <span className="text-gray-400">Riesgo original: <strong className="text-gray-600">−{usd(r.impacto_original)}</strong></span>
-              <span className="text-gray-300">×</span>
-              <div className="flex items-center gap-1">
-                <input type="number" min={0} max={100} value={r.porcentaje??""} onChange={e => onUpdate("porcentaje",e.target.value===""?null:parseFloat(e.target.value))}
-                  placeholder="%" className="w-14 border border-gray-200 rounded px-1.5 py-1 text-right focus:outline-none focus:border-[#1a2744]"/>
-                <span className="text-gray-400">%</span>
-              </div>
-              <span className="text-gray-300">=</span>
-              <span className="font-bold text-[#1a2744]">−{usd(r.monto)}</span>
+          <div className="bg-white rounded-lg border border-gray-200 px-2.5 py-2 flex items-center gap-3 text-xs">
+            <span className="text-gray-400">Riesgo en el mapa hoy: <strong className="text-gray-600">−{usd(r.impactoActual)}</strong></span>
+            <span className="text-gray-300">×</span>
+            <div className="flex items-center gap-1">
+              <input type="number" min={0} max={100} step={0.01} value={r.porcentaje} onChange={e => onUpdate("porcentaje",e.target.value)}
+                className="w-16 border border-gray-200 rounded px-1.5 py-1 text-right focus:outline-none focus:border-[#1a2744]"/>
+              <span className="text-gray-400">%</span>
             </div>
-          )}
-          <div>
-            <div className="text-xs font-semibold text-gray-500 mb-1">Monto ajustado con mitigantes (USD) {r.impacto_original != null && <span className="font-normal text-gray-400">— podés tocarlo directo, pisa el cálculo del %</span>}</div>
-            <input type="number" value={r.monto||""} onChange={e => onUpdate("monto",parseFloat(e.target.value)||0)}
-              placeholder="0"
-              className="w-40 text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-[#1a2744] bg-white"/>
+            <span className="text-gray-300">=</span>
+            <span className="font-bold text-[#1a2744]">−{usd(r.monto)}</span>
           </div>
+          <p className="text-xs text-gray-400 italic">
+            El monto se recalcula solo si el impacto de este riesgo cambia en el mapa — acá solo definís el % de implicancia.
+          </p>
           <div>
-            <div className="text-xs font-semibold text-gray-500 mb-1">Nota — de qué se trata y cómo se mitiga (deep dive)</div>
-            <textarea value={r.nota} onChange={e => onUpdate("nota",e.target.value)}
-              rows={3} placeholder="Explicá brevemente el riesgo y qué condición o acción reduce su impacto..."
-              className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 resize-none focus:outline-none focus:border-[#1a2744] bg-white"/>
+            <div className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-1">Justificación y valuación (del mapa de riesgos)</div>
+            <div className="text-xs text-gray-700 leading-relaxed bg-white rounded-lg border border-gray-200 px-2.5 py-2 max-h-40 overflow-y-auto whitespace-pre-wrap">
+              {r.nota || "Sin justificación cargada en el mapa de riesgos para este ítem."}
+            </div>
           </div>
           <div className="flex items-center justify-between pt-1">
             <button onClick={onDelete} className="text-red-400 hover:text-red-600 text-xs flex items-center gap-1 hover:bg-red-50 px-2 py-1 rounded">
-              <Trash2 size={12}/> Eliminar
+              <Trash2 size={12}/> Sacar de la valuación
             </button>
             <button onClick={onSave} disabled={saving}
               className="flex items-center gap-1 text-xs bg-[#1a2744] text-white px-3 py-1.5 rounded-lg hover:bg-[#0d1525] disabled:opacity-50">
@@ -444,33 +438,23 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   }
 
   // ─── CRUD riesgos ajustados ────────────────────────────────────────
-  function updRiskAdj(id:string, f:keyof RiskAdj, v:unknown) {
-    setRiesgoAjustes(prev => prev.map(r => {
-      if (r.id !== id) return r
-      // Si cambia el %, recalcula el monto desde el impacto original. Si cambia el monto directo, el % no se toca.
-      if (f === "porcentaje" && r.impacto_original != null) {
-        const pct = Number(v) || 0
-        return {...r, porcentaje:pct, monto: Math.round(r.impacto_original * pct / 100)}
-      }
-      return {...r, [f]:v}
-    }))
+  // Solo se editan porcentaje y estado — descripción, área y nota vienen siempre en vivo del riesgo vinculado
+  function updRiskAdj(id:string, f:"porcentaje"|"estado", v:unknown) {
+    setRiesgoAjustes(prev => prev.map(r => r.id===id ? {...r,[f]: f==="porcentaje" ? (Number(v)||0) : v} : r))
   }
   async function saveRiskAdj(r:RiskAdj) {
     setRiskSaving(r.id)
     await db.from("dd_case_risk_adjustments").update({
-      descripcion:r.descripcion, monto:r.monto, estado:r.estado, nota:r.nota, porcentaje:r.porcentaje
+      porcentaje:r.porcentaje, estado:r.estado
     }).eq("id",r.id)
     setRiskSaving(null)
   }
-  // Trae un riesgo del listado completo del DD y lo suma a la lista de ajustes, con el % elegido
+  // Trae un riesgo del listado completo del DD y lo vincula — descripción/nota/monto se leen en vivo, nunca se copian
   async function traerRiesgo(riesgo: RiesgoFull, pct: number) {
     setRiskAdding(true)
-    const impactoOriginal = Math.abs(riesgo.impacto)
-    const montoCalculado  = Math.round(impactoOriginal * pct / 100)
     const {data, error} = await db.from("dd_case_risk_adjustments").insert({
-      case_id:caseId, descripcion:riesgo.riesgo, monto:montoCalculado, estado:"Vigente",
-      nota:riesgo.accion || "", orden:999, org_id:"jl-advisory",
-      origen_riesgo_id:riesgo.id, impacto_original:impactoOriginal, porcentaje:pct
+      case_id:caseId, estado:"Vigente", orden:999, org_id:"jl-advisory",
+      origen_riesgo_id:riesgo.id, porcentaje:pct
     }).select().single()
     if (error) {
       alert("No se pudo traer el riesgo: " + error.message)
@@ -482,7 +466,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
     setRiskAdding(false)
   }
   async function deleteRiskAdj(id:string) {
-    if (!confirm("¿Eliminar este riesgo de la valuación?")) return
+    if (!confirm("¿Sacar este riesgo de la valuación? (el riesgo sigue existiendo en el mapa, solo deja de aplicarse acá)")) return
     await db.from("dd_case_risk_adjustments").delete().eq("id",id)
     setRiesgoAjustes(prev=>prev.filter(r=>r.id!==id))
   }
@@ -502,7 +486,20 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const totalCarteraLive= sumCat("Cartera comercial")
   const totalOtros     = assets.filter(a => !["Rodados","Inmueble","Maquinaria","Intangible regulatorio","Cartera comercial"].includes(a.categoria)).reduce((s,a)=>s+getVal(a),0)
   const activosRevalu  = assets.reduce((s,a) => s + getVal(a), 0)  // TODOS los activos, cualquier categoría — nada puede quedar afuera
-  const riesgosAjust   = riesgoAjustes.reduce((s,r) => s + (r.monto||0), 0)
+  // Cruce en vivo: cada ajuste toma el impacto ACTUAL del riesgo en el mapa — si el mapa cambia, esto cambia solo
+  const riesgoAjustesLive: RiskAdjLive[] = riesgoAjustes.map(r => {
+    const origen = riesgoDetalle.find(rd => rd.id === r.origen_riesgo_id)
+    const impactoActual = origen ? Math.abs(origen.impacto) : 0
+    return {
+      ...r,
+      descripcion: origen?.riesgo ?? "Riesgo no encontrado en el mapa (¿fue eliminado o cerrado?)",
+      area: origen?.area ?? "—",
+      nota: origen?.accion ?? "",
+      impactoActual,
+      monto: Math.round(impactoActual * r.porcentaje / 100),
+    }
+  })
+  const riesgosAjust   = riesgoAjustesLive.reduce((s,r) => s + r.monto, 0)
   const activosNetos   = activosRevalu - riesgosAjust
   const fondoComercio     = ebitdaBase2 * multFondo
   const fondoComercioCont = ebitda * multFondo
@@ -807,7 +804,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
             </div>
           )}
           <div className="space-y-1">
-            {riesgoAjustes.map(r => (
+            {riesgoAjustesLive.map(r => (
               <RiskAdjRow key={r.id} r={r}
                 onUpdate={(f,v)=>updRiskAdj(r.id,f,v)}
                 onSave={()=>saveRiskAdj(r)}
@@ -815,7 +812,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                 saving={riskSaving===r.id}
                 defaultOpen={r.id===riskJustAdded}/>
             ))}
-            {riesgoAjustes.length===0 && <div className="text-xs text-gray-400 py-2">Sin riesgos ajustados cargados — usá &quot;Traer riesgo del DD&quot; para sumar el primero.</div>}
+            {riesgoAjustesLive.length===0 && <div className="text-xs text-gray-400 py-2">Sin riesgos ajustados cargados — usá &quot;Traer riesgo del DD&quot; para sumar el primero.</div>}
             <div className="flex justify-between pt-1.5 font-bold text-xs border-t border-red-200">
               <span className="text-red-700">Total riesgos ajustados</span>
               <span className="text-red-700">−{usd(riesgosAjust)}</span>
