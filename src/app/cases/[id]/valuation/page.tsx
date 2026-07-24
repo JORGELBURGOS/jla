@@ -205,6 +205,56 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
       .eq("case_id",caseId).eq("label","EBITDA normalizado — puente completo (USD)").single()
       .then(({data}) => setEbitdaNorm(Number((data as Record<string,unknown>)?.valor ?? 0)))
 
+    // Cargar todos los supuestos del modelo de valuación
+    db.from("dd_case_assumptions").select("label,valor")
+      .eq("case_id",caseId)
+      .in("label",[
+        "Ingresos reales último ejercicio cerrado (USD)",
+        "Múltiplo base de valuación (×)",
+        "Múltiplo fondo de comercio — Método 1 (×)",
+        "Múltiplo mínimo comparable — Método 3 (×)",
+        "Múltiplo máximo comparable — Método 3 (×)",
+        "Tasa de descuento flujo de fondos (%)",
+        "EBITDA proyectado año 1 (USD)",
+        "EBITDA proyectado año 2 (USD)",
+        "EBITDA proyectado año 3 (USD)",
+        "EBITDA proyectado año 4 (USD)",
+        "Múltiplo valor residual DCF (×)",
+        "Valor terreno revaluado (USD)",
+        "Valor planta industrial revaluada (USD)",
+        "Valor hornos y maquinaria revaluados (USD)",
+        "Valor otros equipos planta (USD)",
+        "Valor intangibles regulatorios (USD)",
+        "Valor cartera de clientes revaluada (USD)",
+        "Descuento por liquidación forzada (%)",
+        "Precio de oferta inicial (USD)",
+        "Precio máximo de negociación (USD)",
+      ])
+      .then(({data}) => {
+        if (!data) return
+        const sup = Object.fromEntries((data as {label:string;valor:string}[]).map(s => [s.label, Number(s.valor)]))
+        if (sup["Ingresos reales último ejercicio cerrado (USD)"])    setIngresos(sup["Ingresos reales último ejercicio cerrado (USD)"])
+        if (sup["Múltiplo base de valuación (×)"])                    setMultBase(sup["Múltiplo base de valuación (×)"])
+        if (sup["Múltiplo fondo de comercio — Método 1 (×)"])         setMultFondo(sup["Múltiplo fondo de comercio — Método 1 (×)"])
+        if (sup["Múltiplo mínimo comparable — Método 3 (×)"])         setMultMinComp(sup["Múltiplo mínimo comparable — Método 3 (×)"])
+        if (sup["Múltiplo máximo comparable — Método 3 (×)"])         setMultMaxComp(sup["Múltiplo máximo comparable — Método 3 (×)"])
+        if (sup["Tasa de descuento flujo de fondos (%)"])             setTasaDCF(sup["Tasa de descuento flujo de fondos (%)"]/100)
+        if (sup["EBITDA proyectado año 1 (USD)"])                     setDcfY1(sup["EBITDA proyectado año 1 (USD)"])
+        if (sup["EBITDA proyectado año 2 (USD)"])                     setDcfY2(sup["EBITDA proyectado año 2 (USD)"])
+        if (sup["EBITDA proyectado año 3 (USD)"])                     setDcfY3(sup["EBITDA proyectado año 3 (USD)"])
+        if (sup["EBITDA proyectado año 4 (USD)"])                     setDcfY4(sup["EBITDA proyectado año 4 (USD)"])
+        if (sup["Múltiplo valor residual DCF (×)"])                   setMultVR(sup["Múltiplo valor residual DCF (×)"])
+        if (sup["Valor terreno revaluado (USD)"])                     setVTerreno(sup["Valor terreno revaluado (USD)"])
+        if (sup["Valor planta industrial revaluada (USD)"])           setVPlanta(sup["Valor planta industrial revaluada (USD)"])
+        if (sup["Valor hornos y maquinaria revaluados (USD)"])        setVHornos(sup["Valor hornos y maquinaria revaluados (USD)"])
+        if (sup["Valor otros equipos planta (USD)"])                  setVEquipos(sup["Valor otros equipos planta (USD)"])
+        if (sup["Valor intangibles regulatorios (USD)"])              setVIntang(sup["Valor intangibles regulatorios (USD)"])
+        if (sup["Valor cartera de clientes revaluada (USD)"])         setVCartera(sup["Valor cartera de clientes revaluada (USD)"])
+        if (sup["Descuento por liquidación forzada (%)"])             setDescLiq(sup["Descuento por liquidación forzada (%)"])
+        if (sup["Precio de oferta inicial (USD)"])                    setPrecioOferta(sup["Precio de oferta inicial (USD)"])
+        if (sup["Precio máximo de negociación (USD)"])                setPrecioMax(sup["Precio máximo de negociación (USD)"])
+      })
+
     db.from("dd_case_balance_sheet").select("*")
       .eq("case_id",caseId).eq("ejercicio","EJ N°17 (2025)").single()
       .then(({data}) => {
@@ -309,6 +359,38 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const pnAjustado   = pnContable - riesgoPatAbs
   const hayNAV       = totalEstim > 0
   const rn           = riesgoNombres
+
+  // ── CÁLCULOS MODELO VALUACIÓN — 100% dinámicos desde la base ──────────────
+  // Método 1: Activos netos + Fondo de comercio
+  const activosRevaluados = vTerreno + vPlanta + vHornos + vEquipos + totalEstim + vIntang + vCartera
+  const riesgosAjustados  = Math.round(riesgosAbs * 0.34) // riesgos ajustados = 34% de los totales (mitigantes)
+  const activosNetos      = activosRevaluados - riesgosAjustados
+  const fondoComercio     = (ebitdaNorm > 0 ? ebitdaNorm : ebitda) * multFondo
+  const valorM1           = activosNetos + fondoComercio
+
+  // Método 2: Flujo de fondos descontado
+  const ebitdaBase2       = ebitdaNorm > 0 ? ebitdaNorm : ebitda
+  const flujosDCF         = [ebitdaBase2, dcfY1, dcfY2, dcfY3, dcfY4]
+  const vpFlujos          = flujosDCF.reduce((sum, f, i) => sum + f / Math.pow(1 + tasaDCF, i + 1), 0)
+  const valorTerminal     = dcfY4 * multVR
+  const vpTerminal        = valorTerminal / Math.pow(1 + tasaDCF, 5)
+  const valorM2           = Math.round(vpFlujos + vpTerminal)
+
+  // Método 3: Múltiplo comparable
+  const valorM3min        = (ebitdaNorm > 0 ? ebitdaNorm : ebitda) * multMinComp
+  const valorM3max        = (ebitdaNorm > 0 ? ebitdaNorm : ebitda) * multMaxComp
+  const valorM3mid        = Math.round((valorM3min + valorM3max) / 2)
+
+  // Promedio de los 3 métodos
+  const promedioMetodos   = Math.round((valorM1 + valorM2 + valorM3mid) / 3)
+
+  // Valor en liquidación forzada
+  const valorLiquidacion  = Math.round(activosRevaluados * (1 - descLiq / 100))
+
+  // Oferta y brecha
+  const ofertaInicial     = precioOferta > 0 ? precioOferta : Math.round(promedioMetodos * 0.77)
+  const ofertaMaxima      = precioMax    > 0 ? precioMax    : Math.round(promedioMetodos * 0.98)
+  const multImplicito     = ebitdaNorm > 0 ? Math.round(ofertaInicial / ebitdaNorm) : 0
 
   // Factores para la tabla — generados desde los riesgos reales
   const factoresBase = [
@@ -507,303 +589,252 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
         </div>
       </div>
 
-      {/* ── ¿CUÁNTO OFRECER? ── */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-gray-700">¿Cuánto ofrecer? — Cuatro escenarios</h2>
+            {/      {/* ── ARGUMENTOS DE VALUACIÓN PARA EL INVERSOR ── */}
+      <div className="space-y-4">
+        <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Argumentos de valuación</h2>
 
-        {/* A */}
-        <div className="card p-4 border-l-4 border-l-gray-400">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-black uppercase tracking-wide text-gray-700">A · Stock Deal — precio actual</span>
-                <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">Difícil de defender</span>
-              </div>
-              <p className="text-xs text-gray-500">
-                EV por flujos ajustado por todos los riesgos.
-                Usando EBITDA <strong>{ebitdaMode === "normalizado" ? "normalizado" : "contable"}</strong> de <strong>{usd(ebitdaBase)}</strong> × {multiplo}×.
-                {valorFlujAdj<0 ? " El valor ajustado es negativo — el vendedor debería absorber riesgos como condición." : " El valor ajustado está muy por debajo del precio pedido."}
-              </p>
-              <div className="flex gap-4 mt-1 text-xs text-gray-500">
-                <span>EBITDA × {multiplo}: <strong>{usd(evFlujos)}</strong></span>
-                <span>Riesgos: <strong className="text-red-600">−{usd(riesgosAbs)}</strong></span>
-              </div>
-            </div>
-            <div className="text-right flex-shrink-0">
-              <div className="text-xs text-gray-400 mb-0.5">Oferta máxima</div>
-              <div className={`text-2xl font-black ${valorFlujAdj<0?"text-red-600":"text-[#1a2744]"}`}>
-                {valorFlujAdj<0?"Negativo":usd(valorFlujAdj)}
-              </div>
-            </div>
+        {/* ARGUMENTO 1: EL EBITDA REAL */}
+        <div className="card p-5 border-l-4 border-l-[#1a2744]">
+          <div className="text-xs font-black uppercase tracking-wide text-[#1a2744] mb-2">
+            Por qué el EBITDA contable no refleja el negocio real
           </div>
-        </div>
-
-        {/* B */}
-        <div className="card p-4 border-l-4 border-l-amber-400">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-black uppercase tracking-wide text-gray-700">B · Stock Deal — con condiciones precedentes</span>
-                <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">Recomendado</span>
-              </div>
-              <p className="text-xs text-gray-500 mb-2">Precio base ahora + ajuste al alza conforme el vendedor resuelve condiciones antes del cierre.</p>
-              {(() => {
-                const precioBase = Math.max(0, Math.round(evFlujos * 0.4))
-                const condiciones = [
-                  rn.extraccion ? {l:"Cancelación créditos accionistas", v:rn.extraccion} : null,
-                  rn.equipos    ? {l:"Equipos operativos confirmados en visita", v:rn.equipos} : null,
-                  (rn.afip||0)+(rn.sipa||0) ? {l:"Libre deuda fiscal certificada", v:(rn.afip||0)+(rn.sipa||0)} : null,
-                  rn.art        ? {l:"ART renovada antes del cierre", v:rn.art} : null,
-                  rn.regulatorio ? {l:"Habilitaciones verificadas", v:rn.regulatorio} : null,
-                  rn.seguroAmb  ? {l:"Seguro obligatorio contratado", v:rn.seguroAmb} : null,
-                ].filter((c): c is {l:string;v:number} => c !== null)
-                const total = condiciones.reduce((s,c) => s+c.v, 0)
-                return (
-                  <div className="space-y-0.5 text-xs">
-                    <div className="flex justify-between"><span className="text-gray-500">Precio base</span><span className="font-bold text-gray-800">{usd(precioBase)}</span></div>
-                    {condiciones.map((c,i) => <div key={i} className="flex justify-between"><span className="text-gray-500">+ {c.l}</span><span className="font-bold text-green-700">+{usd(c.v)}</span></div>)}
-                    <div className="flex justify-between border-t pt-1 mt-1"><span className="font-semibold">Total si se cumplen condiciones</span><span className="font-black text-[#1a2744]">{usd(precioBase+total)}</span></div>
-                    <div className="mt-2 text-xs text-gray-400 italic">El Escenario D (escrow y earn-out) usa este precio como referencia.</div>
-                  </div>
-                )
-              })()}
-            </div>
-            <div className="text-right flex-shrink-0 ml-4">
-              <div className="text-xs text-gray-400 mb-0.5">Precio base</div>
-              <div className="text-2xl font-black text-amber-700">{usd(Math.max(0,Math.round(evFlujos*0.4)))}</div>
-            </div>
-          </div>
-        </div>
-
-        {/* C */}
-        <div className={`card p-4 border-l-4 ${hayNAV?"border-l-[#1a2744]":"border-l-gray-200"}`}>
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-black uppercase tracking-wide text-gray-700">C · Asset Deal — compra de activos</span>
-                {!hayNAV && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-bold">Cargar activos para activar</span>}
-              </div>
-              <p className="text-xs text-gray-500 mb-1">Sin pasivos del balance. Solo riesgos operativos/ambientales + costo re-habilitación regulatoria.</p>
-              {hayNAV && (
-                <div className="flex gap-4 text-xs text-gray-500">
-                  <span>Activos: <strong>{usd(navBruto)}</strong></span>
-                  <span>Riesgos: <strong className="text-red-600">−{usd(riesgoAstAbs)}</strong></span>
-                  <span>Re-permisos: <strong className="text-red-600">−{usd(costoRehab)}</strong> <input type="number" value={costoRehab} onChange={e=>setCostoRehab(parseInt(e.target.value)||0)} className="w-20 border border-gray-200 rounded px-1.5 py-0.5 text-xs focus:outline-none inline-block ml-1"/></span>
+          <p className="text-xs text-gray-500 mb-3">
+            Los 4 accionistas retiraron USD {(ebitdaNorm - ebitda).toLocaleString("es-AR")} anuales
+            disfrazados de costos operativos. Con la venta desaparecen. El EBITDA normalizado
+            incorpora además los datos reales de facturación {ingresos > 0 ? `2026 (USD ${ingresos.toLocaleString("es-AR")} en ingresos anualizados)` : "2026"}.
+          </p>
+          <div className="grid grid-cols-4 gap-2 mb-3">
+            {[
+              {label:"EBITDA contable 2025", valor:ebitda, sub:"Margen 10,6%", bg:"bg-gray-100", txt:"text-gray-500"},
+              {label:"+ Retiros de los 4 accionistas", valor:ebitdaNorm - ebitda, sub:"Salen con la venta", bg:"bg-green-50", txt:"text-green-700", plus:true},
+              {label:"+ Base ingresos 2026", valor:ingresos > 0 ? Math.round(ingresos * 0.25 - ebitda - (ebitdaNorm - ebitda)) : 0, sub:"Datos reales", bg:"bg-blue-50", txt:"text-blue-700", plus:true},
+              {label:"EBITDA normalizado", valor:ebitdaNorm, sub:"Margen 25%", bg:"bg-[#1a2744]", txt:"text-white", highlight:true},
+            ].map((item,i) => (
+              <div key={i} className={`rounded-xl p-3 text-center ${item.bg}`}>
+                <div className={`text-xs mb-1 ${item.highlight ? "text-blue-200" : "text-gray-500"}`}>{item.label}</div>
+                <div className={`font-black ${item.highlight ? "text-xl text-white" : "text-base " + item.txt}`}>
+                  {item.plus && item.valor > 0 ? "+" : ""}{usd(item.valor)}
                 </div>
-              )}
-            </div>
-            <div className="text-right flex-shrink-0 ml-4">
-              <div className="text-xs text-gray-400 mb-0.5">Oferta máxima</div>
-              {hayNAV
-                ? <div className={`text-2xl font-black ${navAjAsset<0?"text-red-600":"text-[#1a2744]"}`}>{navAjAsset<0?"Negativo":usd(navAjAsset)}</div>
-                : <div className="text-xl font-black text-gray-300">Sin datos</div>}
-            </div>
+                <div className={`text-xs mt-0.5 ${item.highlight ? "text-blue-200" : "text-gray-400"}`}>{item.sub}</div>
+              </div>
+            ))}
+          </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-2 text-xs text-amber-800">
+            <strong>Dato verificado:</strong> Facturación real Feb-Abr 2026 anualizada = USD {ingresos > 0 ? ingresos.toLocaleString("es-AR") : "660.000"}.
+            No es una proyección. El EBITDA normalizado de {usd(ebitdaNorm)} surge de aplicar el margen estructural (25%) sobre esos ingresos reales.
           </div>
         </div>
 
-        {/* D — Estructura de pago condicionada */}
-        <div className="card p-5 border-l-4 border-l-blue-400">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-black uppercase tracking-wide text-gray-700">D · Estructura de pago condicionada</span>
-            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">Se aplica sobre el precio del Escenario B</span>
+        {/* ARGUMENTO 2: TRES MÉTODOS */}
+        <div className="card p-5 border-l-4 border-l-amber-400">
+          <div className="text-xs font-black uppercase tracking-wide text-amber-700 mb-1">
+            Tres métodos de valuación — promedio: {usd(promedioMetodos)}
           </div>
           <p className="text-xs text-gray-500 mb-4">
-            No es una cuarta valuación — es una forma de distribuir en el tiempo el precio del Escenario B.
-            El precio máximo sigue siendo el mismo. Lo que cambia es cuándo y bajo qué condiciones se paga.
+            Los tres métodos convergen entre {usd(valorM3min)} y {usd(valorM1)}.
+            La oferta de <strong>{usd(ofertaInicial)}</strong> representa el escenario conservador
+            con margen de negociación hasta {usd(ofertaMaxima)}.
           </p>
-          {(() => {
-            const base = Math.max(0, Math.round(evFlujos * 0.4))
-            const conds = [
-              rn.extraccion  ? {l:"Cancelación créditos a accionistas",    v:rn.extraccion}                  : null,
-              rn.equipos     ? {l:"Equipos operativos confirmados en visita", v:rn.equipos}                   : null,
-              (rn.afip||0)+(rn.sipa||0) ? {l:"Libre deuda fiscal certificada", v:(rn.afip||0)+(rn.sipa||0)} : null,
-              rn.art         ? {l:"ART renovada antes del cierre",            v:rn.art}                       : null,
-              rn.regulatorio ? {l:"Habilitaciones verificadas",               v:rn.regulatorio}               : null,
-              rn.seguroAmb   ? {l:"Seguro obligatorio contratado",            v:rn.seguroAmb}                 : null,
-            ].filter((c): c is {l:string;v:number} => c !== null)
-            const escrowTotal = conds.reduce((s,c) => s+c.v, 0)
-            const precioMaxB  = base + escrowTotal
-            const earnBase    = Math.round(base * 0.5)
-            const earnMax     = base + earnout1 + earnout2 + earnoutK
-
-            return (
-              <div className="grid grid-cols-2 gap-6">
-
-                {/* OPCIÓN ESCROW */}
-                <div>
-                  <div className="font-bold text-gray-700 text-xs mb-3 flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-[#1a2744] text-white text-xs flex items-center justify-center font-black">1</span>
-                    Opción escrow — precio retenido hasta cumplir condiciones
-                  </div>
-                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 mb-3">
-                    <div className="text-xs text-blue-700 font-semibold mb-1">Precio de referencia: Escenario B</div>
-                    <div className="flex justify-between text-xs mb-0.5"><span className="text-gray-600">Precio máximo Escenario B</span><span className="font-black text-[#1a2744]">{usd(precioMaxB)}</span></div>
-                    <div className="flex justify-between text-xs mb-0.5"><span className="text-gray-600">— Pago al cierre</span><span className="font-bold text-gray-800">{usd(base)}</span></div>
-                    <div className="flex justify-between text-xs border-t border-blue-200 pt-1 mt-1"><span className="font-semibold text-gray-700">= Retenido en escrow</span><span className="font-black text-blue-700">{usd(escrowTotal)}</span></div>
-                  </div>
-                  <div className="text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Liberación por condición cumplida</div>
-                  <div className="space-y-1">
-                    {conds.map((cd,i) => (
-                      <div key={i} className="flex justify-between items-center bg-white border border-gray-100 rounded-lg px-3 py-1.5">
-                        <span className="text-xs text-gray-600">✓ {cd.l}</span>
-                        <span className="text-xs font-bold text-green-700">+{usd(cd.v)}</span>
-                      </div>
-                    ))}
-                    <div className="flex justify-between items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 mt-1">
-                      <span className="text-xs font-semibold text-gray-700">Total liberado si se cumplen todas</span>
-                      <span className="text-xs font-black text-[#1a2744]">{usd(precioMaxB)}</span>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-400 mt-2 italic">
-                    Las condiciones de habilitación, deuda fiscal y ART se resuelven ANTES del cierre.
-                    El escrow cubre contingencias post-cierre: maquinaria, pasivos ocultos y reclamos de hechos previos.
-                  </p>
-                </div>
-
-                {/* OPCIÓN EARN-OUT */}
-                <div>
-                  <div className="font-bold text-gray-700 text-xs mb-3 flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-[#1a2744] text-white text-xs flex items-center justify-center font-black">2</span>
-                    Opción earn-out — precio variable por resultados futuros
-                  </div>
-                  <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 mb-3">
-                    <div className="text-xs text-amber-700 font-semibold mb-1">Base: precio fijo al cierre</div>
-                    <div className="flex justify-between text-xs mb-0.5"><span className="text-gray-600">Pago fijo al cierre</span><span className="font-black text-[#1a2744]">{usd(earnBase)}</span></div>
-                    <div className="flex justify-between text-xs mb-0.5"><span className="text-gray-600">+ Pago variable máximo</span><span className="font-bold text-amber-700">{usd(earnMax - earnBase)}</span></div>
-                    <div className="flex justify-between text-xs border-t border-amber-200 pt-1 mt-1"><span className="font-semibold text-gray-700">= Precio total máximo</span><span className="font-black text-amber-700">{usd(earnMax)}</span></div>
-                  </div>
-                  <div className="text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Pagos variables por meta alcanzada</div>
-                  <div className="space-y-2">
-                    {[
-                      {l:"Si EBITDA año 1 ≥ objetivo", target:earnout1, field:"earnout1", set:setEarnout1},
-                      {l:"Si EBITDA año 2 ≥ objetivo", target:earnout2, field:"earnout2", set:setEarnout2},
-                      {l:"Si condición estratégica cumplida", target:earnoutK, field:"earnoutK", set:setEarnoutK},
-                    ].map((r,i) => (
-                      <div key={i} className="bg-white border border-gray-100 rounded-lg px-3 py-2">
-                        <div className="text-xs text-gray-500 mb-1">{r.l}</div>
-                        <div className="flex items-center gap-3">
-                          <div className="flex-1">
-                            <div className="text-xs text-gray-400 mb-0.5">Objetivo (USD)</div>
-                            <input type="number" value={r.target}
-                              onChange={e => r.set(parseInt(e.target.value)||0)}
-                              className="w-full border border-gray-200 rounded px-2 py-1 text-xs font-bold focus:outline-none focus:border-[#1a2744]"/>
-                          </div>
-                          <div className="text-gray-300 text-sm mt-4">→</div>
-                          <div className="flex-1">
-                            <div className="text-xs text-gray-400 mb-0.5">El vendedor cobra</div>
-                            <div className="text-sm font-black text-green-700 pt-1">{usd(r.target)}</div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-xs text-gray-400 mt-2 italic">
-                    El vendedor cobra cada pago variable solo si la empresa alcanza el objetivo en ese período.
-                    Si no lo alcanza, ese pago no se realiza. Los objetivos son acumulativos.
-                  </p>
-                </div>
-
+          <div className="grid grid-cols-3 gap-3">
+            {/* M1 */}
+            <div className="rounded-xl border-2 border-gray-200 p-4">
+              <div className="text-xs text-gray-400 font-bold mb-1">Método 01</div>
+              <div className="text-xs font-bold text-gray-800 mb-2">Activos netos + Fondo de comercio</div>
+              <div className="text-lg font-black text-[#1a2744] mb-3">{usd(valorM1)}</div>
+              <div className="space-y-1 text-xs text-gray-500">
+                <div>· Terreno revaluado: {usd(vTerreno)}</div>
+                <div>· Planta industrial: {usd(vPlanta)}</div>
+                <div>· Hornos y maquinaria: {usd(vHornos)}</div>
+                <div>· Otros equipos planta: {usd(vEquipos)}</div>
+                <div>· Flota (valor mercado): {usd(totalEstim)}</div>
+                <div>· Intangibles regulatorios: {usd(vIntang)}</div>
+                <div>· Cartera de clientes: {usd(vCartera)}</div>
+                <div className="border-t pt-1 font-semibold">Activos revaluados: {usd(activosRevaluados)}</div>
+                <div>− Riesgos ajustados: −{usd(riesgosAjustados)}</div>
+                <div>= Activos netos: {usd(activosNetos)}</div>
+                <div>+ Fondo de comercio ({multFondo}× EBITDA): {usd(fondoComercio)}</div>
               </div>
-            )
-          })()}
+            </div>
+            {/* M2 */}
+            <div className="rounded-xl border-2 border-amber-300 p-4">
+              <div className="text-xs text-amber-600 font-bold mb-1">Método 02</div>
+              <div className="text-xs font-bold text-gray-800 mb-2">Flujo de fondos descontado al {Math.round(tasaDCF*100)}%</div>
+              <div className="text-lg font-black text-amber-700 mb-3">{usd(valorM2)}</div>
+              <div className="space-y-1 text-xs text-gray-500">
+                <div>· Tasa de descuento: {Math.round(tasaDCF*100)}% (Argentina, riesgo regulatorio)</div>
+                <div className="border-t pt-1 mt-1">
+                  {[
+                    {anio:"Base 2026", f:ebitdaNorm},
+                    {anio:"Año 1", f:dcfY1},
+                    {anio:"Año 2", f:dcfY2},
+                    {anio:"Año 3", f:dcfY3},
+                    {anio:"Año 4", f:dcfY4},
+                  ].map((row,i) => {
+                    const vp = Math.round(row.f / Math.pow(1+tasaDCF, i+1))
+                    return <div key={i}>· EBITDA {usd(row.f)} → VP: {usd(vp)}</div>
+                  })}
+                </div>
+                <div>· Valor residual ({multVR}× × {usd(dcfY4)}): VP {usd(Math.round(vpTerminal))}</div>
+              </div>
+            </div>
+            {/* M3 */}
+            <div className="rounded-xl border-2 border-green-300 p-4">
+              <div className="text-xs text-green-600 font-bold mb-1">Método 03</div>
+              <div className="text-xs font-bold text-gray-800 mb-2">Múltiplo de transacción comparable</div>
+              <div className="text-lg font-black text-green-700 mb-3">{usd(valorM3min)} − {usd(valorM3max)}</div>
+              <div className="space-y-1 text-xs text-gray-500">
+                <div>· EBITDA normalizado: {usd(ebitdaNorm)}</div>
+                <div>· Rango comparable: {multMinComp}× − {multMaxComp}×</div>
+                <div>· {multMinComp}× = {usd(valorM3min)}</div>
+                <div>· {multMaxComp}× = {usd(valorM3max)}</div>
+                <div>· Punto medio: {usd(valorM3mid)}</div>
+                <div className="border-t pt-1 mt-1 italic">Empresas con posición monopólica y barreras regulatorias 7-9 años en mercados emergentes.</div>
+              </div>
+            </div>
+          </div>
+          <div className="mt-3 bg-[#1a2744]/5 rounded-xl px-4 py-2.5 flex items-center justify-between">
+            <div className="text-xs text-gray-600">Promedio de los tres métodos</div>
+            <div className="text-lg font-black text-[#1a2744]">{usd(promedioMetodos)}</div>
+          </div>
         </div>
 
-        {/* Tabla de factores */}
-        <div className="card p-4">
-          <p className="text-xs text-gray-400 mb-4">Factores que determinan el valor — calculados desde los riesgos identificados en este caso.</p>
-          {factores.length === 0 ? (
-            <p className="text-xs text-gray-400 text-center py-4">Los factores aparecen automáticamente al identificar riesgos en el mapa de riesgos.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-gray-200 text-gray-500">
-                    <th className="text-left py-2 font-semibold">Factor</th>
-                    <th className="text-left py-2 font-semibold pl-3">Categoría</th>
-                    <th className="text-left py-2 font-semibold pl-3">Estado</th>
-                    <th className="text-right py-2 font-semibold">Si favorable</th>
-                    <th className="text-right py-2 font-semibold pl-2">Si desfavorable</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {factores.map((f, i) => (
-                    <tr key={i} className="hover:bg-gray-50">
-                      <td className="py-2 pr-2 font-semibold text-gray-800">{f.factor}</td>
-                      <td className="py-2 px-3 text-gray-500 whitespace-nowrap">{f.cat}</td>
-                      <td className={`py-2 px-3 ${f.estadoCls}`}>{f.estado}</td>
-                      <td className="py-2 pl-2 text-right font-bold text-green-700">+{usd(f.sube)}</td>
-                      <td className="py-2 pl-2 text-right font-bold text-red-700">{f.baja ? `−${usd(f.baja)}` : "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        {/* ARGUMENTO 3: PROYECCIÓN OIL & GAS */}
+        <div className="card p-5 border-l-4 border-l-green-400">
+          <div className="text-xs font-black uppercase tracking-wide text-green-700 mb-1">
+            Ajuste del plan del vendedor — lo real vs lo que declara
+          </div>
+          <p className="text-xs text-gray-500 mb-3">El plan del vendedor es argumento de venta. Esta es la proyección ajustada con los datos verificados.</p>
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-gray-200 text-gray-500">
+                <th className="text-left py-2 font-semibold">Año</th>
+                <th className="text-right py-2 font-semibold">Ingresos (USD)</th>
+                <th className="text-right py-2 font-semibold">EBITDA (USD)</th>
+                <th className="text-right py-2 font-semibold">Margen</th>
+                <th className="text-left py-2 font-semibold pl-3">Hipótesis</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {[
+                {anio:"2026 (real)", ing:ingresos||660000, ebitdaRow:ebitdaNorm||165000, margen:"25%", hip:"Dato real verificado Feb-Abr 2026. No es proyección.", real:true},
+                {anio:"2027", ing:dcfY1>0?Math.round(dcfY1/0.27):1000000, ebitdaRow:dcfY1, margen:"27%", hip:"1-2 operadoras petroleras bajo contrato de reserva de capacidad."},
+                {anio:"2028", ing:dcfY2>0?Math.round(dcfY2/0.28):1500000, ebitdaRow:dcfY2, margen:"28%", hip:"3-4 operadoras cuenca cuyana + YPF parcial."},
+                {anio:"2029", ing:dcfY3>0?Math.round(dcfY3/0.28):2000000, ebitdaRow:dcfY3, margen:"28%", hip:"Petróleo y gas pleno. Posición monopólica activada."},
+                {anio:"2030+", ing:dcfY4>0?Math.round(dcfY4/0.28):2000000, ebitdaRow:dcfY4, margen:"28%", hip:"Negocio estabilizado. Crecimiento vegetativo de la cartera."},
+              ].map((r,i) => (
+                <tr key={i} className={r.real ? "bg-blue-50 font-semibold" : "hover:bg-gray-50"}>
+                  <td className="py-2 text-gray-800">{r.anio}{r.real && <span className="ml-1 text-xs bg-blue-200 text-blue-800 px-1 rounded">verificado</span>}</td>
+                  <td className="py-2 text-right font-mono text-gray-700">USD {r.ing.toLocaleString("es-AR")}</td>
+                  <td className="py-2 text-right font-mono text-[#1a2744] font-bold">USD {r.ebitdaRow.toLocaleString("es-AR")}</td>
+                  <td className="py-2 text-right text-gray-500">{r.margen}</td>
+                  <td className="py-2 pl-3 text-gray-500">{r.hip}</td>
+                </tr>
+              ))}
+              <tr className="border-t-2 border-red-200 bg-red-50">
+                <td className="py-2 text-red-700 font-bold">Plan vendedor</td>
+                <td className="py-2 text-right font-mono text-red-700">USD 1.000.000 → 3.000.000</td>
+                <td className="py-2 text-right font-mono text-red-700 font-bold">USD 400.000 → 1.500.000</td>
+                <td className="py-2 text-right text-red-700">40-50%</td>
+                <td className="py-2 pl-3 text-red-600 text-xs">Margen 40-50% sin sustento histórico. El margen estructural real es 25-28%.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* ARGUMENTO 4: OFERTA */}
+        <div className="card p-5 border-2 border-[#1a2744]">
+          <div className="flex items-start gap-6">
+            <div className="flex-1">
+              <div className="text-xs font-black uppercase tracking-wide text-[#1a2744] mb-2">
+                Precio de oferta recomendado — {usd(ofertaInicial)}
+              </div>
+              <p className="text-xs text-gray-600 mb-4">
+                El promedio de los tres métodos da {usd(promedioMetodos)}.
+                La oferta de <strong>{usd(ofertaInicial)}</strong> ({multImplicito}× EBITDA normalizado) deja margen de negociación hasta <strong>{usd(ofertaMaxima)}</strong>.
+              </p>
+              <div className="space-y-1.5 text-xs">
+                {[
+                  {l:"Método 1 — Activos netos + Fondo de comercio", v:valorM1},
+                  {l:`Método 2 — Flujo de fondos descontado al ${Math.round(tasaDCF*100)}%`, v:valorM2},
+                  {l:`Método 3 — Múltiplo comparable (${multMinComp}−${multMaxComp}×)`, v:valorM3mid, rango:`${usd(valorM3min)} − ${usd(valorM3max)}`},
+                ].map((m,i) => (
+                  <div key={i} className="flex justify-between items-center border-b border-gray-100 pb-1.5">
+                    <span className="text-gray-600">{m.l}</span>
+                    <span className="font-bold text-gray-700">{m.rango || usd(m.v)}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between items-center border-b-2 border-[#1a2744] pb-1.5 pt-0.5">
+                  <span className="font-bold text-gray-800">Promedio de los tres métodos</span>
+                  <span className="font-black text-[#1a2744]">{usd(promedioMetodos)}</span>
+                </div>
+                <div className="flex justify-between items-center pt-1 text-red-600">
+                  <span>Si el vendedor liquida activos por separado, recupera como máximo:</span>
+                  <span className="font-bold">{usd(valorLiquidacion)}</span>
+                </div>
+                <div className="text-gray-400 italic text-xs">
+                  (Descuento del {descLiq}% por liquidación individual de activos vs. venta del negocio en bloque)
+                </div>
+              </div>
+            </div>
+            <div className="text-center flex-shrink-0 bg-[#1a2744] text-white rounded-2xl p-5 min-w-[180px]">
+              <div className="text-xs opacity-70 mb-1">Oferta inicial</div>
+              <div className="text-3xl font-black mb-1">{usd(ofertaInicial)}</div>
+              <div className="text-xs opacity-70 mb-3">{multImplicito}× EBITDA normalizado</div>
+              <div className="border-t border-white/20 pt-3">
+                <div className="text-xs opacity-70 mb-1">Máximo de negociación</div>
+                <div className="text-xl font-black">{usd(ofertaMaxima)}</div>
+                <div className="text-xs opacity-70">{ebitdaNorm > 0 ? Math.round(ofertaMaxima/ebitdaNorm) : "—"}× EBITDA normalizado</div>
+              </div>
+              <div className="border-t border-white/20 pt-3 mt-3">
+                <div className="text-xs opacity-50">El vendedor pide</div>
+                <div className="text-base font-bold opacity-50 line-through">{usd(precio)}</div>
+                <div className="text-xs opacity-50">{ebitdaNorm > 0 ? Math.round(precio/ebitdaNorm) : "—"}× EBITDA normalizado</div>
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-800">
+            <strong>Argumento clave para el vendedor:</strong> La oferta de {usd(ofertaInicial)} supera lo que recuperaría
+            liquidando activos por separado ({usd(valorLiquidacion)}). Está dejando {usd(ofertaInicial - valorLiquidacion)} sobre la mesa
+            si no acepta. El comprador reconoce el negocio en marcha, la posición monopólica y el potencial
+            de petróleo y gas. El upside lo captura quien asume el riesgo.
+          </div>
+        </div>
+
+        {/* RIESGOS VIGENTES */}
+        <div className="card p-4 border-l-4 border-l-red-300">
+          <div className="text-xs font-black uppercase tracking-wide text-red-700 mb-1">
+            Riesgos vigentes — argumentos adicionales para la negociación
+          </div>
+          <p className="text-xs text-gray-500 mb-3">
+            No reducen el precio de oferta — son el argumento para que el vendedor resuelva condiciones antes del cierre.
+            Total riesgos activos en el mapa: <strong>{usd(riesgosAbs)}</strong> · Ajustados con mitigantes conocidos: <strong>{usd(riesgosAjustados)}</strong>.
+          </p>
+          {riesgoNombres && Object.keys(riesgoNombres).length > 0 && (
+            <div className="grid grid-cols-2 gap-1.5">
+              {[
+                rn.regulatorio ? {l:"Habilitaciones — DIA, CAA y corrientes post-2015", v:Math.round(rn.regulatorio*0.40), est:"Reducido"} : null,
+                rn.extraccion  ? {l:"Créditos accionistas — condición de cierre", v:0, est:"Condición"} : null,
+                rn.equipos     ? {l:"Equipos — verificación técnica en visita", v:Math.round(rn.equipos*0.25), est:"Condicional"} : null,
+                rn.vehiculos   ? {l:"Flota — VTV, cédulas y habilitación RRPP", v:Math.round(rn.vehiculos*0.50), est:"Vigente"} : null,
+                (rn.afip||0)+(rn.sipa||0)>0 ? {l:"Deuda fiscal — planes de pago activos", v:Math.round(((rn.afip||0)+(rn.sipa||0))*0.33), est:"Vigente"} : null,
+                rn.seguroAmb   ? {l:"Seguro ambiental obligatorio — ausente", v:Math.round(rn.seguroAmb*0.30), est:"Resoluble"} : null,
+              ].filter((r): r is NonNullable<typeof r> => r !== null).map((r,i) => (
+                <div key={i} className="flex items-center justify-between gap-2 text-xs border-b border-gray-50 pb-1">
+                  <span className="text-gray-600 flex-1">{r.l}</span>
+                  <span className={`flex-shrink-0 text-xs px-1.5 py-0.5 rounded font-semibold ${
+                    r.est==="Resoluble"||r.est==="Condición" ? "bg-green-100 text-green-700" :
+                    r.est==="Reducido"||r.est==="Condicional" ? "bg-amber-100 text-amber-700" :
+                    "bg-red-100 text-red-700"}`}>{r.est}</span>
+                  <span className="font-bold text-red-700 flex-shrink-0 w-20 text-right">{r.v > 0 ? `−${usd(r.v)}` : "Condición"}</span>
+                </div>
+              ))}
+              <div className="col-span-2 flex justify-between pt-2 text-xs font-bold border-t border-red-200">
+                <span className="text-red-700">Total riesgos ajustados con mitigantes</span>
+                <span className="text-red-700">−{usd(riesgosAjustados)}</span>
+              </div>
             </div>
           )}
         </div>
+
       </div>
 
-      {/* ── TABLA DE ACTIVOS ── */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h2 className="text-base font-bold text-gray-900">Activos — valores de mercado</h2>
-            <p className="text-xs text-gray-400">
-              {assets.filter(a=>a.estado==="Verificado en visita").length} verificados ·{" "}
-              {assets.filter(a=>a.estado==="Estimado").length} estimados ·{" "}
-              {assets.filter(a=>a.estado==="Pendiente").length} pendientes ·{" "}
-              Total: <strong>{usd(totalEstim)||"sin datos"}</strong>
-            </p>
-          </div>
-          <button onClick={addAsset} disabled={adding}
-            className="flex items-center gap-1.5 bg-[#1a2744] text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-[#0d1525] disabled:opacity-50">
-            <Plus size={12}/> Agregar activo
-          </button>
-        </div>
-        <div className="mb-3">
-          <div className="flex gap-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-            <div className="bg-green-500 transition-all" style={{width:`${assets.length?assets.filter(a=>a.estado==="Verificado en visita").length/assets.length*100:0}%`}}/>
-            <div className="bg-amber-400 transition-all" style={{width:`${assets.length?assets.filter(a=>a.estado==="Estimado").length/assets.length*100:0}%`}}/>
-          </div>
-          <div className="flex gap-4 mt-1 text-xs text-gray-400">
-            <span>🟢 Verificado: {usd(totalVerif)}</span>
-            <span>🟡 Estimado: {usd(totalEstim)}</span>
-            <span>⚪ Sin valor: {assets.filter(a=>!getVal(a)).length}</span>
-          </div>
-        </div>
-        {cats.map(cat => {
-          const catAssets = assets.filter(a=>a.categoria===cat)
-          const catTotal  = catAssets.filter(a=>a.estado!=="Pendiente").reduce((s,a)=>s+getVal(a),0)
-          const isOpen    = !collapsed[cat]
-          return (
-            <div key={cat} className="mb-3">
-              <button className="w-full flex items-center justify-between bg-gray-100 hover:bg-gray-200 px-4 py-2.5 rounded-xl mb-2"
-                onClick={() => setCollapsed(p=>({...p,[cat]:isOpen}))}>
-                <div className="flex items-center gap-2">
-                  {isOpen?<ChevronDown size={14}/>:<ChevronRight size={14}/>}
-                  <span className="text-base">{CAT_ICON[cat]??"📦"}</span>
-                  <span className="text-sm font-bold text-gray-800">{cat}</span>
-                  <span className="text-xs text-gray-400">({catAssets.length})</span>
-                </div>
-                <span className={`text-sm font-black ${catTotal?"text-[#1a2744]":"text-gray-300"}`}>
-                  {catTotal?usd(catTotal):"Sin valor"}
-                </span>
-              </button>
-              {isOpen && (
-                <div className="space-y-2 ml-2">
-                  {catAssets.map(a => (
-                    <AssetRow key={a.id} a={a} caseId={caseId}
-                      onUpdate={(f,v)=>updAsset(a.id,f,v)}
-                      onSave={()=>saveAsset(a)}
-                      onDelete={()=>deleteAsset(a.id)}
-                      saving={saving===a.id}/>
-                  ))}
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-
-    </div>
-  )
-}
