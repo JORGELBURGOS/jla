@@ -676,7 +676,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
             Total riesgos activos: <strong>{usd(riesgosAbs)}</strong> · Ajustados con mitigantes: <strong>{usd(riesgosAjust)}</strong> ({Math.round(riesgosAjust/riesgosAbs*100)}% del total).
             No reducen el precio de oferta — ya están contemplados en el descuento respecto al promedio.
           </p>
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="space-y-1">
               {[
                 {l:"DIA 2015 — corrientes post-2015 (aviso previo, no nueva DIA)", v:rDIA,       est:"Reducido"},
                 {l:"Prendas flota — CNH Industrial (tractores 2018/2019)",         v:rPrendas,   est:"Reducido"},
@@ -687,16 +687,16 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                 {l:"Deuda fiscal — planes AFIP/IIBB vigentes",                    v:rFiscalAdj, est:"Vigente"},
                 {l:"Seguro ambiental obligatorio — ausente",                      v:rSeguroAdj, est:"Resoluble"},
               ].map((r,i) => (
-                <div key={i} className="flex items-center justify-between gap-2 text-xs border-b border-gray-50 pb-1">
-                  <span className="text-gray-600 flex-1">{r.l}</span>
-                  <span className={`flex-shrink-0 text-xs px-1.5 py-0.5 rounded font-semibold ${
+                <div key={i} className="flex items-center gap-3 text-xs border-b border-gray-50 py-1">
+                  <span className="text-gray-600 flex-1 min-w-0">{r.l}</span>
+                  <span className={`shrink-0 whitespace-nowrap text-xs px-1.5 py-0.5 rounded font-semibold ${
                     r.est==="Resoluble"||r.est==="Condición" ? "bg-green-100 text-green-700" :
                     r.est==="Reducido" ? "bg-amber-100 text-amber-700" :
                     "bg-red-100 text-red-700"}`}>{r.est}</span>
-                  <span className="font-bold text-red-700 flex-shrink-0 w-16 text-right">{r.v>0 ? `−${usd(r.v)}` : "USD 0"}</span>
+                  <span className="font-bold text-red-700 shrink-0 whitespace-nowrap text-right" style={{minWidth:"6.5rem"}}>{r.v>0 ? `−${usd(r.v)}` : "USD 0"}</span>
                 </div>
               ))}
-              <div className="col-span-2 flex justify-between pt-1.5 font-bold text-xs border-t border-red-200">
+              <div className="flex justify-between pt-1.5 font-bold text-xs border-t border-red-200">
                 <span className="text-red-700">Total riesgos ajustados</span>
                 <span className="text-red-700">−{usd(riesgosAjust)}</span>
               </div>
