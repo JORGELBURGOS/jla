@@ -12,6 +12,17 @@ type Asset = {
   item_validante: number | null; notas: string; orden: number
 }
 
+type RiskAdj = {
+  id: string; descripcion: string; monto: number; estado: string; nota: string; orden: number
+}
+const RIESGO_ESTADOS = ["Vigente","Reducido","Resoluble","Condición"]
+const RIESGO_ESTADO_CLS: Record<string,string> = {
+  "Vigente":   "bg-red-100 text-red-700",
+  "Reducido":  "bg-amber-100 text-amber-700",
+  "Resoluble": "bg-green-100 text-green-700",
+  "Condición": "bg-green-100 text-green-700",
+}
+
 const CATEGORIAS = ["Inmueble","Maquinaria","Rodados","Intangible regulatorio","Cartera comercial","Otro"]
 const ESTADOS    = ["Pendiente","Estimado","Verificado en visita"]
 const CAT_ICON: Record<string,string> = {
@@ -158,6 +169,63 @@ function AssetRow({ a, onUpdate, onSave, onDelete, saving, caseId, defaultOpen }
   )
 }
 
+// ─── Fila de riesgo ajustado ───────────────────────────────────────
+function RiskAdjRow({ r, onUpdate, onSave, onDelete, saving, defaultOpen }: {
+  r: RiskAdj; onUpdate:(f:keyof RiskAdj,v:unknown)=>void
+  onSave:()=>void; onDelete:()=>void; saving:boolean; defaultOpen?:boolean
+}) {
+  const [open, setOpen] = useState(!!defaultOpen)
+  return (
+    <div className="border-b border-gray-50 py-1">
+      <div className="w-full flex items-center gap-2 text-xs">
+        <button onClick={() => setOpen(o=>!o)} className="text-gray-300 flex-shrink-0">
+          <Info size={11}/>
+        </button>
+        <span className="text-gray-600 flex-1 min-w-0 truncate">{r.descripcion || "Sin descripción — click para editar"}</span>
+        <select value={r.estado} onChange={e => onUpdate("estado", e.target.value)}
+          className={`shrink-0 whitespace-nowrap text-xs px-1.5 py-0.5 rounded font-semibold border-0 cursor-pointer focus:outline-none ${RIESGO_ESTADO_CLS[r.estado]??"bg-gray-100 text-gray-600"}`}>
+          {RIESGO_ESTADOS.map(s => <option key={s}>{s}</option>)}
+        </select>
+        <span className="font-bold text-red-700 shrink-0 whitespace-nowrap text-right" style={{minWidth:"6.5rem"}}>
+          {r.monto>0 ? `−${usd(r.monto)}` : "USD 0"}
+        </span>
+      </div>
+      {open && (
+        <div className="mt-1.5 ml-5 mr-2 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2.5 space-y-2">
+          <div>
+            <div className="text-xs font-semibold text-gray-500 mb-1">Descripción del riesgo</div>
+            <input value={r.descripcion} onChange={e => onUpdate("descripcion",e.target.value)}
+              placeholder="Ej: Multa AFIP por presentación tardía"
+              className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-[#1a2744] bg-white"/>
+          </div>
+          <div>
+            <div className="text-xs font-semibold text-gray-500 mb-1">Monto ajustado con mitigantes (USD)</div>
+            <input type="number" value={r.monto||""} onChange={e => onUpdate("monto",parseFloat(e.target.value)||0)}
+              placeholder="0"
+              className="w-40 text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-[#1a2744] bg-white"/>
+          </div>
+          <div>
+            <div className="text-xs font-semibold text-gray-500 mb-1">Nota — de qué se trata y cómo se mitiga (deep dive)</div>
+            <textarea value={r.nota} onChange={e => onUpdate("nota",e.target.value)}
+              rows={3} placeholder="Explicá brevemente el riesgo y qué condición o acción reduce su impacto..."
+              className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 resize-none focus:outline-none focus:border-[#1a2744] bg-white"/>
+          </div>
+          <div className="flex items-center justify-between pt-1">
+            <button onClick={onDelete} className="text-red-400 hover:text-red-600 text-xs flex items-center gap-1 hover:bg-red-50 px-2 py-1 rounded">
+              <Trash2 size={12}/> Eliminar
+            </button>
+            <button onClick={onSave} disabled={saving}
+              className="flex items-center gap-1 text-xs bg-[#1a2744] text-white px-3 py-1.5 rounded-lg hover:bg-[#0d1525] disabled:opacity-50">
+              {saving ? <RefreshCw size={10} className="animate-spin"/> : <Save size={10}/>}
+              {saving ? "..." : "Guardar"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Página principal ─────────────────────────────────────────────
 export default function ValuationPage({ params }: { params: { id: string } }) {
   const caseId = params.id
@@ -168,22 +236,15 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const [adding, setAdding]         = useState(false)
   const [justAdded, setJustAdded]   = useState<string|null>(null)
   const [riesgoDetalle, setRiesgoDetalle] = useState<{riesgo:string;area:string;impacto:number;accion:string}[]>([])
-  const [rNotas, setRNotas]         = useState<Record<string,string>>({})
   const [showTotalRiesgos, setShowTotalRiesgos] = useState(false)
-  const [openRiesgoIdx, setOpenRiesgoIdx] = useState<number|null>(null)
   const [dirty, setDirty]           = useState<Set<string>>(new Set())
   const [autoSaving, setAutoSaving] = useState(false)
   const [ebitda, setEbitda]         = useState(0)
   const [precio, setPrecio]         = useState(0)
   const [pasivos, setPasivos]       = useState(0)
   const [pnContable, setPnContable] = useState(0)
-  const [riesgos, setRiesgos]           = useState(0)      // todos — stock deal
-  const [riesgosAsset, setRiesgosAsset] = useState(0)      // solo ambientales/operativos
-  const [riesgosPatrim, setRiesgosPatrim] = useState(0)    // contingencias off-balance
-  const [costoRehabilitacion, setCostoRehabilitacion] = useState(150000)
-  const [earnout1, setEarnout1] = useState(100000)  // meta facturación año 1
-  const [earnout2, setEarnout2] = useState(100000)  // meta facturación año 2
-  const [earnoutYPF, setEarnoutYPF] = useState(150000) // contrato YPF
+  const [riesgos, setRiesgos]           = useState(0)      // todos — activos en el mapa de riesgos
+
   const [ebitdaNorm,   setEbitdaNorm]  = useState(0)
   const [ebitdaMode,   setEbitdaMode]  = useState<"contable"|"normalizado">("normalizado")
   // Supuestos del modelo de valuación — desde dd_case_assumptions
@@ -208,16 +269,11 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const [precioOferta, setPrecioOferta]= useState(2500000)
   const [precioMax,    setPrecioMax]   = useState(3200000)
   const [riesgosMitig, setRiesgosMitig]= useState(0)
-  const [rDIA,       setRDIA]       = useState(60000)
-  const [rPrendas,   setRPrendas]   = useState(50000)
-  const [rCreditos,  setRCreditos]  = useState(0)
-  const [rY36,       setRY36]       = useState(25000)
-  const [rLaboral,   setRLaboral]   = useState(45000)
-  const [rFlotaAdj,  setRFlotaAdj]  = useState(120000)
-  const [rFiscalAdj, setRFiscalAdj] = useState(40000)
-  const [rSeguroAdj, setRSeguroAdj] = useState(15000)
+  const [riesgoAjustes, setRiesgoAjustes] = useState<RiskAdj[]>([])
+  const [riskSaving, setRiskSaving]     = useState<string|null>(null)
+  const [riskAdding, setRiskAdding]     = useState(false)
+  const [riskJustAdded, setRiskJustAdded] = useState<string|null>(null)
   // Riesgos individuales clave para el cuadro de oferta
-  const [riesgoPorNombre, setRiesgoPorNombre] = useState<Record<string,number>>({})
   const [caseName, setCaseName]     = useState("")
   const [multiplo, setMultiplo]     = useState(6)
   const [collapsed, setCollapsed]   = useState<Record<string,boolean>>({})
@@ -225,6 +281,8 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   useEffect(() => {
     db.from("dd_case_assets").select("*").eq("case_id",caseId).order("orden")
       .then(({data}) => setAssets((data??[]) as Asset[]))
+    db.from("dd_case_risk_adjustments").select("*").eq("case_id",caseId).order("orden")
+      .then(({data}) => setRiesgoAjustes((data??[]) as RiskAdj[]))
     db.from("dd_cases").select("nombre,precio_pedido").eq("id",caseId).single()
       .then(({data}) => {
         setCaseName((data as {nombre:string})?.nombre??"")
@@ -250,28 +308,10 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
         "Precio máximo de negociación (USD)",
         "EBITDA normalizado — puente completo (USD)",
         "Riesgos ajustados con mitigantes (USD)",
-        "Riesgo ajustado — DIA 2015 corrientes (USD)","Riesgo ajustado — Prendas flota CNH Industrial (USD)",
-        "Riesgo ajustado — Créditos accionistas (USD)","Riesgo ajustado — Y36 amianto protocolo (USD)",
-        "Riesgo ajustado — Doble condición laboral (USD)","Riesgo ajustado — Flota VTV/cédulas/habilitación (USD)",
-        "Riesgo ajustado — Deuda fiscal AFIP/IIBB (USD)","Riesgo ajustado — Seguro ambiental (USD)",
       ])
       .then(({data}) => {
         if (!data) return
         const sup = Object.fromEntries((data as Array<{label:string;valor:string}>).map(s=>[s.label,Number(s.valor)]))
-        const notasData = data as Array<{label:string;nota:string}>
-        const notasMap: Record<string,string> = {}
-        const notaKeyMap: Record<string,string> = {
-          "Riesgo ajustado — DIA 2015 corrientes (USD)": "dia",
-          "Riesgo ajustado — Prendas flota CNH Industrial (USD)": "prendas",
-          "Riesgo ajustado — Créditos accionistas (USD)": "creditos",
-          "Riesgo ajustado — Y36 amianto protocolo (USD)": "y36",
-          "Riesgo ajustado — Doble condición laboral (USD)": "laboral",
-          "Riesgo ajustado — Flota VTV/cédulas/habilitación (USD)": "flota",
-          "Riesgo ajustado — Deuda fiscal AFIP/IIBB (USD)": "fiscal",
-          "Riesgo ajustado — Seguro ambiental (USD)": "seguro",
-        }
-        notasData.forEach(n => { if (notaKeyMap[n.label] && n.nota) notasMap[notaKeyMap[n.label]] = n.nota })
-        setRNotas(notasMap)
         const set = (label:string, fn:(v:number)=>void) => { if (sup[label]) fn(sup[label]) }
         set("Ingresos reales último ejercicio cerrado (USD)", setIngresos)
         set("Múltiplo base de valuación (×)",                 setMultBase)
@@ -324,46 +364,12 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
           .map(r => ({riesgo:r.riesgo, area:r.area||"General", impacto:r.impacto, accion:r.accion_requerida||""})))
       })
 
-    // Riesgos individuales clave para el cuadro de oferta
-    db.from("dd_case_risks").select("riesgo,impacto")
-      .eq("case_id",caseId)
-      .not("estado","in",'("DUPLICADO","RECLASIFICADO")')
-      .lt("impacto",0)
-      .then(({data}) => {
-        const m: Record<string,number> = {}
-        ;(data as {riesgo:string;impacto:number}[]??[]).forEach(r => {
-          const txt = r.riesgo.toLowerCase()
-          if (txt.includes("extracción") || txt.includes("accionistas")) m.extraccion = (m.extraccion||0) + Math.abs(r.impacto)
-          if (txt.includes("horno rotativo")) m.horno = (m.horno||0) + Math.abs(r.impacto)
-          if (txt.includes("horno piroli") || txt.includes("pirolítico")) m.hornoPirolitico = (m.hornoPirolitico||0) + Math.abs(r.impacto)
-          if (txt.includes("afip") || txt.includes("planes afip") || txt.includes("presentacion")) m.afip = (m.afip||0) + Math.abs(r.impacto)
-          if (txt.includes("sipa") || txt.includes("previsional")) m.sipa = (m.sipa||0) + Math.abs(r.impacto)
-          if (txt.includes("art ")) m.art = (m.art||0) + Math.abs(r.impacto)
-          if (txt.includes("dia ") || txt.includes("declaración de impacto") || txt.includes("dia:") || txt.includes("dia 2015")) m.dia = (m.dia||0) + Math.abs(r.impacto)
-          if (txt.includes("servidumbre") || txt.includes("edemsa")) m.servidumbre = (m.servidumbre||0) + Math.abs(r.impacto)
-          if (txt.includes("y36") || txt.includes("amianto")) m.y36 = (m.y36||0) + Math.abs(r.impacto)
-          if (txt.includes("vehículo") || txt.includes("sin habilitación") || txt.includes("gij") || txt.includes("hmc")) m.vehiculos = (m.vehiculos||0) + Math.abs(r.impacto)
-          if (txt.includes("seguro ambiental")) m.seguroAmb = (m.seguroAmb||0) + Math.abs(r.impacto)
-          if (txt.includes("pileta")) m.pileta = (m.pileta||0) + Math.abs(r.impacto)
-          if (txt.includes("rku")) m.rku = (m.rku||0) + Math.abs(r.impacto)
-        })
-        setRiesgoPorNombre(m)
-      })
-
     // Tres pools de riesgos según tipo de deal
-    Promise.all([
-      db.from("dd_case_risks").select("impacto").eq("case_id",caseId)
-        .not("estado","in",'("DUPLICADO","RECLASIFICADO")').lt("impacto",0),
-      db.from("dd_case_risks").select("impacto").eq("case_id",caseId)
-        .not("estado","in",'("DUPLICADO","RECLASIFICADO")').lt("impacto",0).eq("aplica_asset_deal",true),
-      db.from("dd_case_risks").select("impacto").eq("case_id",caseId)
-        .not("estado","in",'("DUPLICADO","RECLASIFICADO")').lt("impacto",0).eq("aplica_patrimonio",true),
-    ]).then(([{data:r1},{data:r2},{data:r3}]) => {
-      const sum = (d: {impacto:number}[]|null) => (d??[]).reduce((s,r)=>s+r.impacto,0)
-      setRiesgos(sum(r1 as {impacto:number}[]))
-      setRiesgosAsset(sum(r2 as {impacto:number}[]))
-      setRiesgosPatrim(sum(r3 as {impacto:number}[]))
-    })
+    db.from("dd_case_risks").select("impacto").eq("case_id",caseId)
+      .not("estado","in",'("DUPLICADO","RECLASIFICADO")').lt("impacto",0)
+      .then(({data}) => {
+        setRiesgos(((data??[]) as {impacto:number}[]).reduce((s,r)=>s+r.impacto,0))
+      })
   },[caseId])
 
   // Auto-save
@@ -421,14 +427,42 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
     setAssets(prev=>prev.filter(a=>a.id!==id))
   }
 
+  // ─── CRUD riesgos ajustados ────────────────────────────────────────
+  function updRiskAdj(id:string, f:keyof RiskAdj, v:unknown) {
+    setRiesgoAjustes(prev => prev.map(r => r.id===id ? {...r,[f]:v} : r))
+  }
+  async function saveRiskAdj(r:RiskAdj) {
+    setRiskSaving(r.id)
+    await db.from("dd_case_risk_adjustments").update({
+      descripcion:r.descripcion, monto:r.monto, estado:r.estado, nota:r.nota
+    }).eq("id",r.id)
+    setRiskSaving(null)
+  }
+  async function addRiskAdj() {
+    setRiskAdding(true)
+    const {data, error} = await db.from("dd_case_risk_adjustments").insert({
+      case_id:caseId, descripcion:"Nuevo riesgo — click para editar",
+      monto:0, estado:"Vigente", nota:"", orden:999, org_id:"jl-advisory"
+    }).select().single()
+    if (error) {
+      alert("No se pudo crear el riesgo: " + error.message)
+    } else if (data) {
+      setRiesgoAjustes(prev=>[...prev,data as RiskAdj])
+      setRiskJustAdded((data as RiskAdj).id)
+    }
+    setRiskAdding(false)
+  }
+  async function deleteRiskAdj(id:string) {
+    if (!confirm("¿Eliminar este riesgo de la valuación?")) return
+    await db.from("dd_case_risk_adjustments").delete().eq("id",id)
+    setRiesgoAjustes(prev=>prev.filter(r=>r.id!==id))
+  }
+
   // ─── Cálculos ────────────────────────────────────────────────────
   const cats = [...new Set(assets.map(a=>a.categoria))]
   const totalActivosEstim  = assets.filter(a=>a.estado!=="Pendiente").reduce((s,a)=>s+getVal(a),0)
   const totalActivosVerif  = assets.filter(a=>a.estado==="Verificado en visita").reduce((s,a)=>s+getVal(a),0)
   const riesgosAbs         = Math.abs(riesgos)        // todos — stock deal
-  const riesgosAssetAbs    = Math.abs(riesgosAsset)  // ambientales/operativos — asset deal
-  const riesgosPatrimAbs   = Math.abs(riesgosPatrim) // off-balance — patrimonio
-  const rn             = riesgoPorNombre
   const ebitdaBase2    = ebitdaNorm > 0 ? ebitdaNorm : ebitda
   const evFlujos       = (ebitdaMode === "normalizado" && ebitdaNorm > 0 ? ebitdaNorm : ebitda) * multiplo
   const sumCat         = (cat:string) => assets.filter(a => a.categoria === cat).reduce((s,a) => s + getVal(a), 0)
@@ -439,7 +473,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const totalCarteraLive= sumCat("Cartera comercial")
   const totalOtros     = assets.filter(a => !["Rodados","Inmueble","Maquinaria","Intangible regulatorio","Cartera comercial"].includes(a.categoria)).reduce((s,a)=>s+getVal(a),0)
   const activosRevalu  = assets.reduce((s,a) => s + getVal(a), 0)  // TODOS los activos, cualquier categoría — nada puede quedar afuera
-  const riesgosAjust   = rDIA + rPrendas + rCreditos + rY36 + rLaboral + rFlotaAdj + rFiscalAdj + rSeguroAdj
+  const riesgosAjust   = riesgoAjustes.reduce((s,r) => s + (r.monto||0), 0)
   const activosNetos   = activosRevalu - riesgosAjust
   const fondoComercio     = ebitdaBase2 * multFondo
   const fondoComercioCont = ebitda * multFondo
@@ -458,25 +492,6 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const ofertaMax      = precioMax    > 0 ? precioMax    : Math.round(promMetodos * 0.98)
   const multImpl       = ebitdaBase2  > 0 ? Math.round(ofertaInic/ebitdaBase2) : 0
   const scaleMax       = Math.max(precio, valorM1, ofertaMax) * 1.05
-
-  // Stock Deal: EV por flujos menos TODOS los riesgos menos deuda neta
-  const valorFlujosAjust   = evFlujos - riesgosAjust
-
-  // Asset Deal: activos a valor de mercado (SIN restar pasivos — el comprador no los hereda)
-  // menos solo riesgos ambientales/operativos y costo de re-habilitación
-  const navBruto           = activosRevalu                                        // mismo criterio que Método 1 — sin doble conteo
-  const navAjustAsset      = navBruto - riesgosAssetAbs - costoRehabilitacion   // solo riesgos del activo
-  const navVerifBruto      = totalActivosVerif
-  const navVerifAjust      = navVerifBruto - riesgosAssetAbs - costoRehabilitacion
-
-  // Patrimonio contable: PN del EECC (ya neto de pasivos) menos contingencias off-balance
-  const pnAjustado         = pnContable - riesgosPatrimAbs
-
-  // Para compatibilidad con código anterior
-  const navEstimado        = totalActivosEstim - pasivos  // referencia con pasivos
-  const navVerificado      = totalActivosVerif - pasivos
-  const navAjust           = navAjustAsset
-  const hayNAV             = activosRevalu > 0
 
 
 
@@ -709,7 +724,13 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
 
         {/* 4 · AJUSTES POR RIESGOS IDENTIFICADOS */}
         <div className="card p-4 border-l-4 border-l-red-300">
-          <p className="text-xs font-black uppercase tracking-wide text-red-700 mb-1">4. Ajustes por riesgos identificados</p>
+          <div className="flex items-start justify-between gap-3 mb-1">
+            <p className="text-xs font-black uppercase tracking-wide text-red-700">4. Ajustes por riesgos identificados</p>
+            <button onClick={addRiskAdj} disabled={riskAdding}
+              className="flex items-center gap-1 text-xs bg-[#1a2744] text-white px-2.5 py-1 rounded-lg hover:bg-[#0d1525] disabled:opacity-50 flex-shrink-0">
+              <Plus size={11}/> Agregar riesgo
+            </button>
+          </div>
           <p className="text-xs text-gray-500 mb-1.5">
             Total riesgos activos: <strong>{usd(riesgosAbs)}</strong>
             <button onClick={() => setShowTotalRiesgos(v=>!v)}
@@ -733,40 +754,21 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
               {riesgoDetalle.length===0 && <div className="text-xs text-gray-400 px-2.5 py-2">Cargando riesgos…</div>}
             </div>
           )}
-            <div className="space-y-1">
-              {[
-                {l:"DIA 2015 — corrientes post-2015 (aviso previo, no nueva DIA)", v:rDIA,       est:"Reducido", key:"dia"},
-                {l:"Prendas flota — CNH Industrial (tractores 2018/2019)",         v:rPrendas,   est:"Reducido", key:"prendas"},
-                {l:"Créditos accionistas — condición precedente de cierre",       v:rCreditos,  est:"Condición", key:"creditos"},
-                {l:"Y36 amianto — protocolo, EPP y exámenes médicos",             v:rY36,       est:"Resoluble", key:"y36"},
-                {l:"Doble condición laboral — acuerdo de desvinculación",         v:rLaboral,   est:"Vigente", key:"laboral"},
-                {l:"Flota — VTV, cédulas y habilitación RRPP",                    v:rFlotaAdj,  est:"Vigente", key:"flota"},
-                {l:"Deuda fiscal — planes AFIP/IIBB vigentes",                    v:rFiscalAdj, est:"Vigente", key:"fiscal"},
-                {l:"Seguro ambiental obligatorio — ausente",                      v:rSeguroAdj, est:"Resoluble", key:"seguro"},
-              ].map((r,i) => (
-                <div key={i} className="border-b border-gray-50 py-1">
-                  <button onClick={() => setOpenRiesgoIdx(p => p===i?null:i)}
-                    className="w-full flex items-center gap-3 text-xs text-left">
-                    <Info size={11} className="text-gray-300 flex-shrink-0"/>
-                    <span className="text-gray-600 flex-1 min-w-0">{r.l}</span>
-                    <span className={`shrink-0 whitespace-nowrap text-xs px-1.5 py-0.5 rounded font-semibold ${
-                      r.est==="Resoluble"||r.est==="Condición" ? "bg-green-100 text-green-700" :
-                      r.est==="Reducido" ? "bg-amber-100 text-amber-700" :
-                      "bg-red-100 text-red-700"}`}>{r.est}</span>
-                    <span className="font-bold text-red-700 shrink-0 whitespace-nowrap text-right" style={{minWidth:"6.5rem"}}>{r.v>0 ? `−${usd(r.v)}` : "USD 0"}</span>
-                  </button>
-                  {openRiesgoIdx===i && (
-                    <div className="mt-1.5 ml-5 mr-2 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-xs text-gray-600 leading-relaxed">
-                      {rNotas[r.key] || "Sin nota de mitigación cargada para este riesgo todavía."}
-                    </div>
-                  )}
-                </div>
-              ))}
-              <div className="flex justify-between pt-1.5 font-bold text-xs border-t border-red-200">
-                <span className="text-red-700">Total riesgos ajustados</span>
-                <span className="text-red-700">−{usd(riesgosAjust)}</span>
-              </div>
+          <div className="space-y-1">
+            {riesgoAjustes.map(r => (
+              <RiskAdjRow key={r.id} r={r}
+                onUpdate={(f,v)=>updRiskAdj(r.id,f,v)}
+                onSave={()=>saveRiskAdj(r)}
+                onDelete={()=>deleteRiskAdj(r.id)}
+                saving={riskSaving===r.id}
+                defaultOpen={r.id===riskJustAdded}/>
+            ))}
+            {riesgoAjustes.length===0 && <div className="text-xs text-gray-400 py-2">Sin riesgos ajustados cargados — usá &quot;Agregar riesgo&quot; para sumar el primero.</div>}
+            <div className="flex justify-between pt-1.5 font-bold text-xs border-t border-red-200">
+              <span className="text-red-700">Total riesgos ajustados</span>
+              <span className="text-red-700">−{usd(riesgosAjust)}</span>
             </div>
+          </div>
         </div>
 
       {/* 5 · CONCLUSIÓN — precio de oferta recomendado */}
