@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { computeValuation } from "@/lib/valuation/compute"
 import ReportClient from "./ReportClient"
 
 export default async function ReportPage({ params }: { params: Promise<{ id: string }> }) {
@@ -12,6 +13,7 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
     { data: sups },
     { data: env },
     { data: valid },
+    valuation,
   ] = await Promise.all([
     db.from("dd_cases").select("*, industry:dd_industries(nombre), sub_sector:dd_sub_sectors(nombre)").eq("id", id).single(),
     db.from("dd_case_requirements").select("*").eq("case_id", id).order("seccion_orden").order("n_item"),
@@ -19,6 +21,7 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
     db.from("dd_case_assumptions").select("*").eq("case_id", id).order("orden"),
     db.from("dd_case_environmental").select("*").eq("case_id", id).order("orden"),
     db.from("dd_case_validation").select("*").eq("case_id", id).order("seccion_orden"),
+    computeValuation(id, db),
   ])
 
   return (
@@ -30,6 +33,7 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
       sups={(sups ?? []) as Record<string,unknown>[]}
       env={(env ?? []) as Record<string,unknown>[]}
       valid={(valid ?? []) as Record<string,unknown>[]}
+      valuation={valuation}
     />
   )
 }

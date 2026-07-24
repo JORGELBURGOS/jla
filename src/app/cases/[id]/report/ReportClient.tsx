@@ -1,6 +1,7 @@
 "use client"
 import { useState, useRef } from "react"
 import { Loader } from "lucide-react"
+import type { ValuationResult } from "@/lib/valuation/compute"
 
 interface Props {
   caseId: string
@@ -10,6 +11,7 @@ interface Props {
   sups: Record<string,unknown>[]
   env: Record<string,unknown>[]
   valid: Record<string,unknown>[]
+  valuation: ValuationResult
 }
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -34,7 +36,7 @@ const ESTADO_COLOR: Record<string, { bg: string; text: string }> = {
   Pendiente: { bg:"#fee2e2", text:"#991b1b" },
 }
 
-export default function ReportClient({ caseId, caso, reqs, risks, sups, env, valid }: Props) {
+export default function ReportClient({ caseId, caso, reqs, risks, sups, env, valid, valuation: v }: Props) {
   const [generating, setGenerating] = useState(false)
   const [narrativa, setNarrativa] = useState<{
     recomendacion: string
@@ -53,23 +55,19 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
   const pendientes = reqs.filter(r => r.estado === "Pendiente").length
   const avance = total ? Math.round((recibidos + parciales * 0.5) / total * 100) : 0
 
-  const ingresos = getSup(sups, ["ingresos reales"])
-  const ebitda   = getSup(sups, ["ebitda real"])
-  const deuda    = getSup(sups, ["deuda neta"])
-  const tcBase   = getSup(sups, ["TC oficial cierre EJ N°17", "TC promedio"])
-  const precio   = Number(caso.precio_pedido ?? 0)
+  // Financiero y valuación: TODO viene del motor compartido (src/lib/valuation/compute.ts),
+  // el mismo que usa la herramienta interactiva de Valuación. Ver ahí antes de tocar fórmulas acá.
+  const ingresos = v.ingresos || null
+  const ebitda   = v.ebitdaBase2 || null   // normalizado si existe, si no el contable — igual que en Valuación
+  const precio   = v.precio
   const margen   = (ingresos && ebitda && ingresos > 0) ? ebitda / ingresos * 100 : null
+  const multiploImplicito = (precio && ebitda && ebitda > 0) ? precio / ebitda : null
 
+  // Riesgos: desglose cualitativo por estado del workflow de DD (no confundir con el $ ajustado de la valuación)
   const riesgoTotal = risks.reduce((s, r) => s + (Number(r.impacto) || 0), 0)
   const riesgoConf  = risks.filter(r => r.estado === "CONFIRMADO").reduce((s,r) => s + Number(r.impacto||0), 0)
   const riesgoIden  = risks.filter(r => r.estado === "IDENTIFICADO").reduce((s,r) => s + Number(r.impacto||0), 0)
   const riesgoCond  = risks.filter(r => r.estado === "CONDICIONAL").reduce((s,r) => s + Number(r.impacto||0), 0)
-
-  const EV_MED = 6
-  const evBase = ebitda ? ebitda * EV_MED : null
-  const evAjustado = evBase ? evBase + riesgoTotal - (deuda ?? 0) : null
-
-  const multiploImplicito = (precio && ebitda && ebitda > 0) ? precio / ebitda : null
 
   // Secciones del tracker
   const secciones = [...new Set(reqs.map(r => String(r.seccion ?? "")))]
@@ -274,8 +272,8 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
             {[
               { label:"Precio pedido", value: fmtUSD(precio) },
               { label:"EBITDA normalizado", value: ebitda ? fmtUSD(ebitda) : "Pendiente EECC" },
-              { label:`Múltiplo ${EV_MED}x EBITDA`, value: evBase ? fmtUSD(evBase) : "—" },
-              { label:"EV ajustado (oferta máx.)", value: evAjustado ? fmtUSD(evAjustado) : "—" },
+              { label:"Promedio 3 métodos de valuación", value: fmtUSD(v.promMetodos) },
+              { label:"Oferta recomendada", value: fmtUSD(v.ofertaInic) },
             ].map(({ label, value }) => (
               <div key={label} className="kpi-box">
                 <div style={{ fontSize:"9px", color:"#6b7280", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:"6px" }}>{label}</div>
@@ -285,87 +283,114 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
           </div>
         </div>
 
-        {/* ══════════ S2: ANÁLISIS FINANCIERO ══════════ */}
+        {/* ══════════ S2: ANÁLISIS FINANCIERO Y VALUACIÓN ══════════ */}
         <div className="page-break" style={{ padding:"40px 50px" }}>
-          <div className="section-header">Sección 2 — Análisis Financiero</div>
+          <div className="section-header">Sección 2 — Análisis Financiero y Valuación</div>
 
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"24px", marginBottom:"24px" }}>
-            {/* EBITDA Bridge */}
-            <div style={{ border:"1px solid #e5e7eb", borderRadius:"8px", padding:"16px" }}>
-              <div style={{ fontWeight:700, fontSize:"11px", marginBottom:"12px", color:"#1a2744" }}>Bridge EBITDA Normalizado</div>
+          {/* 1. Puente EBITDA */}
+          <div style={{ border:"1px solid #e5e7eb", borderRadius:"8px", padding:"16px", marginBottom:"20px" }}>
+            <div style={{ fontWeight:700, fontSize:"11px", marginBottom:"12px", color:"#1a2744" }}>1. Puente EBITDA — por qué el contable no refleja el negocio real</div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"12px" }}>
               {[
-                { label:"Ingresos netos (USD)", value: ingresos ? fmtUSD(ingresos) : "—", color:"#1a2744" },
-                { label:"EBITDA contable (USD)", value: ebitda ? fmtUSD(ebitda * 0.78) : "—", color:"#374151" },
-                { label:"Ajustes de normalización", value: ebitda ? fmtUSD(ebitda * 0.22) : "—", color:"#16a34a" },
-                { label:"EBITDA normalizado (USD)", value: ebitda ? fmtUSD(ebitda) : "—", color:"#1a2744", bold: true },
-                { label:"Margen EBITDA", value: margen ? `${margen.toFixed(1)}%` : "—", color: margen && margen >= 15 ? "#16a34a" : "#d97706" },
-              ].map(({ label, value, color, bold }) => (
-                <div key={label} style={{ display:"flex", justifyContent:"space-between", padding:"5px 0", borderBottom:"1px solid #f3f4f6", fontSize:"10px" }}>
-                  <span style={{ color:"#6b7280" }}>{label}</span>
-                  <span style={{ fontWeight: bold ? 800 : 600, color }}>{value}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Valuación */}
-            <div style={{ border:"1px solid #e5e7eb", borderRadius:"8px", padding:"16px" }}>
-              <div style={{ fontWeight:700, fontSize:"11px", marginBottom:"12px", color:"#1a2744" }}>Valuación por Múltiplos</div>
-              {[
-                { label:"4x EBITDA (conservador)", value: ebitda ? fmtUSD(ebitda*4) : "—", color:"#dc2626" },
-                { label:"6x EBITDA (base)", value: ebitda ? fmtUSD(ebitda*6) : "—", color:"#d97706", bold:true },
-                { label:"8x EBITDA (optimista)", value: ebitda ? fmtUSD(ebitda*8) : "—", color:"#16a34a" },
-                { label:"Riesgo cuantificado", value: fmtUSD(riesgoTotal), color:"#dc2626" },
-                { label:"EV ajustado (oferta máx.)", value: evAjustado ? fmtUSD(evAjustado) : "—", color:"#1a2744", bold:true },
-                { label:"Precio pedido", value: fmtUSD(precio), color: evBase && precio > evBase ? "#dc2626" : "#16a34a", bold:true },
-              ].map(({ label, value, color, bold }) => (
-                <div key={label} style={{ display:"flex", justifyContent:"space-between", padding:"5px 0", borderBottom:"1px solid #f3f4f6", fontSize:"10px" }}>
-                  <span style={{ color:"#6b7280" }}>{label}</span>
-                  <span style={{ fontWeight: bold ? 800 : 600, color }}>{value}</span>
+                { label:"EBITDA contable", value: fmtUSD(v.ebitda), sub:"último ejercicio cerrado", bg:"#f3f4f6", color:"#6b7280" },
+                { label:"Ajuste normalización", value: `+${fmtUSD(v.ebitdaNorm - v.ebitda)}`, sub:"retiros de accionistas eliminados", bg:"#f0fdf4", color:"#16a34a" },
+                { label:"EBITDA normalizado", value: fmtUSD(v.ebitdaNorm), sub: margen ? `margen ${margen.toFixed(1)}%` : "", bg:"#1a2744", color:"#ffffff" },
+              ].map(({label,value,sub,bg,color}) => (
+                <div key={label} style={{ background:bg, borderRadius:"8px", padding:"12px", textAlign:"center" }}>
+                  <div style={{ fontSize:"9px", color: bg==="#1a2744"?"#bfdbfe":"#6b7280", marginBottom:"4px" }}>{label}</div>
+                  <div style={{ fontSize:"14px", fontWeight:800, color }}>{value}</div>
+                  <div style={{ fontSize:"8px", color: bg==="#1a2744"?"#bfdbfe":"#9ca3af", marginTop:"2px" }}>{sub}</div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Múltiplo implícito */}
-          {multiploImplicito && (
-            <div style={{ background:"#fef2f2", border:"1px solid #fecaca", borderRadius:"8px", padding:"16px", marginBottom:"16px" }}>
-              <div style={{ fontWeight:700, color:"#dc2626", marginBottom:"6px", fontSize:"12px" }}>
-                ⚠ Múltiplo implícito del precio pedido: {multiploImplicito.toFixed(0)}x EBITDA
-              </div>
-              <div style={{ fontSize:"11px", color:"#7f1d1d" }}>
-                El precio pedido de {fmtUSD(precio)} implica un múltiplo de {multiploImplicito.toFixed(0)}x el EBITDA normalizado de {ebitda ? fmtUSD(ebitda) : "N/D"}. 
-                El rango de referencia varía según industria: empresas de servicios 4x-6x, industriales 5x-8x. 
-                {multiploImplicito > 10 ? " El precio pedido está significativamente fuera del rango de mercado y requiere negociación sustancial." : " El precio requiere validación de los supuestos de crecimiento del vendedor."}
-              </div>
-            </div>
-          )}
-
-          {/* Historial ingresos */}
-          <div style={{ border:"1px solid #e5e7eb", borderRadius:"8px", padding:"16px" }}>
-            <div style={{ fontWeight:700, fontSize:"11px", marginBottom:"12px", color:"#1a2744" }}>Historial de Ingresos — Comparativo</div>
+          {/* 2. Resumen de valuación — los tres métodos */}
+          <div style={{ border:"1px solid #e5e7eb", borderRadius:"8px", padding:"16px", marginBottom:"20px" }}>
+            <div style={{ fontWeight:700, fontSize:"11px", marginBottom:"4px", color:"#1a2744" }}>2. Resumen de valuación — tres métodos</div>
+            <div style={{ fontSize:"9px", color:"#6b7280", marginBottom:"12px" }}>Promedio de los tres métodos: <strong>{fmtUSD(v.promMetodos)}</strong></div>
             <table className="tabla" style={{ width:"100%" }}>
-              <thead>
-                <tr><th>Ejercicio</th><th style={{textAlign:"right"}}>Ingresos (USD)</th><th style={{textAlign:"right"}}>Variación</th><th>Fuente</th></tr>
-              </thead>
+              <thead><tr><th>Método</th><th style={{textAlign:"right"}}>Resultado</th><th>Fundamento</th></tr></thead>
               <tbody>
-                {[
-                  { ej:"EJ N°13 (2021)", ing:"472.400", var:"Base", fuente:"EECC verificado" },
-                  { ej:"EJ N°14 (2022)", ing:"473.600", var:"+0.3%", fuente:"EECC verificado" },
-                  { ej:"EJ N°15 (2023)", ing:"333.000", var:"-29.7%", fuente:"EECC verificado" },
-                  { ej:"EJ N°16 (2024)", ing:"609.800", var:"+83.2%", fuente:"EECC verificado" },
-                  { ej:"EJ N°17 (2025)", ing:"500.900", var:"-17.9%", fuente:"EECC verificado", bold:true },
-                ].map(({ ej, ing, var: v, fuente, bold }) => (
-                  <tr key={ej} style={{ background: bold ? "#f8fafc" : "transparent" }}>
-                    <td style={{ fontWeight: bold ? 700 : 400 }}>{ej}</td>
-                    <td style={{ textAlign:"right", fontWeight: bold ? 700 : 400 }}>USD {ing}</td>
-                    <td style={{ textAlign:"right", color: v.startsWith("+") ? "#16a34a" : v.startsWith("-") ? "#dc2626" : "#374151" }}>{v}</td>
-                    <td>{fuente}</td>
-                  </tr>
-                ))}
+                <tr>
+                  <td style={{ fontWeight:600 }}>1. Activos netos + Fondo de comercio</td>
+                  <td style={{ textAlign:"right", fontWeight:700 }}>{fmtUSD(v.valorM1Cont)} a {fmtUSD(v.valorM1)}</td>
+                  <td style={{ fontSize:"9px" }}>Activos revaluados {fmtUSD(v.activosRevalu)} − riesgos ajustados {fmtUSD(v.riesgosAjust)} + fondo de comercio sobre EBITDA normalizado</td>
+                </tr>
+                <tr>
+                  <td style={{ fontWeight:600 }}>2. Flujo de fondos descontado al {Math.round(v.tasaDCF*100)}%</td>
+                  <td style={{ textAlign:"right", fontWeight:700 }}>{fmtUSD(v.valorM2)}</td>
+                  <td style={{ fontSize:"9px" }}>Proyección propia 2026-2030 con crecimiento gradual Oil & Gas, no la del vendedor</td>
+                </tr>
+                <tr>
+                  <td style={{ fontWeight:600 }}>3. Múltiplo comparable ({v.multMinComp}-{v.multMaxComp}× EBITDA)</td>
+                  <td style={{ textAlign:"right", fontWeight:700 }}>{fmtUSD(v.valorM3min)} a {fmtUSD(v.valorM3max)}</td>
+                  <td style={{ fontSize:"9px" }}>Empresas con posición monopólica y barreras regulatorias 7-9 años en el sector</td>
+                </tr>
+                <tr style={{ background:"#f8fafc" }}>
+                  <td style={{ fontWeight:800 }}>Promedio de los tres métodos</td>
+                  <td style={{ textAlign:"right", fontWeight:800, color:"#1a2744" }}>{fmtUSD(v.promMetodos)}</td>
+                  <td></td>
+                </tr>
               </tbody>
             </table>
           </div>
+
+          {/* 3. Ajustes por riesgos identificados */}
+          <div style={{ border:"1px solid #e5e7eb", borderRadius:"8px", padding:"16px", marginBottom:"20px" }}>
+            <div style={{ fontWeight:700, fontSize:"11px", marginBottom:"4px", color:"#dc2626" }}>3. Ajustes por riesgos identificados</div>
+            <div style={{ fontSize:"9px", color:"#6b7280", marginBottom:"12px" }}>
+              Total riesgos activos en el mapa de due diligence: <strong>{fmtUSD(v.riesgosAbs)}</strong> · Ajustados con mitigantes reales: <strong>{fmtUSD(v.riesgosAjust)}</strong>
+            </div>
+            <table className="tabla" style={{ width:"100%" }}>
+              <thead><tr><th>Riesgo</th><th>Área</th><th style={{textAlign:"right"}}>En el mapa</th><th style={{textAlign:"right"}}>%</th><th style={{textAlign:"right"}}>Ajustado</th></tr></thead>
+              <tbody>
+                {[...v.riesgoAjustesLive].sort((a,b)=>b.monto-a.monto).map(r => (
+                  <tr key={r.id}>
+                    <td style={{ fontSize:"9px" }}>{r.descripcion}</td>
+                    <td style={{ fontSize:"9px", color:"#6b7280" }}>{r.area}</td>
+                    <td style={{ textAlign:"right", fontSize:"9px" }}>{fmtUSD(r.impactoActual)}</td>
+                    <td style={{ textAlign:"right", fontSize:"9px" }}>{r.porcentaje.toFixed(0)}%</td>
+                    <td style={{ textAlign:"right", fontSize:"9px", fontWeight:700, color:"#dc2626" }}>{fmtUSD(r.monto)}</td>
+                  </tr>
+                ))}
+                <tr style={{ background:"#fef2f2" }}>
+                  <td colSpan={4} style={{ fontWeight:800 }}>Total riesgos ajustados</td>
+                  <td style={{ textAlign:"right", fontWeight:800, color:"#dc2626" }}>{fmtUSD(v.riesgosAjust)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* 4. Conclusión — oferta recomendada */}
+          <div style={{ background:"#1a2744", borderRadius:"8px", padding:"20px", color:"white" }}>
+            <div style={{ fontWeight:700, fontSize:"11px", marginBottom:"12px", color:"#93c5fd" }}>4. Conclusión — precio de oferta recomendado</div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"16px", textAlign:"center" }}>
+              <div>
+                <div style={{ fontSize:"9px", color:"#93c5fd" }}>Oferta inicial</div>
+                <div style={{ fontSize:"20px", fontWeight:800 }}>{fmtUSD(v.ofertaInic)}</div>
+                <div style={{ fontSize:"8px", color:"#93c5fd" }}>{v.multImpl}× EBITDA normalizado</div>
+              </div>
+              <div>
+                <div style={{ fontSize:"9px", color:"#93c5fd" }}>Máximo de negociación</div>
+                <div style={{ fontSize:"20px", fontWeight:800 }}>{fmtUSD(v.ofertaMax)}</div>
+                <div style={{ fontSize:"8px", color:"#93c5fd" }}>{ebitda ? Math.round(v.ofertaMax/ebitda) : "—"}× EBITDA normalizado</div>
+              </div>
+              <div style={{ opacity:0.5 }}>
+                <div style={{ fontSize:"9px" }}>El vendedor pide</div>
+                <div style={{ fontSize:"20px", fontWeight:800, textDecoration:"line-through" }}>{fmtUSD(v.precio)}</div>
+                <div style={{ fontSize:"8px" }}>{multiploImplicito ? multiploImplicito.toFixed(0) : "—"}× EBITDA normalizado</div>
+              </div>
+            </div>
+            <div style={{ marginTop:"14px", paddingTop:"14px", borderTop:"1px solid rgba(255,255,255,0.2)", fontSize:"9px", lineHeight:1.6 }}>
+              Valor en liquidación forzada de referencia (activos {fmtUSD(v.activosRevalu)} con descuento del {v.descLiq}%): {fmtUSD(v.valorLiq)}.
+              {v.ofertaInic > v.valorLiq
+                ? ` La oferta supera lo que recuperaría el vendedor liquidando activos por separado — rechazarla implica resignar ${fmtUSD(v.ofertaInic - v.valorLiq)} frente al peor escenario alternativo.`
+                : ` El valor de liquidación es la referencia del piso patrimonial; la oferta se apoya en los métodos de flujos y comparables.`}
+            </div>
+          </div>
         </div>
+
 
         {/* ══════════ S3: MAPA DE RIESGOS ══════════ */}
         <div className="page-break" style={{ padding:"40px 50px" }}>
