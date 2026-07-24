@@ -202,6 +202,14 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const [precioOferta, setPrecioOferta]= useState(2500000)
   const [precioMax,    setPrecioMax]   = useState(3200000)
   const [riesgosMitig, setRiesgosMitig]= useState(0)
+  const [rDIA,       setRDIA]       = useState(60000)
+  const [rPrendas,   setRPrendas]   = useState(50000)
+  const [rCreditos,  setRCreditos]  = useState(0)
+  const [rY36,       setRY36]       = useState(25000)
+  const [rLaboral,   setRLaboral]   = useState(45000)
+  const [rFlotaAdj,  setRFlotaAdj]  = useState(120000)
+  const [rFiscalAdj, setRFiscalAdj] = useState(40000)
+  const [rSeguroAdj, setRSeguroAdj] = useState(15000)
   // Riesgos individuales clave para el cuadro de oferta
   const [riesgoPorNombre, setRiesgoPorNombre] = useState<Record<string,number>>({})
   const [caseName, setCaseName]     = useState("")
@@ -236,6 +244,10 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
         "Precio máximo de negociación (USD)",
         "EBITDA normalizado — puente completo (USD)",
         "Riesgos ajustados con mitigantes (USD)",
+        "Riesgo ajustado — DIA 2015 corrientes (USD)","Riesgo ajustado — Prendas flota CNH Industrial (USD)",
+        "Riesgo ajustado — Créditos accionistas (USD)","Riesgo ajustado — Y36 amianto protocolo (USD)",
+        "Riesgo ajustado — Doble condición laboral (USD)","Riesgo ajustado — Flota VTV/cédulas/habilitación (USD)",
+        "Riesgo ajustado — Deuda fiscal AFIP/IIBB (USD)","Riesgo ajustado — Seguro ambiental (USD)",
       ])
       .then(({data}) => {
         if (!data) return
@@ -264,6 +276,14 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
         if (sup["Tasa de descuento flujo de fondos (%)"]) setTasaDCF(sup["Tasa de descuento flujo de fondos (%)"]/100)
         if (sup["EBITDA normalizado — puente completo (USD)"]) setEbitdaNorm(sup["EBITDA normalizado — puente completo (USD)"])
         if (sup["Riesgos ajustados con mitigantes (USD)"]) setRiesgosMitig(sup["Riesgos ajustados con mitigantes (USD)"])
+        set("Riesgo ajustado — DIA 2015 corrientes (USD)",                setRDIA)
+        set("Riesgo ajustado — Prendas flota CNH Industrial (USD)",       setRPrendas)
+        if (sup["Riesgo ajustado — Créditos accionistas (USD)"]!==undefined) setRCreditos(sup["Riesgo ajustado — Créditos accionistas (USD)"])
+        set("Riesgo ajustado — Y36 amianto protocolo (USD)",              setRY36)
+        set("Riesgo ajustado — Doble condición laboral (USD)",            setRLaboral)
+        set("Riesgo ajustado — Flota VTV/cédulas/habilitación (USD)",     setRFlotaAdj)
+        set("Riesgo ajustado — Deuda fiscal AFIP/IIBB (USD)",             setRFiscalAdj)
+        set("Riesgo ajustado — Seguro ambiental (USD)",                   setRSeguroAdj)
       })
     db.from("dd_case_balance_sheet").select("*").eq("case_id",caseId).eq("ejercicio","EJ N°17 (2025)").single()
       .then(({data}) => {
@@ -377,7 +397,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const evFlujos       = (ebitdaMode === "normalizado" && ebitdaNorm > 0 ? ebitdaNorm : ebitda) * multiplo
   const flotaVal       = assets.filter(a => a.categoria === "Rodados").reduce((s,a) => s + getVal(a), 0)
   const activosRevalu  = vTerreno + vPlanta + vHornos + vEquipos + flotaVal + vIntang + vCartera
-  const riesgosAjust   = riesgosMitig > 0 ? riesgosMitig : Math.round(riesgosAbs * 0.176)
+  const riesgosAjust   = rDIA + rPrendas + rCreditos + rY36 + rLaboral + rFlotaAdj + rFiscalAdj + rSeguroAdj
   const activosNetos   = activosRevalu - riesgosAjust
   const fondoComercio     = ebitdaBase2 * multFondo
   const fondoComercioCont = ebitda * multFondo
@@ -523,93 +543,125 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
           <p className="text-xs text-gray-500 mb-4">
             Cómo se llega a cada número del resumen de arriba.
           </p>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-3">
+
+            {/* Método 1 */}
             <div className="rounded-xl border-2 border-gray-200 p-4">
-              <div className="text-xs text-gray-400 font-bold mb-1">Método 01</div>
-              <div className="text-xs font-bold text-gray-800 mb-1">Activos netos + Fondo de comercio</div>
-              <div className="flex items-baseline gap-2 mb-2">
-                <div className="text-lg font-black text-[#1a2744]">{usd(valorM1Cont)}</div>
-                <div className="text-xs text-gray-400">a</div>
-                <div className="text-lg font-black text-[#1a2744]">{usd(valorM1)}</div>
+              <div className="flex items-start justify-between gap-4 mb-3">
+                <div>
+                  <div className="text-xs text-gray-400 font-bold mb-0.5">Método 01</div>
+                  <div className="text-sm font-bold text-gray-800">Activos netos + Fondo de comercio</div>
+                </div>
+                <div className="flex items-baseline gap-2 flex-shrink-0">
+                  <div className="text-xl font-black text-[#1a2744]">{usd(valorM1Cont)}</div>
+                  <div className="text-xs text-gray-400">a</div>
+                  <div className="text-xl font-black text-[#1a2744]">{usd(valorM1)}</div>
+                </div>
               </div>
-              <div className="text-xs text-gray-500 space-y-0.5">
-                <div className="font-semibold text-gray-600">Activos revaluados:</div>
-                <div>· Terreno 56.635 m² (c/ servidumbre): {usd(vTerreno)}</div>
-                <div>· Planta industrial 1.800 m²: {usd(vPlanta)}</div>
-                <div>· Hornos y maquinaria: {usd(vHornos)}</div>
-                <div>· Otros equipos planta: {usd(vEquipos)}</div>
-                <div>· Flota — 8 unidades valor mercado: {usd(flotaVal)}</div>
-                <div>· Intangibles regulatorios: {usd(vIntang)}</div>
-                <div>· Cartera 39 clientes abonados: {usd(vCartera)}</div>
-                <div className="border-t pt-1 mt-1">= Activos: {usd(activosRevalu)}</div>
-                <div>− Riesgos ajustados: −{usd(riesgosAjust)}</div>
-                <div className="font-semibold">= Activos netos: {usd(activosNetos)}</div>
-                <div className="border-t pt-1 mt-1 font-semibold text-gray-600">Fondo de comercio ({multFondo}× EBITDA):</div>
-                <div>· Con EBITDA contable ({usd(ebitda)}): +{usd(fondoComercioCont)} → <strong className="text-gray-700">{usd(valorM1Cont)}</strong></div>
-                <div>· Con EBITDA normalizado ({usd(ebitdaBase2)}): +{usd(fondoComercio)} → <strong className="text-[#1a2744]">{usd(valorM1)}</strong></div>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="text-xs text-gray-500 space-y-0.5">
+                  <div className="font-semibold text-gray-600">Activos revaluados:</div>
+                  <div>· Terreno 56.635 m² (c/ servidumbre): {usd(vTerreno)}</div>
+                  <div>· Planta industrial 1.800 m²: {usd(vPlanta)}</div>
+                  <div>· Hornos y maquinaria: {usd(vHornos)}</div>
+                  <div>· Otros equipos planta: {usd(vEquipos)}</div>
+                  <div>· Flota — 8 unidades valor mercado: {usd(flotaVal)}</div>
+                  <div>· Intangibles regulatorios: {usd(vIntang)}</div>
+                  <div>· Cartera 39 clientes abonados: {usd(vCartera)}</div>
+                  <div className="border-t pt-1 mt-1">= Activos: {usd(activosRevalu)}</div>
+                  <div>− Riesgos ajustados: −{usd(riesgosAjust)}</div>
+                  <div className="font-semibold">= Activos netos: {usd(activosNetos)}</div>
+                </div>
+                <div className="text-xs text-gray-500 space-y-1">
+                  <div className="font-semibold text-gray-600">Fondo de comercio ({multFondo}× EBITDA):</div>
+                  <div>· Con EBITDA contable ({usd(ebitda)}): +{usd(fondoComercioCont)} → <strong className="text-gray-700">{usd(valorM1Cont)}</strong></div>
+                  <div>· Con EBITDA normalizado ({usd(ebitdaBase2)}): +{usd(fondoComercio)} → <strong className="text-[#1a2744]">{usd(valorM1)}</strong></div>
+                  <p className="text-gray-400 italic mt-2 border-t pt-2">
+                    El fondo de comercio es el premio por comprar la empresa funcionando en lugar de los activos
+                    por separado: clientes que ya facturan, habilitaciones activas, procesos armados y 40 años de reputación.
+                    Con el EBITDA contable la cifra es el piso; con el normalizado, el valor real del negocio.
+                  </p>
+                </div>
               </div>
-              <p className="text-xs text-gray-400 italic mt-2 border-t pt-2">
-                El fondo de comercio es el premio por comprar la empresa funcionando en lugar de los activos
-                por separado: clientes que ya facturan, habilitaciones activas, procesos armados y 40 años de reputación.
-                Con el EBITDA contable la cifra es el piso; con el normalizado, el valor real del negocio.
-              </p>
             </div>
+
+            {/* Método 2 */}
             <div className="rounded-xl border-2 border-amber-300 p-4">
-              <div className="text-xs text-amber-600 font-bold mb-1">Método 02</div>
-              <div className="text-xs font-bold text-gray-800 mb-1">Flujo de fondos descontado al {Math.round(tasaDCF*100)}%</div>
-              <div className="text-lg font-black text-amber-700 mb-2">{usd(valorM2)}</div>
-              <table className="w-full text-xs text-gray-500">
-                <thead><tr className="border-b border-gray-100 text-gray-400">
-                  <th className="text-left py-0.5 font-normal">Año</th>
-                  <th className="text-right py-0.5 font-normal">EBITDA</th>
-                  <th className="text-right py-0.5 font-normal">Valor hoy</th>
-                </tr></thead>
-                <tbody>
-                  {[
-                    {a:"2026", f:ebitdaBase2},
-                    {a:"2027", f:dcfY1},
-                    {a:"2028", f:dcfY2},
-                    {a:"2029", f:dcfY3},
-                    {a:"2030", f:dcfY4},
-                  ].map((r,i) => (
-                    <tr key={i} className="border-b border-gray-50">
-                      <td className="py-0.5">{r.a}</td>
-                      <td className="py-0.5 text-right font-mono">{usd(r.f)}</td>
-                      <td className="py-0.5 text-right font-mono font-semibold text-amber-700">{usd(Math.round(r.f/Math.pow(1+tasaDCF,i+1)))}</td>
+              <div className="flex items-start justify-between gap-4 mb-3">
+                <div>
+                  <div className="text-xs text-amber-600 font-bold mb-0.5">Método 02</div>
+                  <div className="text-sm font-bold text-gray-800">Flujo de fondos descontado al {Math.round(tasaDCF*100)}%</div>
+                </div>
+                <div className="text-xl font-black text-amber-700 flex-shrink-0">{usd(valorM2)}</div>
+              </div>
+              <div className="grid grid-cols-2 gap-6">
+                <table className="w-full text-xs text-gray-500 self-start">
+                  <thead><tr className="border-b border-gray-100 text-gray-400">
+                    <th className="text-left py-0.5 font-normal">Año</th>
+                    <th className="text-right py-0.5 font-normal">EBITDA</th>
+                    <th className="text-right py-0.5 font-normal">Valor hoy</th>
+                  </tr></thead>
+                  <tbody>
+                    {[
+                      {a:"2026", f:ebitdaBase2},
+                      {a:"2027", f:dcfY1},
+                      {a:"2028", f:dcfY2},
+                      {a:"2029", f:dcfY3},
+                      {a:"2030", f:dcfY4},
+                    ].map((r,i) => (
+                      <tr key={i} className="border-b border-gray-50">
+                        <td className="py-0.5">{r.a}</td>
+                        <td className="py-0.5 text-right font-mono">{usd(r.f)}</td>
+                        <td className="py-0.5 text-right font-mono font-semibold text-amber-700">{usd(Math.round(r.f/Math.pow(1+tasaDCF,i+1)))}</td>
+                      </tr>
+                    ))}
+                    <tr className="border-b border-gray-50">
+                      <td className="py-0.5">Valor residual</td>
+                      <td className="py-0.5 text-right font-mono">{usd(dcfY4)} × {multVR}</td>
+                      <td className="py-0.5 text-right font-mono font-semibold text-amber-700">{usd(Math.round(vpTerminal))}</td>
                     </tr>
-                  ))}
-                  <tr className="border-b border-gray-50">
-                    <td className="py-0.5">Valor residual</td>
-                    <td className="py-0.5 text-right font-mono">{usd(dcfY4)} × {multVR}</td>
-                    <td className="py-0.5 text-right font-mono font-semibold text-amber-700">{usd(Math.round(vpTerminal))}</td>
-                  </tr>
-                </tbody>
-              </table>
-              <p className="text-xs text-gray-400 italic mt-2">
-                "Valor hoy" es el valor presente: cuánto vale hoy cada flujo futuro descontado al {Math.round(tasaDCF*100)}% anual
-                (a mayor plazo, menor valor presente). El valor residual estima lo que valdrá el negocio al final del período ({multVR}× el EBITDA del último año).
-                La suma de todos los valores presentes es la valuación del método: {usd(valorM2)}.
-              </p>
-              <div className="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-500">
-                <span className="font-semibold text-gray-600">Hipótesis de crecimiento: </span>
-                1-2 operadoras petroleras en 2027 → 3-4 + YPF parcial en 2028 → petróleo y gas pleno en 2029, luego estable.
-              </div>
-              <div className="mt-1.5 bg-red-50 border border-red-100 rounded-lg px-2 py-1.5 text-xs text-red-700">
-                <span className="font-bold">Plan del vendedor:</span> EBITDA USD 400K−1.500K (margen 40-50%). Sin sustento histórico — el margen real es 25-28%.
+                  </tbody>
+                </table>
+                <div className="text-xs text-gray-500 space-y-2">
+                  <p className="italic">
+                    "Valor hoy" es el valor presente: cuánto vale hoy cada flujo futuro descontado al {Math.round(tasaDCF*100)}% anual
+                    (a mayor plazo, menor valor presente). El valor residual estima lo que valdrá el negocio al final del período ({multVR}× el EBITDA del último año).
+                    La suma de todos los valores presentes es la valuación del método: {usd(valorM2)}.
+                  </p>
+                  <div className="pt-2 border-t border-gray-100">
+                    <span className="font-semibold text-gray-600">Hipótesis de crecimiento: </span>
+                    1-2 operadoras petroleras en 2027 → 3-4 + YPF parcial en 2028 → petróleo y gas pleno en 2029, luego estable.
+                  </div>
+                  <div className="bg-red-50 border border-red-100 rounded-lg px-2 py-1.5 text-red-700">
+                    <span className="font-bold">Plan del vendedor:</span> EBITDA USD 400K−1.500K (margen 40-50%). Sin sustento histórico — el margen real es 25-28%.
+                  </div>
+                </div>
               </div>
             </div>
+
+            {/* Método 3 */}
             <div className="rounded-xl border-2 border-green-300 p-4">
-              <div className="text-xs text-green-600 font-bold mb-1">Método 03</div>
-              <div className="text-xs font-bold text-gray-800 mb-1">Múltiplo de transacción comparable ({multMinComp}−{multMaxComp}×)</div>
-              <div className="text-lg font-black text-green-700 mb-2">{usd(valorM3min)} − {usd(valorM3max)}</div>
-              <div className="text-xs text-gray-500 space-y-0.5">
-                <div>· EBITDA normalizado: {usd(ebitdaBase2)}</div>
-                <div>· {multMinComp}× = {usd(valorM3min)}</div>
-                <div>· {multMaxComp}× = {usd(valorM3max)}</div>
-                <div>· Punto medio: {usd(valorM3mid)}</div>
-                <div className="mt-1 italic">Empresas con posición monopólica y barreras regulatorias 7-9 años.</div>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-xs text-green-600 font-bold mb-0.5">Método 03</div>
+                  <div className="text-sm font-bold text-gray-800">Múltiplo de transacción comparable ({multMinComp}−{multMaxComp}×)</div>
+                </div>
+                <div className="text-xl font-black text-green-700 flex-shrink-0">{usd(valorM3min)} − {usd(valorM3max)}</div>
+              </div>
+              <div className="grid grid-cols-2 gap-6 mt-2">
+                <div className="text-xs text-gray-500 space-y-0.5">
+                  <div>· EBITDA normalizado: {usd(ebitdaBase2)}</div>
+                  <div>· {multMinComp}× = {usd(valorM3min)}</div>
+                  <div>· {multMaxComp}× = {usd(valorM3max)}</div>
+                  <div>· Punto medio: {usd(valorM3mid)}</div>
+                </div>
+                <div className="text-xs text-gray-500 italic">
+                  Empresas con posición monopólica y barreras regulatorias de 7-9 años se transan a estos múltiplos
+                  en el sector de servicios ambientales en mercados emergentes.
+                </div>
               </div>
             </div>
+
           </div>
         </div>
 
@@ -620,18 +672,24 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
             Total riesgos activos: <strong>{usd(riesgosAbs)}</strong> · Ajustados con mitigantes: <strong>{usd(riesgosAjust)}</strong> ({Math.round(riesgosAjust/riesgosAbs*100)}% del total).
             No reducen el precio de oferta — ya están contemplados en el descuento respecto al promedio.
           </p>
-          {Object.keys(riesgoPorNombre||{}).length > 0 && (
             <div className="grid grid-cols-2 gap-1.5">
               {[
-                rn?.regulatorio ? {l:"Habilitaciones ambientales — DIA, CAA y corrientes", v:Math.round((rn.regulatorio||0)*0.40)} : null,
-                rn?.equipos     ? {l:"Equipos — verificación técnica pendiente en visita",  v:Math.round((rn.equipos||0)*0.25)}    : null,
-                rn?.vehiculos   ? {l:"Flota — VTV, cédulas y habilitación RRPP",             v:Math.round((rn.vehiculos||0)*0.50)}  : null,
-                (rn?.afip||0)+(rn?.sipa||0)>0 ? {l:"Deuda fiscal — planes de pago vigentes", v:Math.round(((rn?.afip||0)+(rn?.sipa||0))*0.33)} : null,
-                rn?.seguroAmb   ? {l:"Seguro ambiental obligatorio ausente",                  v:Math.round((rn.seguroAmb||0)*0.30)} : null,
-              ].filter((r): r is {l:string;v:number} => r !== null).map((r,i) => (
-                <div key={i} className="flex justify-between items-center text-xs border-b border-gray-50 pb-1">
-                  <span className="text-gray-600">{r.l}</span>
-                  <span className="font-bold text-red-700">−{usd(r.v)}</span>
+                {l:"DIA 2015 — corrientes post-2015 (aviso previo, no nueva DIA)", v:rDIA,       est:"Reducido"},
+                {l:"Prendas flota — CNH Industrial (tractores 2018/2019)",         v:rPrendas,   est:"Reducido"},
+                {l:"Créditos accionistas — condición precedente de cierre",       v:rCreditos,  est:"Condición"},
+                {l:"Y36 amianto — protocolo, EPP y exámenes médicos",             v:rY36,       est:"Resoluble"},
+                {l:"Doble condición laboral — acuerdo de desvinculación",         v:rLaboral,   est:"Vigente"},
+                {l:"Flota — VTV, cédulas y habilitación RRPP",                    v:rFlotaAdj,  est:"Vigente"},
+                {l:"Deuda fiscal — planes AFIP/IIBB vigentes",                    v:rFiscalAdj, est:"Vigente"},
+                {l:"Seguro ambiental obligatorio — ausente",                      v:rSeguroAdj, est:"Resoluble"},
+              ].map((r,i) => (
+                <div key={i} className="flex items-center justify-between gap-2 text-xs border-b border-gray-50 pb-1">
+                  <span className="text-gray-600 flex-1">{r.l}</span>
+                  <span className={`flex-shrink-0 text-xs px-1.5 py-0.5 rounded font-semibold ${
+                    r.est==="Resoluble"||r.est==="Condición" ? "bg-green-100 text-green-700" :
+                    r.est==="Reducido" ? "bg-amber-100 text-amber-700" :
+                    "bg-red-100 text-red-700"}`}>{r.est}</span>
+                  <span className="font-bold text-red-700 flex-shrink-0 w-16 text-right">{r.v>0 ? `−${usd(r.v)}` : "USD 0"}</span>
                 </div>
               ))}
               <div className="col-span-2 flex justify-between pt-1.5 font-bold text-xs border-t border-red-200">
@@ -639,7 +697,6 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                 <span className="text-red-700">−{usd(riesgosAjust)}</span>
               </div>
             </div>
-          )}
         </div>
 
       {/* 5 · CONCLUSIÓN — precio de oferta recomendado */}
