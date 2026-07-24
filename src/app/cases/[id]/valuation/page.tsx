@@ -14,7 +14,9 @@ type Asset = {
 
 type RiskAdj = {
   id: string; descripcion: string; monto: number; estado: string; nota: string; orden: number
+  origen_riesgo_id: string|null; impacto_original: number|null; porcentaje: number|null
 }
+type RiesgoFull = { id: string; riesgo: string; area: string; impacto: number; accion: string }
 const RIESGO_ESTADOS = ["Vigente","Reducido","Resoluble","Condición"]
 const RIESGO_ESTADO_CLS: Record<string,string> = {
   "Vigente":   "bg-red-100 text-red-700",
@@ -198,8 +200,21 @@ function RiskAdjRow({ r, onUpdate, onSave, onDelete, saving, defaultOpen }: {
               placeholder="Ej: Multa AFIP por presentación tardía"
               className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-[#1a2744] bg-white"/>
           </div>
+          {r.impacto_original != null && (
+            <div className="bg-white rounded-lg border border-gray-200 px-2.5 py-2 flex items-center gap-3 text-xs">
+              <span className="text-gray-400">Riesgo original: <strong className="text-gray-600">−{usd(r.impacto_original)}</strong></span>
+              <span className="text-gray-300">×</span>
+              <div className="flex items-center gap-1">
+                <input type="number" min={0} max={100} value={r.porcentaje??""} onChange={e => onUpdate("porcentaje",e.target.value===""?null:parseFloat(e.target.value))}
+                  placeholder="%" className="w-14 border border-gray-200 rounded px-1.5 py-1 text-right focus:outline-none focus:border-[#1a2744]"/>
+                <span className="text-gray-400">%</span>
+              </div>
+              <span className="text-gray-300">=</span>
+              <span className="font-bold text-[#1a2744]">−{usd(r.monto)}</span>
+            </div>
+          )}
           <div>
-            <div className="text-xs font-semibold text-gray-500 mb-1">Monto ajustado con mitigantes (USD)</div>
+            <div className="text-xs font-semibold text-gray-500 mb-1">Monto ajustado con mitigantes (USD) {r.impacto_original != null && <span className="font-normal text-gray-400">— podés tocarlo directo, pisa el cálculo del %</span>}</div>
             <input type="number" value={r.monto||""} onChange={e => onUpdate("monto",parseFloat(e.target.value)||0)}
               placeholder="0"
               className="w-40 text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-[#1a2744] bg-white"/>
@@ -235,7 +250,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const [saving, setSaving]         = useState<string|null>(null)
   const [adding, setAdding]         = useState(false)
   const [justAdded, setJustAdded]   = useState<string|null>(null)
-  const [riesgoDetalle, setRiesgoDetalle] = useState<{riesgo:string;area:string;impacto:number;accion:string}[]>([])
+  const [riesgoDetalle, setRiesgoDetalle] = useState<RiesgoFull[]>([])
   const [showTotalRiesgos, setShowTotalRiesgos] = useState(false)
   const [dirty, setDirty]           = useState<Set<string>>(new Set())
   const [autoSaving, setAutoSaving] = useState(false)
@@ -273,6 +288,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const [riskSaving, setRiskSaving]     = useState<string|null>(null)
   const [riskAdding, setRiskAdding]     = useState(false)
   const [riskJustAdded, setRiskJustAdded] = useState<string|null>(null)
+  const [showTraerPicker, setShowTraerPicker] = useState(false)
   // Riesgos individuales clave para el cuadro de oferta
   const [caseName, setCaseName]     = useState("")
   const [multiplo, setMultiplo]     = useState(6)
@@ -353,15 +369,15 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
         setPasivos(Math.round((d.deudas_comerciales+d.cargas_fiscales+d.remuneraciones_pagar+(d.otras_deudas_corrientes||0)+(d.deuda_financiera_nc||0))/tc))
         setPnContable(Math.round((d.capital_social+d.reservas+d.resultados_acumulados+(d.ajuste_inflacion_pn||0))/tc))
       })
-    // Detalle completo de riesgos activos — alimenta el desplegable del total (mismo filtro que riesgosAbs)
-    db.from("dd_case_risks").select("riesgo,area,impacto,accion_requerida")
+    // Detalle completo de riesgos activos — alimenta el desplegable del total Y el selector "traer riesgo"
+    db.from("dd_case_risks").select("id,riesgo,area,impacto,accion_requerida")
       .eq("case_id",caseId)
       .not("estado","in",'("DUPLICADO","RECLASIFICADO")')
       .lt("impacto",0)
       .order("impacto",{ascending:true})
       .then(({data}) => {
-        setRiesgoDetalle((data as {riesgo:string;area:string;impacto:number;accion_requerida:string}[]??[])
-          .map(r => ({riesgo:r.riesgo, area:r.area||"General", impacto:r.impacto, accion:r.accion_requerida||""})))
+        setRiesgoDetalle((data as {id:string;riesgo:string;area:string;impacto:number;accion_requerida:string}[]??[])
+          .map(r => ({id:r.id, riesgo:r.riesgo, area:r.area||"General", impacto:r.impacto, accion:r.accion_requerida||""})))
       })
 
     // Tres pools de riesgos según tipo de deal
@@ -429,26 +445,39 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
 
   // ─── CRUD riesgos ajustados ────────────────────────────────────────
   function updRiskAdj(id:string, f:keyof RiskAdj, v:unknown) {
-    setRiesgoAjustes(prev => prev.map(r => r.id===id ? {...r,[f]:v} : r))
+    setRiesgoAjustes(prev => prev.map(r => {
+      if (r.id !== id) return r
+      // Si cambia el %, recalcula el monto desde el impacto original. Si cambia el monto directo, el % no se toca.
+      if (f === "porcentaje" && r.impacto_original != null) {
+        const pct = Number(v) || 0
+        return {...r, porcentaje:pct, monto: Math.round(r.impacto_original * pct / 100)}
+      }
+      return {...r, [f]:v}
+    }))
   }
   async function saveRiskAdj(r:RiskAdj) {
     setRiskSaving(r.id)
     await db.from("dd_case_risk_adjustments").update({
-      descripcion:r.descripcion, monto:r.monto, estado:r.estado, nota:r.nota
+      descripcion:r.descripcion, monto:r.monto, estado:r.estado, nota:r.nota, porcentaje:r.porcentaje
     }).eq("id",r.id)
     setRiskSaving(null)
   }
-  async function addRiskAdj() {
+  // Trae un riesgo del listado completo del DD y lo suma a la lista de ajustes, con el % elegido
+  async function traerRiesgo(riesgo: RiesgoFull, pct: number) {
     setRiskAdding(true)
+    const impactoOriginal = Math.abs(riesgo.impacto)
+    const montoCalculado  = Math.round(impactoOriginal * pct / 100)
     const {data, error} = await db.from("dd_case_risk_adjustments").insert({
-      case_id:caseId, descripcion:"Nuevo riesgo — click para editar",
-      monto:0, estado:"Vigente", nota:"", orden:999, org_id:"jl-advisory"
+      case_id:caseId, descripcion:riesgo.riesgo, monto:montoCalculado, estado:"Vigente",
+      nota:riesgo.accion || "", orden:999, org_id:"jl-advisory",
+      origen_riesgo_id:riesgo.id, impacto_original:impactoOriginal, porcentaje:pct
     }).select().single()
     if (error) {
-      alert("No se pudo crear el riesgo: " + error.message)
+      alert("No se pudo traer el riesgo: " + error.message)
     } else if (data) {
       setRiesgoAjustes(prev=>[...prev,data as RiskAdj])
       setRiskJustAdded((data as RiskAdj).id)
+      setShowTraerPicker(false)
     }
     setRiskAdding(false)
   }
@@ -726,11 +755,34 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
         <div className="card p-4 border-l-4 border-l-red-300">
           <div className="flex items-start justify-between gap-3 mb-1">
             <p className="text-xs font-black uppercase tracking-wide text-red-700">4. Ajustes por riesgos identificados</p>
-            <button onClick={addRiskAdj} disabled={riskAdding}
+            <button onClick={() => setShowTraerPicker(v=>!v)} disabled={riskAdding}
               className="flex items-center gap-1 text-xs bg-[#1a2744] text-white px-2.5 py-1 rounded-lg hover:bg-[#0d1525] disabled:opacity-50 flex-shrink-0">
-              <Plus size={11}/> Agregar riesgo
+              <Plus size={11}/> Traer riesgo del DD
             </button>
           </div>
+          {showTraerPicker && (() => {
+            const yaTraidos = new Set(riesgoAjustes.map(r=>r.origen_riesgo_id).filter(Boolean))
+            const disponibles = riesgoDetalle.filter(r => !yaTraidos.has(r.id))
+            return (
+              <div className="mb-3 max-h-72 overflow-y-auto bg-gray-50 rounded-lg border border-gray-200 divide-y divide-gray-100">
+                <div className="px-2.5 py-1.5 text-xs text-gray-400 bg-gray-100 sticky top-0">
+                  Elegí un riesgo del mapa completo — se suma con 100% de impacto, después ajustás el % como quieras.
+                </div>
+                {disponibles.map(r => (
+                  <button key={r.id} onClick={() => traerRiesgo(r,100)} disabled={riskAdding}
+                    className="w-full flex items-center justify-between gap-2 text-xs px-2.5 py-1.5 hover:bg-blue-50 text-left disabled:opacity-50">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-gray-700 truncate">{r.riesgo}</div>
+                      <div className="text-gray-400 text-xs">{r.area}</div>
+                    </div>
+                    <span className="font-bold text-red-600 flex-shrink-0 whitespace-nowrap">−{usd(Math.abs(r.impacto))}</span>
+                    <Plus size={13} className="text-[#1a2744] flex-shrink-0"/>
+                  </button>
+                ))}
+                {disponibles.length===0 && <div className="text-xs text-gray-400 px-2.5 py-2">Ya trajiste todos los riesgos del mapa a esta lista.</div>}
+              </div>
+            )
+          })()}
           <p className="text-xs text-gray-500 mb-1.5">
             Total riesgos activos: <strong>{usd(riesgosAbs)}</strong>
             <button onClick={() => setShowTotalRiesgos(v=>!v)}
@@ -763,7 +815,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                 saving={riskSaving===r.id}
                 defaultOpen={r.id===riskJustAdded}/>
             ))}
-            {riesgoAjustes.length===0 && <div className="text-xs text-gray-400 py-2">Sin riesgos ajustados cargados — usá &quot;Agregar riesgo&quot; para sumar el primero.</div>}
+            {riesgoAjustes.length===0 && <div className="text-xs text-gray-400 py-2">Sin riesgos ajustados cargados — usá &quot;Traer riesgo del DD&quot; para sumar el primero.</div>}
             <div className="flex justify-between pt-1.5 font-bold text-xs border-t border-red-200">
               <span className="text-red-700">Total riesgos ajustados</span>
               <span className="text-red-700">−{usd(riesgosAjust)}</span>
