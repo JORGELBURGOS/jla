@@ -201,6 +201,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const [descLiq,      setDescLiq]     = useState(45)
   const [precioOferta, setPrecioOferta]= useState(2500000)
   const [precioMax,    setPrecioMax]   = useState(3200000)
+  const [riesgosMitig, setRiesgosMitig]= useState(0)
   // Riesgos individuales clave para el cuadro de oferta
   const [riesgoPorNombre, setRiesgoPorNombre] = useState<Record<string,number>>({})
   const [caseName, setCaseName]     = useState("")
@@ -234,6 +235,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
         "Descuento por liquidación forzada (%)","Precio de oferta inicial (USD)",
         "Precio máximo de negociación (USD)",
         "EBITDA normalizado — puente completo (USD)",
+        "Riesgos ajustados con mitigantes (USD)",
       ])
       .then(({data}) => {
         if (!data) return
@@ -260,6 +262,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
         set("Precio máximo de negociación (USD)",             setPrecioMax)
         if (sup["Tasa de descuento flujo de fondos (%)"]) setTasaDCF(sup["Tasa de descuento flujo de fondos (%)"]/100)
         if (sup["EBITDA normalizado — puente completo (USD)"]) setEbitdaNorm(sup["EBITDA normalizado — puente completo (USD)"])
+        if (sup["Riesgos ajustados con mitigantes (USD)"]) setRiesgosMitig(sup["Riesgos ajustados con mitigantes (USD)"])
       })
     db.from("dd_case_balance_sheet").select("*").eq("case_id",caseId).eq("ejercicio","EJ N°17 (2025)").single()
       .then(({data}) => {
@@ -371,11 +374,14 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const rn             = riesgoPorNombre
   const ebitdaBase2    = ebitdaNorm > 0 ? ebitdaNorm : ebitda
   const evFlujos       = (ebitdaMode === "normalizado" && ebitdaNorm > 0 ? ebitdaNorm : ebitda) * multiplo
-  const activosRevalu  = vTerreno + vPlanta + vHornos + vEquipos + totalActivosEstim + vIntang + vCartera
-  const riesgosAjust   = Math.round(riesgosAbs * 0.34)
+  const flotaVal       = assets.filter(a => a.categoria === "Rodados").reduce((s,a) => s + getVal(a), 0)
+  const activosRevalu  = vTerreno + vPlanta + vHornos + vEquipos + flotaVal + vIntang + vCartera
+  const riesgosAjust   = riesgosMitig > 0 ? riesgosMitig : Math.round(riesgosAbs * 0.176)
   const activosNetos   = activosRevalu - riesgosAjust
-  const fondoComercio  = ebitdaBase2 * multFondo
-  const valorM1        = activosNetos + fondoComercio
+  const fondoComercio     = ebitdaBase2 * multFondo
+  const fondoComercioCont = ebitda * multFondo
+  const valorM1           = activosNetos + fondoComercio
+  const valorM1Cont       = activosNetos + fondoComercioCont
   const flujosDCF      = [ebitdaBase2, dcfY1, dcfY2, dcfY3, dcfY4]
   const vpFlujos       = flujosDCF.reduce((s,f,i) => s + f/Math.pow(1+tasaDCF,i+1), 0)
   const vpTerminal     = (dcfY4 * multVR) / Math.pow(1+tasaDCF,5)
@@ -701,37 +707,69 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
             <div className="rounded-xl border-2 border-gray-200 p-4">
               <div className="text-xs text-gray-400 font-bold mb-1">Método 01</div>
               <div className="text-xs font-bold text-gray-800 mb-1">Activos netos + Fondo de comercio</div>
-              <div className="text-lg font-black text-[#1a2744] mb-2">{usd(valorM1)}</div>
+              <div className="flex items-baseline gap-2 mb-2">
+                <div className="text-lg font-black text-[#1a2744]">{usd(valorM1Cont)}</div>
+                <div className="text-xs text-gray-400">a</div>
+                <div className="text-lg font-black text-[#1a2744]">{usd(valorM1)}</div>
+              </div>
               <div className="text-xs text-gray-500 space-y-0.5">
-                <div>· Terreno revaluado: {usd(vTerreno)}</div>
-                <div>· Planta industrial: {usd(vPlanta)}</div>
+                <div className="font-semibold text-gray-600">Activos revaluados:</div>
+                <div>· Terreno 56.635 m² (c/ servidumbre): {usd(vTerreno)}</div>
+                <div>· Planta industrial 1.800 m²: {usd(vPlanta)}</div>
                 <div>· Hornos y maquinaria: {usd(vHornos)}</div>
-                <div>· Equipos planta: {usd(vEquipos)}</div>
-                <div>· Flota (mercado): {usd(totalActivosEstim)}</div>
+                <div>· Otros equipos planta: {usd(vEquipos)}</div>
+                <div>· Flota — 8 unidades valor mercado: {usd(flotaVal)}</div>
                 <div>· Intangibles regulatorios: {usd(vIntang)}</div>
-                <div>· Cartera clientes: {usd(vCartera)}</div>
+                <div>· Cartera 39 clientes abonados: {usd(vCartera)}</div>
                 <div className="border-t pt-1 mt-1">= Activos: {usd(activosRevalu)}</div>
                 <div>− Riesgos ajustados: −{usd(riesgosAjust)}</div>
-                <div>= Activos netos: {usd(activosNetos)}</div>
-                <div>+ Fondo comercio ({multFondo}× EBITDA): {usd(fondoComercio)}</div>
+                <div className="font-semibold">= Activos netos: {usd(activosNetos)}</div>
+                <div className="border-t pt-1 mt-1 font-semibold text-gray-600">Fondo de comercio ({multFondo}× EBITDA):</div>
+                <div>· Con EBITDA contable ({usd(ebitda)}): +{usd(fondoComercioCont)} → <strong className="text-gray-700">{usd(valorM1Cont)}</strong></div>
+                <div>· Con EBITDA normalizado ({usd(ebitdaBase2)}): +{usd(fondoComercio)} → <strong className="text-[#1a2744]">{usd(valorM1)}</strong></div>
               </div>
+              <p className="text-xs text-gray-400 italic mt-2 border-t pt-2">
+                El fondo de comercio es el premio por comprar la empresa funcionando en lugar de los activos
+                por separado: clientes que ya facturan, habilitaciones activas, procesos armados y 40 años de reputación.
+                Con el EBITDA contable la cifra es el piso; con el normalizado, el valor real del negocio.
+              </p>
             </div>
             <div className="rounded-xl border-2 border-amber-300 p-4">
               <div className="text-xs text-amber-600 font-bold mb-1">Método 02</div>
               <div className="text-xs font-bold text-gray-800 mb-1">Flujo de fondos descontado al {Math.round(tasaDCF*100)}%</div>
               <div className="text-lg font-black text-amber-700 mb-2">{usd(valorM2)}</div>
-              <div className="text-xs text-gray-500 space-y-0.5">
-                {[
-                  {a:"Base 2026", f:ebitdaBase2},
-                  {a:"Año 1",     f:dcfY1},
-                  {a:"Año 2",     f:dcfY2},
-                  {a:"Año 3",     f:dcfY3},
-                  {a:"Año 4",     f:dcfY4},
-                ].map((r,i) => (
-                  <div key={i}>· {r.a} EBITDA {usd(r.f)} → VP: {usd(Math.round(r.f/Math.pow(1+tasaDCF,i+1)))}</div>
-                ))}
-                <div>· Valor residual ({multVR}× año 4): VP {usd(Math.round(vpTerminal))}</div>
-              </div>
+              <table className="w-full text-xs text-gray-500">
+                <thead><tr className="border-b border-gray-100 text-gray-400">
+                  <th className="text-left py-0.5 font-normal">Año</th>
+                  <th className="text-right py-0.5 font-normal">EBITDA</th>
+                  <th className="text-right py-0.5 font-normal">Valor hoy</th>
+                </tr></thead>
+                <tbody>
+                  {[
+                    {a:"2026", f:ebitdaBase2},
+                    {a:"2027", f:dcfY1},
+                    {a:"2028", f:dcfY2},
+                    {a:"2029", f:dcfY3},
+                    {a:"2030", f:dcfY4},
+                  ].map((r,i) => (
+                    <tr key={i} className="border-b border-gray-50">
+                      <td className="py-0.5">{r.a}</td>
+                      <td className="py-0.5 text-right font-mono">{usd(r.f)}</td>
+                      <td className="py-0.5 text-right font-mono font-semibold text-amber-700">{usd(Math.round(r.f/Math.pow(1+tasaDCF,i+1)))}</td>
+                    </tr>
+                  ))}
+                  <tr className="border-b border-gray-50">
+                    <td className="py-0.5">Valor residual</td>
+                    <td className="py-0.5 text-right font-mono">{usd(dcfY4)} × {multVR}</td>
+                    <td className="py-0.5 text-right font-mono font-semibold text-amber-700">{usd(Math.round(vpTerminal))}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <p className="text-xs text-gray-400 italic mt-2">
+                "Valor hoy" es el valor presente: cuánto vale hoy cada flujo futuro descontado al {Math.round(tasaDCF*100)}% anual
+                (a mayor plazo, menor valor presente). El valor residual estima lo que valdrá el negocio al final del período ({multVR}× el EBITDA del último año).
+                La suma de todos los valores presentes es la valuación del método: {usd(valorM2)}.
+              </p>
             </div>
             <div className="rounded-xl border-2 border-green-300 p-4">
               <div className="text-xs text-green-600 font-bold mb-1">Método 03</div>
@@ -791,7 +829,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
               <p className="text-xs font-black uppercase tracking-wide text-[#1a2744] mb-3">Precio de oferta recomendado</p>
               <div className="space-y-1.5 text-xs">
                 {[
-                  {l:"Método 1 — Activos netos + Fondo de comercio", v:usd(valorM1)},
+                  {l:"Método 1 — Activos netos + Fondo de comercio", v:`${usd(valorM1Cont)} − ${usd(valorM1)}`},
                   {l:`Método 2 — Flujo de fondos descontado al ${Math.round(tasaDCF*100)}%`, v:usd(valorM2)},
                   {l:`Método 3 — Comparable (${multMinComp}−${multMaxComp}× EBITDA)`, v:`${usd(valorM3min)} − ${usd(valorM3max)}`},
                 ].map((m,i)=>(
@@ -809,8 +847,9 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                   <span className="font-bold">{usd(valorLiq)}</span>
                 </div>
                 <p className="text-gray-400 italic pt-2">
-                  La oferta de {usd(ofertaInic)} supera lo que recupera el vendedor liquidando ({usd(valorLiq)}).
-                  Está dejando {usd(ofertaInic - valorLiq)} sobre la mesa si no acepta.
+                  {ofertaInic > valorLiq
+                    ? `La oferta de ${usd(ofertaInic)} supera lo que recuperaría el vendedor liquidando sus activos por separado (${usd(valorLiq)}). Rechazarla implica resignar ${usd(ofertaInic - valorLiq)} frente al peor escenario alternativo.`
+                    : `El valor de liquidación (${usd(valorLiq)}) es la referencia del piso patrimonial del vendedor. La oferta de ${usd(ofertaInic)} se apoya en los métodos de flujos y comparables, no en la liquidación de activos.`}
                 </p>
               </div>
             </div>
