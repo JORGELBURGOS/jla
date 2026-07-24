@@ -495,12 +495,12 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
           </p>
           <div className="space-y-3">
             {[
-              {label:"Método 1 — Activos + Fondo de comercio", min:valorM1Cont, max:valorM1, color:"bg-gray-400"},
-              {label:"Método 2 — Flujo de fondos descontado",  min:valorM2,    max:valorM2,  color:"bg-amber-400"},
-              {label:"Método 3 — Múltiplo comparable",         min:valorM3min, max:valorM3max,color:"bg-green-400"},
+              {label:"Método 1 — Activos + Fondo de comercio", min:valorM1Cont, max:valorM1, color:"bg-gray-400", light:"bg-gray-200"},
+              {label:"Método 2 — Flujo de fondos descontado",  min:valorM2,    max:valorM2,  color:"bg-amber-400", light:"bg-amber-200"},
+              {label:"Método 3 — Múltiplo comparable",         min:valorM3min, max:valorM3max,color:"bg-green-400", light:"bg-green-200"},
             ].map((m,i) => {
-              const leftPct  = Math.max(0, (m.min/scaleMax*100))
-              const widthPct = Math.max(((m.max-m.min)/scaleMax*100), 1.2)
+              const minPct = Math.max(0, (m.min/scaleMax*100))
+              const maxPct = Math.max(minPct+1.2, (m.max/scaleMax*100))
               return (
                 <div key={i}>
                   <div className="flex justify-between text-xs text-gray-500 mb-1">
@@ -508,7 +508,8 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                     <span className="font-mono font-semibold text-gray-700">{m.min===m.max?usd(m.min):`${usd(m.min)} − ${usd(m.max)}`}</span>
                   </div>
                   <div className="relative h-3 bg-gray-100 rounded-full overflow-hidden">
-                    <div className={`absolute h-full ${m.color} rounded-full`} style={{left:`${leftPct}%`,width:`${widthPct}%`}}/>
+                    {m.min!==m.max && <div className={`absolute h-full ${m.light} rounded-full`} style={{left:0,width:`${minPct}%`}}/>}
+                    <div className={`absolute h-full ${m.color} rounded-full`} style={{left:`${m.min!==m.max?minPct:0}%`,width:`${m.min!==m.max?maxPct-minPct:maxPct}%`}}/>
                   </div>
                 </div>
               )
