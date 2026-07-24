@@ -167,6 +167,10 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const [saving, setSaving]         = useState<string|null>(null)
   const [adding, setAdding]         = useState(false)
   const [justAdded, setJustAdded]   = useState<string|null>(null)
+  const [riesgoDetalle, setRiesgoDetalle] = useState<{riesgo:string;area:string;impacto:number;accion:string}[]>([])
+  const [rNotas, setRNotas]         = useState<Record<string,string>>({})
+  const [showTotalRiesgos, setShowTotalRiesgos] = useState(false)
+  const [openRiesgoIdx, setOpenRiesgoIdx] = useState<number|null>(null)
   const [dirty, setDirty]           = useState<Set<string>>(new Set())
   const [autoSaving, setAutoSaving] = useState(false)
   const [ebitda, setEbitda]         = useState(0)
@@ -230,7 +234,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
       .eq("label","EBITDA real último ejercicio cerrado (USD)").single()
       .then(({data}) => setEbitda(Number((data as {valor:string})?.valor??0)))
 
-    db.from("dd_case_assumptions").select("label,valor")
+    db.from("dd_case_assumptions").select("label,valor,nota")
       .eq("case_id",caseId)
       .in("label",[
         "Ingresos reales último ejercicio cerrado (USD)",
@@ -254,6 +258,20 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
       .then(({data}) => {
         if (!data) return
         const sup = Object.fromEntries((data as Array<{label:string;valor:string}>).map(s=>[s.label,Number(s.valor)]))
+        const notasData = data as Array<{label:string;nota:string}>
+        const notasMap: Record<string,string> = {}
+        const notaKeyMap: Record<string,string> = {
+          "Riesgo ajustado — DIA 2015 corrientes (USD)": "dia",
+          "Riesgo ajustado — Prendas flota CNH Industrial (USD)": "prendas",
+          "Riesgo ajustado — Créditos accionistas (USD)": "creditos",
+          "Riesgo ajustado — Y36 amianto protocolo (USD)": "y36",
+          "Riesgo ajustado — Doble condición laboral (USD)": "laboral",
+          "Riesgo ajustado — Flota VTV/cédulas/habilitación (USD)": "flota",
+          "Riesgo ajustado — Deuda fiscal AFIP/IIBB (USD)": "fiscal",
+          "Riesgo ajustado — Seguro ambiental (USD)": "seguro",
+        }
+        notasData.forEach(n => { if (notaKeyMap[n.label] && n.nota) notasMap[notaKeyMap[n.label]] = n.nota })
+        setRNotas(notasMap)
         const set = (label:string, fn:(v:number)=>void) => { if (sup[label]) fn(sup[label]) }
         set("Ingresos reales último ejercicio cerrado (USD)", setIngresos)
         set("Múltiplo base de valuación (×)",                 setMultBase)
@@ -295,6 +313,17 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
         setPasivos(Math.round((d.deudas_comerciales+d.cargas_fiscales+d.remuneraciones_pagar+(d.otras_deudas_corrientes||0)+(d.deuda_financiera_nc||0))/tc))
         setPnContable(Math.round((d.capital_social+d.reservas+d.resultados_acumulados+(d.ajuste_inflacion_pn||0))/tc))
       })
+    // Detalle completo de riesgos activos — alimenta el desplegable del total (mismo filtro que riesgosAbs)
+    db.from("dd_case_risks").select("riesgo,area,impacto,accion_requerida")
+      .eq("case_id",caseId)
+      .not("estado","in",'("DUPLICADO","RECLASIFICADO")')
+      .lt("impacto",0)
+      .order("impacto",{ascending:true})
+      .then(({data}) => {
+        setRiesgoDetalle((data as {riesgo:string;area:string;impacto:number;accion_requerida:string}[]??[])
+          .map(r => ({riesgo:r.riesgo, area:r.area||"General", impacto:r.impacto, accion:r.accion_requerida||""})))
+      })
+
     // Riesgos individuales clave para el cuadro de oferta
     db.from("dd_case_risks").select("riesgo,impacto")
       .eq("case_id",caseId)
@@ -681,28 +710,56 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
         {/* 4 · AJUSTES POR RIESGOS IDENTIFICADOS */}
         <div className="card p-4 border-l-4 border-l-red-300">
           <p className="text-xs font-black uppercase tracking-wide text-red-700 mb-1">4. Ajustes por riesgos identificados</p>
-          <p className="text-xs text-gray-500 mb-3">
-            Total riesgos activos: <strong>{usd(riesgosAbs)}</strong> · Ajustados con mitigantes: <strong>{usd(riesgosAjust)}</strong> ({Math.round(riesgosAjust/riesgosAbs*100)}% del total).
+          <p className="text-xs text-gray-500 mb-1.5">
+            Total riesgos activos: <strong>{usd(riesgosAbs)}</strong>
+            <button onClick={() => setShowTotalRiesgos(v=>!v)}
+              className="inline-flex items-center gap-0.5 ml-1 text-[#1a2744] hover:underline font-semibold">
+              <Info size={11}/> {riesgoDetalle.length} riesgos {showTotalRiesgos ? "▲" : "▼"}
+            </button>
+            {" "}· Ajustados con mitigantes: <strong>{usd(riesgosAjust)}</strong> ({riesgosAbs>0?Math.round(riesgosAjust/riesgosAbs*100):0}% del total).
             No reducen el precio de oferta — ya están contemplados en el descuento respecto al promedio.
           </p>
+          {showTotalRiesgos && (
+            <div className="mb-3 max-h-64 overflow-y-auto bg-gray-50 rounded-lg border border-gray-200 divide-y divide-gray-100">
+              {riesgoDetalle.map((r,i) => (
+                <div key={i} className="flex items-center justify-between gap-2 text-xs px-2.5 py-1.5">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-gray-700 truncate">{r.riesgo}</div>
+                    <div className="text-gray-400 text-xs">{r.area}</div>
+                  </div>
+                  <span className="font-bold text-red-600 flex-shrink-0 whitespace-nowrap">−{usd(Math.abs(r.impacto))}</span>
+                </div>
+              ))}
+              {riesgoDetalle.length===0 && <div className="text-xs text-gray-400 px-2.5 py-2">Cargando riesgos…</div>}
+            </div>
+          )}
             <div className="space-y-1">
               {[
-                {l:"DIA 2015 — corrientes post-2015 (aviso previo, no nueva DIA)", v:rDIA,       est:"Reducido"},
-                {l:"Prendas flota — CNH Industrial (tractores 2018/2019)",         v:rPrendas,   est:"Reducido"},
-                {l:"Créditos accionistas — condición precedente de cierre",       v:rCreditos,  est:"Condición"},
-                {l:"Y36 amianto — protocolo, EPP y exámenes médicos",             v:rY36,       est:"Resoluble"},
-                {l:"Doble condición laboral — acuerdo de desvinculación",         v:rLaboral,   est:"Vigente"},
-                {l:"Flota — VTV, cédulas y habilitación RRPP",                    v:rFlotaAdj,  est:"Vigente"},
-                {l:"Deuda fiscal — planes AFIP/IIBB vigentes",                    v:rFiscalAdj, est:"Vigente"},
-                {l:"Seguro ambiental obligatorio — ausente",                      v:rSeguroAdj, est:"Resoluble"},
+                {l:"DIA 2015 — corrientes post-2015 (aviso previo, no nueva DIA)", v:rDIA,       est:"Reducido", key:"dia"},
+                {l:"Prendas flota — CNH Industrial (tractores 2018/2019)",         v:rPrendas,   est:"Reducido", key:"prendas"},
+                {l:"Créditos accionistas — condición precedente de cierre",       v:rCreditos,  est:"Condición", key:"creditos"},
+                {l:"Y36 amianto — protocolo, EPP y exámenes médicos",             v:rY36,       est:"Resoluble", key:"y36"},
+                {l:"Doble condición laboral — acuerdo de desvinculación",         v:rLaboral,   est:"Vigente", key:"laboral"},
+                {l:"Flota — VTV, cédulas y habilitación RRPP",                    v:rFlotaAdj,  est:"Vigente", key:"flota"},
+                {l:"Deuda fiscal — planes AFIP/IIBB vigentes",                    v:rFiscalAdj, est:"Vigente", key:"fiscal"},
+                {l:"Seguro ambiental obligatorio — ausente",                      v:rSeguroAdj, est:"Resoluble", key:"seguro"},
               ].map((r,i) => (
-                <div key={i} className="flex items-center gap-3 text-xs border-b border-gray-50 py-1">
-                  <span className="text-gray-600 flex-1 min-w-0">{r.l}</span>
-                  <span className={`shrink-0 whitespace-nowrap text-xs px-1.5 py-0.5 rounded font-semibold ${
-                    r.est==="Resoluble"||r.est==="Condición" ? "bg-green-100 text-green-700" :
-                    r.est==="Reducido" ? "bg-amber-100 text-amber-700" :
-                    "bg-red-100 text-red-700"}`}>{r.est}</span>
-                  <span className="font-bold text-red-700 shrink-0 whitespace-nowrap text-right" style={{minWidth:"6.5rem"}}>{r.v>0 ? `−${usd(r.v)}` : "USD 0"}</span>
+                <div key={i} className="border-b border-gray-50 py-1">
+                  <button onClick={() => setOpenRiesgoIdx(p => p===i?null:i)}
+                    className="w-full flex items-center gap-3 text-xs text-left">
+                    <Info size={11} className="text-gray-300 flex-shrink-0"/>
+                    <span className="text-gray-600 flex-1 min-w-0">{r.l}</span>
+                    <span className={`shrink-0 whitespace-nowrap text-xs px-1.5 py-0.5 rounded font-semibold ${
+                      r.est==="Resoluble"||r.est==="Condición" ? "bg-green-100 text-green-700" :
+                      r.est==="Reducido" ? "bg-amber-100 text-amber-700" :
+                      "bg-red-100 text-red-700"}`}>{r.est}</span>
+                    <span className="font-bold text-red-700 shrink-0 whitespace-nowrap text-right" style={{minWidth:"6.5rem"}}>{r.v>0 ? `−${usd(r.v)}` : "USD 0"}</span>
+                  </button>
+                  {openRiesgoIdx===i && (
+                    <div className="mt-1.5 ml-5 mr-2 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-xs text-gray-600 leading-relaxed">
+                      {rNotas[r.key] || "Sin nota de mitigación cargada para este riesgo todavía."}
+                    </div>
+                  )}
                 </div>
               ))}
               <div className="flex justify-between pt-1.5 font-bold text-xs border-t border-red-200">
