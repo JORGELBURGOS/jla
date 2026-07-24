@@ -374,11 +374,13 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   }
   async function addAsset(categoria:string = "Otro") {
     setAdding(true)
-    const {data} = await db.from("dd_case_assets").insert({
+    const {data, error} = await db.from("dd_case_assets").insert({
       case_id:caseId,categoria,nombre:"Nuevo activo — click para editar",
       valor_usd:0,estado:"Pendiente",orden:999,org_id:"jl-advisory"
     }).select().single()
-    if (data) {
+    if (error) {
+      alert("No se pudo crear el activo: " + error.message)
+    } else if (data) {
       setAssets(prev=>[...prev,data as Asset])
       setJustAdded((data as Asset).id)
     }
@@ -774,7 +776,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
               Total estimado: <strong>{usd(totalActivosEstim)||"sin datos"}</strong>
             </p>
           </div>
-          <button onClick={addAsset} disabled={adding}
+          <button onClick={() => addAsset()} disabled={adding}
             className="flex items-center gap-1.5 bg-[#1a2744] text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-[#0d1525] disabled:opacity-50">
             <Plus size={12}/> Agregar activo
           </button>
