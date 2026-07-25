@@ -58,7 +58,7 @@ function RiskRow({ r, defaultOpen, links, caseId, highlight, onUpdated }: {
       if (priDraft !== (r.prioridad ?? "N/A")) body.prioridad = priDraft
       if (probDraft !== (r.probabilidad ?? "MEDIA")) body.probabilidad = probDraft
       if (motivo.trim()) body.motivo = motivo.trim()
-      if (!("impacto" in body) && !("estado" in body)) { setEditing(false); setSaving(false); return }
+      if (!("impacto" in body) && !("estado" in body) && !("prioridad" in body) && !("probabilidad" in body)) { setEditing(false); setSaving(false); return }
       const res = await fetch(`/api/cases/${caseId}/risks/${r.id}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
       })
