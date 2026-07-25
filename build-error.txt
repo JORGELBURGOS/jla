@@ -1,0 +1,129 @@
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Skipping validation of types
+   Skipping linting
+ ✓ Collecting page data
+   Generating static pages (8/15)  [==  ]Error: @supabase/ssr: Your project's URL and API key are required to create a Supabase client!
+
+Check your Supabase project's API settings to find these values
+
+https://supabase.com/dashboard/project/_/settings/api
+    at sh (C:\jla\.next\server\chunks\1315.js:24:65394)
+    at r (C:\jla\.next\server\app\admin\page.js:1:13290)
+    at m (C:\jla\.next\server\app\admin\page.js:1:4722)
+    at nj (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:46251)
+    at nM (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:47571)
+    at nN (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:64546)
+    at nI (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:47010)
+    at nM (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:47717)
+    at nM (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:61546)
+    at nN (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:64546) {
+  digest: '3932702908'
+}
+
+Error occurred prerendering page "/admin". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: @supabase/ssr: Your project's URL and API key are required to create a Supabase client!
+
+Check your Supabase project's API settings to find these values
+
+https://supabase.com/dashboard/project/_/settings/api
+    at sh (C:\jla\.next\server\chunks\1315.js:24:65394)
+    at r (C:\jla\.next\server\app\admin\page.js:1:13290)
+    at m (C:\jla\.next\server\app\admin\page.js:1:4722)
+    at nj (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:46251)
+    at nM (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:47571)
+    at nN (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:64546)
+    at nI (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:47010)
+    at nM (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:47717)
+    at nM (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:61546)
+    at nN (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:64546)
+Error: @supabase/ssr: Your project's URL and API key are required to create a Supabase client!
+
+Check your Supabase project's API settings to find these values
+
+https://supabase.com/dashboard/project/_/settings/api
+    at sh (C:\jla\.next\server\chunks\1315.js:24:65394)
+    at r (C:\jla\.next\server\app\page.js:1:9100)
+    at o (C:\jla\.next\server\app\page.js:1:1959)
+    at nj (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:46251)
+    at nM (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:47571)
+    at nN (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:64546)
+    at nI (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:47010)
+    at nM (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:47717)
+    at nM (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:61546)
+    at nN (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:64546)
+    at nB (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:67538)
+    at nD (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:66680)
+    at nN (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:64853)
+    at nB (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:67538)
+    at nD (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:66680)
+    at nN (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:64853) {
+  digest: '2895526408'
+}
+
+Error occurred prerendering page "/". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: @supabase/ssr: Your project's URL and API key are required to create a Supabase client!
+
+Check your Supabase project's API settings to find these values
+
+https://supabase.com/dashboard/project/_/settings/api
+    at sh (C:\jla\.next\server\chunks\1315.js:24:65394)
+    at r (C:\jla\.next\server\app\page.js:1:9100)
+    at o (C:\jla\.next\server\app\page.js:1:1959)
+    at nj (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:46251)
+    at nM (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:47571)
+    at nN (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:64546)
+    at nI (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:47010)
+    at nM (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:47717)
+    at nM (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:61546)
+    at nN (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:64546)
+    at nB (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:67538)
+    at nD (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:66680)
+    at nN (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:64853)
+    at nB (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:67538)
+    at nD (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:66680)
+    at nN (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:64853)
+Error: @supabase/ssr: Your project's URL and API key are required to create a Supabase client!
+
+Check your Supabase project's API settings to find these values
+
+https://supabase.com/dashboard/project/_/settings/api
+    at sh (C:\jla\.next\server\chunks\1315.js:24:65394)
+    at r (C:\jla\.next\server\app\cases\new\page.js:1:16902)
+    at p (C:\jla\.next\server\app\cases\new\page.js:1:4339)
+    at nj (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:46251)
+    at nM (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:47571)
+    at nN (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:64546)
+    at nI (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:47010)
+    at nM (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:47717)
+    at nM (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:61546)
+    at nN (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:64546) {
+  digest: '785848138'
+}
+
+Error occurred prerendering page "/cases/new". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: @supabase/ssr: Your project's URL and API key are required to create a Supabase client!
+
+Check your Supabase project's API settings to find these values
+
+https://supabase.com/dashboard/project/_/settings/api
+    at sh (C:\jla\.next\server\chunks\1315.js:24:65394)
+    at r (C:\jla\.next\server\app\cases\new\page.js:1:16902)
+    at p (C:\jla\.next\server\app\cases\new\page.js:1:4339)
+    at nj (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:46251)
+    at nM (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:47571)
+    at nN (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:64546)
+    at nI (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:47010)
+    at nM (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:47717)
+    at nM (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:61546)
+    at nN (C:\jla\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:64546)
+ ✓ Generating static pages (15/15)
+
+> Export encountered errors on following paths:
+        /admin/page: /admin
+        /cases/new/page: /cases/new
+        /page: /
