@@ -21,12 +21,13 @@ export default async function Dashboard({ params }: { params: Promise<{ id: stri
   const par = r.filter((x: Record<string,string>) => x.estado==="Parcial").length
   const pend = r.length - rec - par
   const avance = r.length ? Math.round((rec+par*0.5)/r.length*100) : 0
-  const totalRiesgo = rk.reduce((s: number, x: Record<string,number>) => s+(x.impacto??0), 0)
+  const ACTIVO = (e: string) => !["DUPLICADO","RECLASIFICADO","CERRADO"].includes(e)
+  const totalRiesgo = rk.filter((x: Record<string,string>) => ACTIVO(x.estado)).reduce((s: number, x: Record<string,number>) => s+(x.impacto??0), 0)
   const precio = c?.precio_pedido ?? 0
   const hayEBITDA = ss.some((s: Record<string,unknown>) => String(s.label).includes("EBITDA") && s.valor)
   const incumplidos = r.filter((x: Record<string,unknown>) => (x.estado==="Pendiente"||x.estado==="Parcial") && x.antes_sena)
   const secciones = [...new Set(r.map((x: Record<string,string>) => x.seccion))].sort()
-  const criticos = [...rk].filter((x: Record<string,unknown>) => !["DUPLICADO","RECLASIFICADO"].includes(x.estado as string) && (x.impacto as number) < 0).sort((a: Record<string,number>,b: Record<string,number>) => a.impacto-b.impacto).slice(0,6)
+  const criticos = [...rk].filter((x: Record<string,unknown>) => ACTIVO(x.estado as string) && (x.impacto as number) < 0).sort((a: Record<string,number>,b: Record<string,number>) => a.impacto-b.impacto).slice(0,6)
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
