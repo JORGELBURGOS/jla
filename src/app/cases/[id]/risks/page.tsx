@@ -18,6 +18,7 @@ type ItemLink = {
 
 const ESTADOS = ["IDENTIFICADO","CONFIRMADO","CONDICIONAL","CERRADO","DUPLICADO","RECLASIFICADO"]
 const ACTIVE = ["IDENTIFICADO","CONFIRMADO","CONDICIONAL"]
+const PRIORIDADES = ["ALTA","MEDIA","BAJA","N/A"]
 
 function fmtUSD(n: number) {
   return (n < 0 ? "-" : "") + "USD " + Math.abs(n).toLocaleString("es-AR")
@@ -33,12 +34,13 @@ function ProbBadge({ p }: { p: string }) {
 function RiskRow({ r, defaultOpen, links, caseId, highlight, onUpdated }: {
   r: Risk; defaultOpen?: boolean; links: ItemLink[]
   caseId: string; highlight?: boolean
-  onUpdated: (u: { id: string; impacto: number; estado: string }) => void
+  onUpdated: (u: { id: string; impacto: number; estado: string; prioridad: string }) => void
 }) {
   const [open, setOpen] = useState(defaultOpen ?? false)
   const [editing, setEditing] = useState(false)
   const [impDraft, setImpDraft] = useState(String(r.impacto))
   const [estDraft, setEstDraft] = useState(r.estado)
+  const [priDraft, setPriDraft] = useState(r.prioridad ?? "N/A")
   const [motivo, setMotivo] = useState("")
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
@@ -51,6 +53,7 @@ function RiskRow({ r, defaultOpen, links, caseId, highlight, onUpdated }: {
       const impNum = Math.round(Number(impDraft))
       if (Number.isFinite(impNum) && impNum !== r.impacto) body.impacto = impNum
       if (estDraft !== r.estado) body.estado = estDraft
+      if (priDraft !== (r.prioridad ?? "N/A")) body.prioridad = priDraft
       if (motivo.trim()) body.motivo = motivo.trim()
       if (!("impacto" in body) && !("estado" in body)) { setEditing(false); setSaving(false); return }
       const res = await fetch(`/api/cases/${caseId}/risks/${r.id}`, {
@@ -58,7 +61,7 @@ function RiskRow({ r, defaultOpen, links, caseId, highlight, onUpdated }: {
       })
       const data = await res.json()
       if (!res.ok || !data.ok) throw new Error(data.error || "No se pudo guardar")
-      onUpdated({ id: r.id, impacto: data.impacto, estado: data.estado })
+      onUpdated({ id: r.id, impacto: data.impacto, estado: data.estado, prioridad: data.prioridad })
       setEditing(false); setMotivo("")
     } catch (e) { setErr(e instanceof Error ? e.message : "Error") }
     finally { setSaving(false) }
@@ -125,6 +128,13 @@ function RiskRow({ r, defaultOpen, links, caseId, highlight, onUpdated }: {
                       {ESTADOS.map(op => <option key={op} value={op}>{op}</option>)}
                     </select>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs text-gray-600 w-16">Prioridad</label>
+                    <select value={priDraft} onChange={e => setPriDraft(e.target.value)}
+                      className="border border-gray-300 rounded px-2 py-1 text-xs">
+                      {PRIORIDADES.map(op => <option key={op} value={op}>{op}</option>)}
+                    </select>
+                  </div>
                   <input type="text" placeholder="motivo (opcional)" value={motivo} onChange={e => setMotivo(e.target.value)}
                     className="border border-gray-300 rounded px-2 py-1 text-xs w-full" />
                   {!ACTIVE.includes(estDraft) && (
@@ -141,7 +151,7 @@ function RiskRow({ r, defaultOpen, links, caseId, highlight, onUpdated }: {
                   </div>
                 </div>
               ) : (
-                <button onClick={() => { setImpDraft(String(r.impacto)); setEstDraft(r.estado); setEditing(true) }}
+                <button onClick={() => { setImpDraft(String(r.impacto)); setEstDraft(r.estado); setPriDraft(r.prioridad ?? "N/A"); setEditing(true) }}
                   className="text-xs text-blue-700 border border-blue-200 rounded px-2 py-1 hover:bg-blue-50 w-fit">
                   Editar impacto / estado
                 </button>
@@ -202,7 +212,7 @@ function NivelSection({ titulo, descripcion, nivel, risks, total, expandAll, col
   color: "green" | "amber" | "purple" | "gray"
   itemLinksMap: Record<string, ItemLink[]>
   caseId: string; highlightId: string
-  onUpdated: (u: { id: string; impacto: number; estado: string }) => void
+  onUpdated: (u: { id: string; impacto: number; estado: string; prioridad: string }) => void
   badgeLabel?: string; defaultCollapsed?: boolean
 }) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed ?? false)
@@ -300,8 +310,8 @@ export default function RisksPage({ params }: { params: { id: string } }) {
   const duplicados    = risks.filter(r => r.estado==="DUPLICADO").sort((a,b) => a.impacto-b.impacto)
   const reclasif      = risks.filter(r => r.estado==="RECLASIFICADO")
 
-  const onRiskUpdated = (u: { id: string; impacto: number; estado: string }) =>
-    setRisks(prev => prev.map(x => x.id === u.id ? { ...x, impacto: u.impacto, estado: u.estado } : x))
+  const onRiskUpdated = (u: { id: string; impacto: number; estado: string; prioridad: string }) =>
+    setRisks(prev => prev.map(x => x.id === u.id ? { ...x, impacto: u.impacto, estado: u.estado, prioridad: u.prioridad } : x))
 
   const totalC  = confirmados.reduce((s,r) => s+r.impacto, 0)
   const totalI  = identificados.reduce((s,r) => s+r.impacto, 0)
