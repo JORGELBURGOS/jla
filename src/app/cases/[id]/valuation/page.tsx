@@ -379,7 +379,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
     // Detalle completo de riesgos activos — alimenta el desplegable del total Y el selector "traer riesgo"
     db.from("dd_case_risks").select("id,riesgo,area,impacto,accion_requerida")
       .eq("case_id",caseId)
-      .not("estado","in",'("DUPLICADO","RECLASIFICADO")')
+      .not("estado","in",'("DUPLICADO","RECLASIFICADO","CERRADO")')
       .lt("impacto",0)
       .order("impacto",{ascending:true})
       .then(({data}) => {
@@ -389,7 +389,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
 
     // Tres pools de riesgos según tipo de deal
     db.from("dd_case_risks").select("impacto").eq("case_id",caseId)
-      .not("estado","in",'("DUPLICADO","RECLASIFICADO")').lt("impacto",0)
+      .not("estado","in",'("DUPLICADO","RECLASIFICADO","CERRADO")').lt("impacto",0)
       .then(({data}) => {
         setRiesgos(((data??[]) as {impacto:number}[]).reduce((s,r)=>s+r.impacto,0))
       })

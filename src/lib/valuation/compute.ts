@@ -112,7 +112,7 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
     db.from("dd_case_assumptions").select("label,valor").eq("case_id", caseId),
     db.from("dd_case_assets").select("categoria,cantidad,precio_unitario,valor_usd").eq("case_id", caseId),
     db.from("dd_case_risks").select("id,riesgo,area,impacto,accion_requerida").eq("case_id", caseId)
-      .not("estado", "in", '("DUPLICADO","RECLASIFICADO")').lt("impacto", 0),
+      .not("estado", "in", '("DUPLICADO","RECLASIFICADO","CERRADO")').lt("impacto", 0),
     db.from("dd_case_risk_adjustments").select("id,origen_riesgo_id,porcentaje,estado").eq("case_id", caseId),
   ])
 
