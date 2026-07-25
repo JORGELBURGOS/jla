@@ -283,6 +283,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const [riskAdding, setRiskAdding]     = useState(false)
   const [riskJustAdded, setRiskJustAdded] = useState<string|null>(null)
   const [showTraerPicker, setShowTraerPicker] = useState(false)
+  const [notasMetodos, setNotasMetodos] = useState<Record<string,string>>({})
   // Riesgos individuales clave para el cuadro de oferta
   const [caseName, setCaseName]     = useState("")
   const [multiplo, setMultiplo]     = useState(6)
@@ -322,6 +323,18 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
       .then(({data}) => {
         if (!data) return
         const sup = Object.fromEntries((data as Array<{label:string;valor:string}>).map(s=>[s.label,Number(s.valor)]))
+        const notasM: Record<string,string> = {}
+        ;(data as Array<{label:string;nota:string}>).forEach(s => {
+          const key = {
+            "Múltiplo fondo de comercio — Método 1 (×)": "m1",
+            "Tasa de descuento flujo de fondos (%)": "m2tasa",
+            "Múltiplo valor residual DCF (×)": "m2vr",
+            "Múltiplo mínimo comparable — Método 3 (×)": "m3",
+            "Múltiplo máximo comparable — Método 3 (×)": "m3",
+          }[s.label]
+          if (key && s.nota) notasM[key] = s.nota
+        })
+        setNotasMetodos(notasM)
         const set = (label:string, fn:(v:number)=>void) => { if (sup[label]) fn(sup[label]) }
         set("Ingresos reales último ejercicio cerrado (USD)", setIngresos)
         set("Múltiplo base de valuación (×)",                 setMultBase)
@@ -631,7 +644,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
 
             {/* Método 1 */}
             <div className="rounded-xl border-2 border-gray-200 p-4">
-              <div className="flex items-start justify-between gap-4 mb-3">
+              <div className="flex items-start justify-between gap-4 mb-1">
                 <div>
                   <div className="text-xs text-gray-400 font-bold mb-0.5">Método 01</div>
                   <div className="text-sm font-bold text-gray-800">Activos netos + Fondo de comercio</div>
@@ -663,6 +676,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                     El fondo de comercio es el premio por comprar la empresa funcionando en lugar de los activos
                     por separado: clientes que ya facturan, habilitaciones activas, procesos armados y 40 años de reputación.
                     Con el EBITDA contable la cifra es el piso; con el normalizado, el valor real del negocio.
+                    {notasMetodos.m1 && <> {notasMetodos.m1}</>}
                   </p>
                 </div>
               </div>
@@ -670,7 +684,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
 
             {/* Método 2 */}
             <div className="rounded-xl border-2 border-amber-300 p-4">
-              <div className="flex items-start justify-between gap-4 mb-3">
+              <div className="flex items-start justify-between gap-4 mb-1">
                 <div>
                   <div className="text-xs text-amber-600 font-bold mb-0.5">Método 02</div>
                   <div className="text-sm font-bold text-gray-800">Flujo de fondos descontado al {Math.round(tasaDCF*100)}%</div>
@@ -710,6 +724,8 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                     "Valor hoy" es el valor presente: cuánto vale hoy cada flujo futuro descontado al {Math.round(tasaDCF*100)}% anual
                     (a mayor plazo, menor valor presente). El valor residual estima lo que valdrá el negocio al final del período ({multVR}× el EBITDA del último año).
                     La suma de todos los valores presentes es la valuación del método: {usd(valorM2)}.
+                    {notasMetodos.m2tasa && <> {notasMetodos.m2tasa}</>}
+                    {notasMetodos.m2vr && <> {notasMetodos.m2vr}</>}
                   </p>
                   <div className="pt-2 border-t border-gray-100">
                     <span className="font-semibold text-gray-600">Hipótesis de crecimiento: </span>
@@ -739,8 +755,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                   <div>· Punto medio: {usd(valorM3mid)}</div>
                 </div>
                 <div className="text-xs text-gray-500 italic">
-                  Empresas con posición monopólica y barreras regulatorias de 7-9 años se transan a estos múltiplos
-                  en el sector de servicios ambientales en mercados emergentes.
+                  {notasMetodos.m3 || "Empresas con posición monopólica y barreras regulatorias de 7-9 años se transan a estos múltiplos en el sector de servicios ambientales."}
                 </div>
               </div>
             </div>
