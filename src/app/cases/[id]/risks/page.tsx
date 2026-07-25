@@ -128,7 +128,7 @@ function RiskRow({ r, defaultOpen, links, caseId, highlight, onUpdated }: {
                   <input type="text" placeholder="motivo (opcional)" value={motivo} onChange={e => setMotivo(e.target.value)}
                     className="border border-gray-300 rounded px-2 py-1 text-xs w-full" />
                   {!ACTIVE.includes(estDraft) && (
-                    <div className="text-xs text-amber-700">Con este estado el impacto pasa a 0 y sale de valuacion.</div>
+                    <div className="text-xs text-amber-700">Con este estado el riesgo deja de sumar al total (el impacto se conserva).</div>
                   )}
                   {err && <div className="text-xs text-red-600">{err}</div>}
                   <div className="flex gap-2">
