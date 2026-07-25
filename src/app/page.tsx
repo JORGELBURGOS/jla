@@ -56,12 +56,13 @@ export default function HomePage() {
     const enriched = await Promise.all((rawCases ?? []).map(async (c: Record<string,unknown>) => {
       const [{ data: reqs },{ data: risks }] = await Promise.all([
         db.from("dd_case_requirements").select("estado").eq("case_id",c.id),
-        db.from("dd_case_risks").select("impacto").eq("case_id",c.id)
+        db.from("dd_case_risks").select("impacto,estado").eq("case_id",c.id)
       ])
       const r = (reqs as {estado:string}[]) ?? []
       const rec = r.filter(x=>x.estado==="Recibido").length
       const par = r.filter(x=>x.estado==="Parcial").length
-      const totalRiesgo = ((risks as {impacto:number}[])??[]).reduce((s,x)=>s+(x.impacto??0),0)
+      const ACTIVO = ["IDENTIFICADO","CONFIRMADO","CONDICIONAL"]
+      const totalRiesgo = ((risks as {impacto:number;estado:string}[])??[]).filter(x=>ACTIVO.includes(x.estado)).reduce((s,x)=>s+(x.impacto??0),0)
       return {...c,rec,par,pend:r.length-rec-par,total:r.length,totalRiesgo,
         avance:r.length?Math.round((rec+par*0.5)/r.length*100):0} as Case
     }))
