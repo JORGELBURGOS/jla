@@ -164,6 +164,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
           </div>
         </div>
 
+
         {/* ══════ 1. RESUMEN EJECUTIVO ══════ */}
         <div className="page-break" style={{ padding: "30px 50px" }}>
           <H n="1." t="Resumen ejecutivo" />
@@ -205,45 +206,64 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
           </div>
         </div>
 
-        {/* ══════ 2. ALCANCE ══════ */}
+
+        {/* ══════ 2. TESIS DE INVERSIÓN ══════ */}
         <div className="page-break" style={{ padding: "30px 50px" }}>
-          <H n="2." t="Alcance del trabajo y estado del data room" />
-          <P>
-            El alcance del encargo comprendió procedimientos de revisión documental y analítica sobre la información
-            provista por el vendedor, entrevistas con la gerencia, una visita a las instalaciones y verificaciones
-            registrales de fuentes públicas. Los procedimientos no constituyen una auditoría de estados contables
-            conforme a normas profesionales, y las conclusiones se encuentran limitadas por la completitud y veracidad
-            de la documentación recibida.
-          </P>
-          <P>
-            A la fecha del presente informe, el índice de requerimientos comprende {total} ítems, de los cuales {recibidos} fueron
-            recibidos en forma completa, {parciales} en forma parcial y {pendientes} permanecen pendientes de entrega, lo que
-            representa un grado de avance del {avance}%. Las conclusiones podrán verse modificadas por la documentación
-            pendiente, en particular la identificada como condición precedente en la Sección 8.
-          </P>
+          <H n="2." t="Tesis de inversión" />
+          <P>Antes de profundizar en los números, conviene responder la pregunta que naturalmente surge al ver el EBITDA histórico del negocio: ¿por qué debería valer más de lo que genera hoy? La respuesta descansa sobre tres pilares que el proceso de due diligence ha confirmado con evidencia documental.</P>
+          {[
+            {n:"1.", titulo:"Respaldo patrimonial independiente del negocio",
+             body:`Los activos revaluados ascienden a ${fmtUSDc(v.activosRevalu)}, de los cuales ${fmtUSDc(v.totalInmueble)} corresponden al inmueble industrial de 50.635 m² en zona industrial de Luján de Cuyo, un activo con valor propio. Los activos netos (deducidos los ajustes por riesgos identificados de ${fmtUSDc(v.riesgosAjust)}) alcanzan ${fmtUSDc(v.activosNetos)}, respaldando una parte sustancial del precio de oferta inicial de ${fmtUSDc(v.ofertaInic)}.`},
+            {n:"2.", titulo:"Barrera de entrada regulatoria en sector de cumplimiento obligatorio",
+             body:`El negocio opera bajo un CAA de Operador (DPA Mendoza) y una DIA vigentes — habilitaciones que representan una barrera de entrada de tres a cinco años de gestión. La demanda no depende del ciclo económico: los generadores de residuos peligrosos tienen obligación legal de contratar un operador habilitado (Ley 24.051). Este marco protege los ingresos y limita la competencia de nuevos entrantes.`},
+            {n:"3.", titulo:"Ingresos validados por fuente independiente del Estado (ARCA)",
+             body:`La facturación de ${fmtUSDc(v.ingresos)} del último ejercicio fue contrastada con las declaraciones juradas de IVA presentadas ante ARCA, arrojando una diferencia de -0,5%. Esta validación cruzada —independiente del vendedor y del auditor— confirma que los ingresos declarados en los estados contables son reales. El ritmo de facturación de los primeros cuatro meses de 2026 es consistente con 2025.`},
+          ].map((item,i)=>(
+            <div key={i} style={{ display:"flex", gap:"12px", marginBottom:"12px" }}>
+              <span style={{ fontFamily:"Georgia,serif", fontSize:"12px", fontWeight:700, color:"#1a2744", flexShrink:0 }}>{item.n}</span>
+              <div>
+                <div style={{ fontFamily:"Inter,sans-serif", fontSize:"10px", fontWeight:700, color:"#1a2744", marginBottom:"3px" }}>{item.titulo}</div>
+                <p style={{ fontFamily:"Georgia,serif", fontSize:"11px", lineHeight:1.75, color:"#1f2937", textAlign:"justify", margin:0 }}>{item.body}</p>
+              </div>
+            </div>
+          ))}
         </div>
 
-        {/* ══════ 3. HALLAZGOS PRINCIPALES ══════ */}
+
+        {/* ══════ 3. EVOLUCIÓN FINANCIERA ══════ */}
         <div className="page-break" style={{ padding: "30px 50px" }}>
-          <H n="3." t="Hallazgos principales" />
-          {narrativa && narrativa.hallazgos_criticos.length > 0 ? (
-            narrativa.hallazgos_criticos.map((h, i) => (
-              <div key={i} style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
-                <span style={{ fontFamily: "Georgia, serif", fontSize: "11px", fontWeight: 700, color: "#1a2744", flexShrink: 0 }}>3.{i + 1}</span>
-                <p style={{ fontFamily: "Georgia, serif", fontSize: "11px", lineHeight: 1.7, color: "#1f2937", textAlign: "justify", margin: 0 }}>{h}</p>
-              </div>
-            ))
-          ) : (
-            topRiesgos.slice(0, 6).map((r, i) => (
-              <div key={i} style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
-                <span style={{ fontFamily: "Georgia, serif", fontSize: "11px", fontWeight: 700, color: "#1a2744", flexShrink: 0 }}>3.{i + 1}</span>
-                <p style={{ fontFamily: "Georgia, serif", fontSize: "11px", lineHeight: 1.7, color: "#1f2937", textAlign: "justify", margin: 0 }}>
-                  {String(r.riesgo)} (exposición estimada: {fmtUSDc(Math.abs(Number(r.impacto)))}).
-                </p>
-              </div>
-            ))
-          )}
+          <H n="3." t="Evolución financiera 2021–2025" />
+          <P>Con la tesis de inversión establecida, corresponde examinar la película financiera completa: cinco ejercicios auditados que muestran un negocio en construcción, con volatilidad de márgenes y una recuperación incompleta. La facturación fue validada de manera independiente cruzando los estados contables con las declaraciones juradas de IVA presentadas ante ARCA, arrojando una diferencia inferior al 0,5% — lo que acredita la fiabilidad del dato de base.</P>
+          <table style={{ width:"100%", borderCollapse:"collapse", margin:"10px 0 8px" }}>
+            <thead><tr>
+              <th style={th}>Ejercicio</th>
+              <th style={{...th, textAlign:"right"}}>Ingresos</th>
+              <th style={{...th, textAlign:"right"}}>EBITDA</th>
+              <th style={{...th, textAlign:"right"}}>Margen</th>
+              <th style={{...th, textAlign:"right"}}>Resultado neto</th>
+            </tr></thead>
+            <tbody>
+              {[...balance].sort((a:any,b:any)=>String(a.ejercicio).localeCompare(String(b.ejercicio))).map((b:any,i:number) => {
+                const tc = Number(b.tc_promedio)||1
+                const ing = Math.round((Number(b.ingresos)||0)/tc)
+                const ebit = Math.round(((Number(b.ingresos)||0)-(Number(b.costos_servicios)||0)-(Number(b.gastos_admin)||0)-(Number(b.gastos_comercial)||0))/tc)
+                const rn = Math.round((Number(b.resultado_neto)||0)/tc)
+                const marg = ing>0?Math.round(ebit/ing*100):0
+                return (
+                  <tr key={i} style={{ background:i%2===0?"#f9fafb":"white" }}>
+                    <td style={td}>{String(b.ejercicio)}</td>
+                    <td style={tdNum}>{fmtUSDc(ing)}</td>
+                    <td style={{...tdNum, color:ebit<0?"#dc2626":"#16a34a", fontWeight:700}}>{fmtUSDc(ebit)}</td>
+                    <td style={{...tdNum, color:ebit<0?"#dc2626":"#16a34a"}}>{marg}%</td>
+                    <td style={{...tdNum, color:rn<0?"#dc2626":"#374151"}}>{fmtUSDc(rn)}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+          <P>El resultado neto fue negativo en tres de los últimos cinco ejercicios — dato que el inversor debe conocer y entender desde el principio. La causa no es operativa: la depreciación acelerada de activos revaluados por RT 6/17 genera un cargo contable no cash de alto impacto, y el impuesto a las ganancias de 2025 resultó anómalo (tasa efectiva de 295% sobre la ganancia contable). El EBITDA es la métrica representativa de la generación de caja operativa; el resultado neto, en este caso, no lo es.</P>
         </div>
+
 
         {/* ══════ 4. CALIDAD DE RESULTADOS ══════ */}
         <div className="page-break" style={{ padding: "30px 50px" }}>
@@ -264,6 +284,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
             se computaron a partir del último balance auditado disponible.
           </P>
         </div>
+
 
         {/* ══════ 5. VALUACIÓN ══════ */}
         <div className="page-break" style={{ padding: "30px 50px" }}>
@@ -293,9 +314,40 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
           </P>
         </div>
 
-        {/* ══════ 6. RIESGOS ══════ */}
+
+        {/* ══════ 6. ESCENARIOS ══════ */}
         <div className="page-break" style={{ padding: "30px 50px" }}>
-          <H n="6." t="Evaluación de riesgos" />
+          <H n="13." t="Análisis de escenarios — plan del vendedor vs. escenario conservador" />
+          <P>La pregunta más importante de este proceso no es cuánto vale el negocio hoy, sino cuánto le paga el inversor al vendedor por el crecimiento futuro. Para responderla, el flujo de fondos descontado fue calculado bajo tres escenarios con la misma tasa ({(v.tasaDCF*100).toFixed(0)}%) y múltiplo terminal ({v.multVR}×). La brecha entre el escenario del vendedor y el conservador cuantifica la prima de crecimiento que debería estructurarse como earn-out.</P>
+          <table style={{ width:"100%", borderCollapse:"collapse", margin:"12px 0" }}>
+            <thead><tr>
+              <th style={th}>Escenario</th>
+              <th style={{...th, textAlign:"right"}}>M2 (DCF)</th>
+              <th style={{...th, textAlign:"right"}}>Promedio métodos</th>
+              <th style={{...th, textAlign:"right"}}>vs. precio pedido</th>
+            </tr></thead>
+            <tbody>
+              {[
+                {label:"Plan del vendedor (horno + YPF, condicional)", m2:v.valorM2, prom:v.promMetodos, color:"#d97706"},
+                {label:"Conservador (crecimiento orgánico 10%/año, sin plan vendedor)", m2:v.valorM2conservador, prom:v.promConservador, color:"#16a34a"},
+                {label:"Base real (EBITDA contable 2025, crecimiento 5%/año)", m2:v.valorM2pesimista, prom:v.promPesimista, color:"#dc2626"},
+              ].map((row,i)=>(
+                <tr key={i} style={{ borderTop:"0.5px solid #e5e7eb" }}>
+                  <td style={{...td, fontSize:"9px"}}>{row.label}</td>
+                  <td style={{...tdNum, fontWeight:700}}>{fmtUSDc(row.m2)}</td>
+                  <td style={{...tdNum, fontWeight:700, color:row.color}}>{fmtUSDc(row.prom)}</td>
+                  <td style={{...tdNum, color:row.prom>=v.precio?"#16a34a":"#dc2626"}}>{v.precio>0?`${((row.prom/v.precio-1)*100).toFixed(1)}%`:"—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <P>La prima de crecimiento implícita en el precio del vendedor asciende a {fmtUSDc(v.primaCrecimiento)}. Este monto no debería pagarse al contado: representa exactamente el componente que el contrato debería estructurar como earn-out, atado a la acreditación del horno rotativo en el CAA de Operador y a la materialización de la relación comercial con YPF. Sin esos dos hitos, el negocio vale el escenario conservador — no el del vendedor.</P>
+        </div>
+
+
+        {/* ══════ 7. RIESGOS ══════ */}
+        <div className="page-break" style={{ padding: "30px 50px" }}>
+          <H n="7." t="Evaluación de riesgos" />
           <P>
             El mapa de riesgos activo comprende {nActivos} hallazgos ({nConf} confirmados con evidencia documental, {nIden} identificados y {nCond} condicionales), con una exposición agregada de {fmtUSDc(Math.abs(expActiva))}.
             Adicionalmente, durante el proceso se resolvieron o descartaron {cerrados.length} riesgos que, de haberse
@@ -317,7 +369,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
           </table>
           <div style={{ marginTop: "20px" }}>
             <div style={{ fontFamily:"Georgia, serif", fontSize:"12px", fontWeight:700, color:"#1a2744", marginBottom:"10px" }}>
-              6.2 Ajustes por riesgos — criterio del analista
+              7.2 Ajustes por riesgos — criterio del analista
             </div>
             <P>Para cada riesgo incluido en la valuación se explicita a continuación el criterio de selección y la justificación del porcentaje de ajuste aplicado.</P>
             <table style={{ width:"100%", borderCollapse:"collapse", margin:"8px 0" }}>
@@ -361,9 +413,10 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
           </div>
         </div>
 
-        {/* ══════ 7. VALIDACIÓN DEL PLAN ══════ */}
+
+        {/* ══════ 8. VALIDACIÓN DEL PLAN ══════ */}
         <div className="page-break" style={{ padding: "30px 50px" }}>
-          <H n="7." t="Validación del plan de negocios" />
+          <H n="8." t="Validación del plan de negocios" />
           <P>
             El plan de negocios del vendedor fue contrastado ítem por ítem con la evidencia del data room:
             de {validRows.length} elementos analizados, {nVal} resultaron validados, {nParc} parcialmente validados
@@ -381,9 +434,10 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
           ))}
         </div>
 
-        {/* ══════ 8. CONDICIONES PRECEDENTES ══════ */}
+
+        {/* ══════ 9. CONDICIONES PRECEDENTES ══════ */}
         <div className="page-break" style={{ padding: "30px 50px" }}>
-          <H n="8." t="Condiciones precedentes y hoja de ruta" />
+          <H n="9." t="Condiciones precedentes y hoja de ruta" />
           <P>
             La recomendación de la Sección 1 se encuentra sujeta al cumplimiento de las condiciones que se enumeran a
             continuación, cuya verificación deberá completarse con anterioridad a la firma o instrumentarse como
@@ -397,9 +451,56 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
           ))}
         </div>
 
-        {/* ══════ 9. SUPUESTOS DEL MODELO ══════ */}
+
+        {/* ══════ 10. RIESGOS RESUELTOS ══════ */}
+        {cerrados.filter((r:any)=>Number(r.impacto)<0).length>0&&(
         <div className="page-break" style={{ padding: "30px 50px" }}>
-          <H n="9." t="Supuestos del modelo" />
+          <H n="10." t="Riesgos resueltos durante el proceso" />
+          <P>Un due diligence no solo identifica problemas: también los resuelve. Los hallazgos que se listan a continuación llegaron al proceso como riesgos potenciales significativos y se cerraron con evidencia documental o de campo. Su resolución redujo sustancialmente la percepción inicial de riesgo — y, con ella, el descuento implícito que el comprador habría exigido sobre el precio.</P>
+          <table style={{ width:"100%", borderCollapse:"collapse", margin:"10px 0" }}>
+            <thead><tr>
+              <th style={th}>Riesgo resuelto</th>
+              <th style={{...th, textAlign:"right"}}>Exposición eliminada</th>
+            </tr></thead>
+            <tbody>
+              {cerrados.filter((r:any)=>Number(r.impacto)<0).map((r:any,i:number)=>(
+                <tr key={i} style={{ borderTop:"0.5px solid #e5e7eb" }}>
+                  <td style={{...td, color:"#16a34a", fontWeight:600}}>{String(r.riesgo)}</td>
+                  <td style={{...tdNum, color:"#16a34a"}}>{fmtUSDc(Math.abs(Number(r.impacto)))}</td>
+                </tr>
+              ))}
+              <tr style={{ background:"#f0fdf4", borderTop:"1.5px solid #16a34a" }}>
+                <td style={{...td, fontWeight:700, color:"#16a34a"}}>Total eliminado</td>
+                <td style={{...tdNum, fontWeight:700, color:"#16a34a"}}>{fmtUSDc(cerrados.filter((r:any)=>Number(r.impacto)<0).reduce((s:number,r:any)=>s+Math.abs(Number(r.impacto)),0))}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        )}
+
+
+        {/* ══════ 11. ALCANCE ══════ */}
+        <div className="page-break" style={{ padding: "30px 50px" }}>
+          <H n="11." t="Alcance del trabajo y estado del data room" />
+          <P>
+            El alcance del encargo comprendió procedimientos de revisión documental y analítica sobre la información
+            provista por el vendedor, entrevistas con la gerencia, una visita a las instalaciones y verificaciones
+            registrales de fuentes públicas. Los procedimientos no constituyen una auditoría de estados contables
+            conforme a normas profesionales, y las conclusiones se encuentran limitadas por la completitud y veracidad
+            de la documentación recibida.
+          </P>
+          <P>
+            A la fecha del presente informe, el índice de requerimientos comprende {total} ítems, de los cuales {recibidos} fueron
+            recibidos en forma completa, {parciales} en forma parcial y {pendientes} permanecen pendientes de entrega, lo que
+            representa un grado de avance del {avance}%. Las conclusiones podrán verse modificadas por la documentación
+            pendiente, en particular la identificada como condición precedente en la Sección 8.
+          </P>
+        </div>
+
+
+        {/* ══════ 12. SUPUESTOS DEL MODELO ══════ */}
+        <div className="page-break" style={{ padding: "30px 50px" }}>
+          <H n="12." t="Supuestos del modelo" />
           <P>
             Los importes se expresan en dólares estadounidenses. Los valores del ejercicio en curso originalmente
             denominados en pesos fueron convertidos al tipo de cambio de referencia de ARS 1.500 por dólar.
@@ -431,144 +532,10 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
         </div>
 
 
-        {/* ══════ 11. EVOLUCIÓN FINANCIERA ══════ */}
-        <div className="page-break" style={{ padding: "30px 50px" }}>
-          <H n="11." t="Evolución financiera 2021–2025" />
-          <P>Los estados contables auditados de los últimos cinco ejercicios permiten trazar la trayectoria real del negocio. La facturación fue validada de forma independiente contra las declaraciones juradas de IVA ante ARCA, con diferencia inferior al 0,5%, lo que acredita la fiabilidad de los estados contables.</P>
-          <table style={{ width:"100%", borderCollapse:"collapse", margin:"10px 0 8px" }}>
-            <thead><tr>
-              <th style={th}>Ejercicio</th>
-              <th style={{...th, textAlign:"right"}}>Ingresos</th>
-              <th style={{...th, textAlign:"right"}}>EBITDA</th>
-              <th style={{...th, textAlign:"right"}}>Margen</th>
-              <th style={{...th, textAlign:"right"}}>Resultado neto</th>
-            </tr></thead>
-            <tbody>
-              {[...balance].sort((a:any,b:any)=>String(a.ejercicio).localeCompare(String(b.ejercicio))).map((b:any,i:number) => {
-                const tc = Number(b.tc_promedio)||1
-                const ing = Math.round((Number(b.ingresos)||0)/tc)
-                const ebit = Math.round(((Number(b.ingresos)||0)-(Number(b.costos_servicios)||0)-(Number(b.gastos_admin)||0)-(Number(b.gastos_comercial)||0))/tc)
-                const rn = Math.round((Number(b.resultado_neto)||0)/tc)
-                const marg = ing>0?Math.round(ebit/ing*100):0
-                return (
-                  <tr key={i} style={{ background:i%2===0?"#f9fafb":"white" }}>
-                    <td style={td}>{String(b.ejercicio)}</td>
-                    <td style={tdNum}>{fmtUSDc(ing)}</td>
-                    <td style={{...tdNum, color:ebit<0?"#dc2626":"#16a34a", fontWeight:700}}>{fmtUSDc(ebit)}</td>
-                    <td style={{...tdNum, color:ebit<0?"#dc2626":"#16a34a"}}>{marg}%</td>
-                    <td style={{...tdNum, color:rn<0?"#dc2626":"#374151"}}>{fmtUSDc(rn)}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-          <P>La empresa registró resultado neto negativo en tres de los últimos cinco años. Esta aparente contradicción con el EBITDA positivo se explica por la depreciación acelerada de activos revaluados por RT 6/17 (cargo no cash) y por un impuesto a las ganancias anómalo en 2025. El EBITDA es la métrica representativa de la generación de caja operativa.</P>
-        </div>
 
-        {/* ══════ 12. TESIS DE INVERSIÓN ══════ */}
-        <div className="page-break" style={{ padding: "30px 50px" }}>
-          <H n="12." t="Tesis de inversión" />
-          <P>La tesis descansa sobre tres pilares confirmados con evidencia documental durante el proceso de due diligence.</P>
-          {[
-            {n:"1.", titulo:"Respaldo patrimonial independiente del negocio",
-             body:`Los activos revaluados ascienden a ${fmtUSDc(v.activosRevalu)}, de los cuales ${fmtUSDc(v.totalInmueble)} corresponden al inmueble industrial de 50.635 m² en zona industrial de Luján de Cuyo, un activo con valor propio. Los activos netos (deducidos los ajustes por riesgos identificados de ${fmtUSDc(v.riesgosAjust)}) alcanzan ${fmtUSDc(v.activosNetos)}, respaldando una parte sustancial del precio de oferta inicial de ${fmtUSDc(v.ofertaInic)}.`},
-            {n:"2.", titulo:"Barrera de entrada regulatoria en sector de cumplimiento obligatorio",
-             body:`El negocio opera bajo un CAA de Operador (DPA Mendoza) y una DIA vigentes — habilitaciones que representan una barrera de entrada de tres a cinco años de gestión. La demanda no depende del ciclo económico: los generadores de residuos peligrosos tienen obligación legal de contratar un operador habilitado (Ley 24.051). Este marco protege los ingresos y limita la competencia de nuevos entrantes.`},
-            {n:"3.", titulo:"Ingresos validados por fuente independiente del Estado (ARCA)",
-             body:`La facturación de ${fmtUSDc(v.ingresos)} del último ejercicio fue contrastada con las declaraciones juradas de IVA presentadas ante ARCA, arrojando una diferencia de -0,5%. Esta validación cruzada —independiente del vendedor y del auditor— confirma que los ingresos declarados en los estados contables son reales. El ritmo de facturación de los primeros cuatro meses de 2026 es consistente con 2025.`},
-          ].map((item,i)=>(
-            <div key={i} style={{ display:"flex", gap:"12px", marginBottom:"12px" }}>
-              <span style={{ fontFamily:"Georgia,serif", fontSize:"12px", fontWeight:700, color:"#1a2744", flexShrink:0 }}>{item.n}</span>
-              <div>
-                <div style={{ fontFamily:"Inter,sans-serif", fontSize:"10px", fontWeight:700, color:"#1a2744", marginBottom:"3px" }}>{item.titulo}</div>
-                <p style={{ fontFamily:"Georgia,serif", fontSize:"11px", lineHeight:1.75, color:"#1f2937", textAlign:"justify", margin:0 }}>{item.body}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* ══════ 13. DOS ESCENARIOS ══════ */}
-        <div className="page-break" style={{ padding: "30px 50px" }}>
-          <H n="13." t="Análisis de escenarios — plan del vendedor vs. escenario conservador" />
-          <P>El flujo de fondos descontado fue calculado bajo tres escenarios con la misma tasa ({(v.tasaDCF*100).toFixed(0)}%) y múltiplo terminal ({v.multVR}×). La brecha entre el escenario del vendedor y el conservador cuantifica la prima de crecimiento que debería estructurarse como earn-out.</P>
-          <table style={{ width:"100%", borderCollapse:"collapse", margin:"12px 0" }}>
-            <thead><tr>
-              <th style={th}>Escenario</th>
-              <th style={{...th, textAlign:"right"}}>M2 (DCF)</th>
-              <th style={{...th, textAlign:"right"}}>Promedio métodos</th>
-              <th style={{...th, textAlign:"right"}}>vs. precio pedido</th>
-            </tr></thead>
-            <tbody>
-              {[
-                {label:"Plan del vendedor (horno + YPF, condicional)", m2:v.valorM2, prom:v.promMetodos, color:"#d97706"},
-                {label:"Conservador (crecimiento orgánico 10%/año, sin plan vendedor)", m2:v.valorM2conservador, prom:v.promConservador, color:"#16a34a"},
-                {label:"Base real (EBITDA contable 2025, crecimiento 5%/año)", m2:v.valorM2pesimista, prom:v.promPesimista, color:"#dc2626"},
-              ].map((row,i)=>(
-                <tr key={i} style={{ borderTop:"0.5px solid #e5e7eb" }}>
-                  <td style={{...td, fontSize:"9px"}}>{row.label}</td>
-                  <td style={{...tdNum, fontWeight:700}}>{fmtUSDc(row.m2)}</td>
-                  <td style={{...tdNum, fontWeight:700, color:row.color}}>{fmtUSDc(row.prom)}</td>
-                  <td style={{...tdNum, color:row.prom>=v.precio?"#16a34a":"#dc2626"}}>{v.precio>0?`${((row.prom/v.precio-1)*100).toFixed(1)}%`:"—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <P>La prima de crecimiento implícita en el precio del vendedor asciende a {fmtUSDc(v.primaCrecimiento)}. Esta cifra representa el componente que debería estructurarse como earn-out atado a la acreditación del horno rotativo en el CAA de Operador y a la materialización de la relación comercial con YPF.</P>
-        </div>
-
-        {/* ══════ 14. RIESGOS RESUELTOS ══════ */}
-        {cerrados.filter((r:any)=>Number(r.impacto)<0).length>0&&(
-        <div className="page-break" style={{ padding: "30px 50px" }}>
-          <H n="14." t="Riesgos resueltos durante el proceso" />
-          <P>El proceso verificó y cerró hallazgos que de no haberse investigado habrían inflado la percepción de riesgo. La exposición total eliminada durante el due diligence es la siguiente.</P>
-          <table style={{ width:"100%", borderCollapse:"collapse", margin:"10px 0" }}>
-            <thead><tr>
-              <th style={th}>Riesgo resuelto</th>
-              <th style={{...th, textAlign:"right"}}>Exposición eliminada</th>
-            </tr></thead>
-            <tbody>
-              {cerrados.filter((r:any)=>Number(r.impacto)<0).map((r:any,i:number)=>(
-                <tr key={i} style={{ borderTop:"0.5px solid #e5e7eb" }}>
-                  <td style={{...td, color:"#16a34a", fontWeight:600}}>{String(r.riesgo).slice(0,90)}</td>
-                  <td style={{...tdNum, color:"#16a34a"}}>{fmtUSDc(Math.abs(Number(r.impacto)))}</td>
-                </tr>
-              ))}
-              <tr style={{ background:"#f0fdf4", borderTop:"1.5px solid #16a34a" }}>
-                <td style={{...td, fontWeight:700, color:"#16a34a"}}>Total eliminado</td>
-                <td style={{...tdNum, fontWeight:700, color:"#16a34a"}}>{fmtUSDc(cerrados.filter((r:any)=>Number(r.impacto)<0).reduce((s:number,r:any)=>s+Math.abs(Number(r.impacto)),0))}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        )}
-
-        {/* ══════ 15. ESTRUCTURA DEL DEAL ══════ */}
-        <div className="page-break" style={{ padding: "30px 50px" }}>
-          <H n="15." t="Estructura de la transacción recomendada" />
-          <P>Sobre la base de los hallazgos identificados, se recomienda la siguiente estructura para el contrato definitivo, orientada a distribuir el riesgo de forma proporcional a la incertidumbre que permanece abierta.</P>
-          {[
-            {label:"Precio base al contado", value:fmtUSDc(v.ofertaInic),
-             desc:`Valor conservador del negocio sin considerar el plan de crecimiento del vendedor. Se abona contra el cumplimiento de todas las condiciones precedentes. El precio máximo negociable —si todas las condiciones se cumplen— es de ${fmtUSDc(v.ofertaMax)}.`},
-            {label:"Ajuste de precio al closing", value:"Capital de trabajo neto",
-             desc:`El precio se ajustará por la variación del capital de trabajo neto operativo entre la firma y el closing. El capital de trabajo neto al cierre del último ejercicio es negativo, lo que deberá reflejarse en el precio final si no se regulariza antes del cierre.`},
-            {label:"Escrow de contingencias (18 meses)", value:`15% — ${fmtUSDc(Math.round(v.ofertaInic*0.15))}`,
-             desc:`Se retendrá el 15% del precio base para cubrir las contingencias fiscales conocidas: tardanzas IVA/IIBB (multas e intereses), SIPA acumulado (${fmtUSDc(10000)}), y el potencial IIBB subdeclarado en mayo-septiembre 2025. Se libera en la medida en que las contingencias se resuelvan o prescriban.`},
-            {label:"Earn-out ligado al plan de crecimiento (2 años)", value:fmtUSDc(v.primaCrecimiento),
-             desc:`La prima de crecimiento implícita de ${fmtUSDc(v.primaCrecimiento)} se estructura como earn-out: 50% si el EBITDA año 1 supera ${fmtUSDc(Math.round(v.ebitdaBase2*1.5))}, y 50% si el EBITDA año 2 supera ${fmtUSDc(Math.round(v.ebitdaBase2*2.0))}. Condicionado además a la acreditación del horno rotativo en el CAA y a un contrato formal con YPF.`},
-          ].map((item,i)=>(
-            <div key={i} style={{ borderLeft:"3px solid #1a2744", paddingLeft:"14px", marginBottom:"14px" }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:"3px" }}>
-                <span style={{ fontFamily:"Inter,sans-serif", fontSize:"10px", fontWeight:700, color:"#1a2744" }}>{item.label}</span>
-                <span style={{ fontFamily:"Inter,sans-serif", fontSize:"11px", fontWeight:800, color:"#d97706" }}>{item.value}</span>
-              </div>
-              <p style={{ fontFamily:"Georgia,serif", fontSize:"10.5px", lineHeight:1.7, color:"#374151", textAlign:"justify", margin:0 }}>{item.desc}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* ══════ 10. LIMITACIONES ══════ */}
+        {/* ══════ 13. LIMITACIONES ══════ */}
         <div className="page-break" style={{ padding: "30px 50px 60px" }}>
-          <H n="10." t="Limitaciones del alcance y aviso legal" />
+          <H n="13." t="Limitaciones del alcance y aviso legal" />
           <P>
             Este informe fue preparado por JL Advisory exclusivamente para uso de su destinatario en el contexto de la
             potencial transacción descripta, y no podrá ser distribuido a terceros ni utilizado con otros fines sin
@@ -588,6 +555,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
             <span>{hoy} — Estrictamente privado y confidencial</span>
           </div>
         </div>
+
       </div>
     </div>
   )

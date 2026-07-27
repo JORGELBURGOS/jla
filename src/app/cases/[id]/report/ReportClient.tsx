@@ -835,26 +835,6 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
       </div>
       )}
 
-      {/* ─── SECCIÓN 15: ESTRUCTURA DEL DEAL ─── */}
-      <div style={{ margin:"0 0 24px" }}>
-        <div className="section-header">Sección 15 — Estructura de la Transacción Recomendada</div>
-        <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
-          {[
-            {l:"Precio base al contado", v2:fmtUSD(v.ofertaInic), d:`Valor sin plan de crecimiento del vendedor. Máximo negociable si todas las condiciones se cumplen: ${fmtUSD(v.ofertaMax)}.`},
-            {l:"Ajuste al closing", v2:"Capital de trabajo neto", d:"El precio se ajustará por la variación del capital de trabajo neto entre firma y closing."},
-            {l:"Escrow de contingencias (18 meses)", v2:`15% — ${fmtUSD(Math.round(v.ofertaInic*0.15))}`, d:"Para cubrir: tardanzas IVA/IIBB, SIPA acumulado y potencial IIBB subdeclarado may-sep 2025."},
-            {l:"Earn-out (2 años)", v2:fmtUSD(v.primaCrecimiento), d:`50% si EBITDA año 1 > ${fmtUSD(Math.round(v.ebitdaBase2*1.5))} y 50% si año 2 > ${fmtUSD(Math.round(v.ebitdaBase2*2.0))}. Condicional a horno en CAA y contrato YPF.`},
-          ].map((item,i)=>(
-            <div key={i} style={{ display:"flex", justifyContent:"space-between", gap:"12px", padding:"10px 12px", background:"#f8fafc", borderRadius:"8px", borderLeft:"3px solid #d97706" }}>
-              <div style={{ flex:1 }}>
-                <div style={{ fontWeight:700, color:"#1a2744", fontSize:"10px" }}>{item.l}</div>
-                <div style={{ color:"#6b7280", fontSize:"9px", marginTop:"2px" }}>{item.d}</div>
-              </div>
-              <div style={{ fontWeight:800, color:"#d97706", fontSize:"11px", whiteSpace:"nowrap" }}>{item.v2}</div>
-            </div>
-          ))}
-        </div>
-      </div>
     </>
   )
 }
