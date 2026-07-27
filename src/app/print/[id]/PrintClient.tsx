@@ -457,7 +457,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
           </P>
           {(narrativa && narrativa.condiciones_cierre.length > 0 ? narrativa.condiciones_cierre : pendCriticos.map(p => `Entrega y verificación de: ${String(p.documento)}.`)).map((c, i) => (
             <div key={i} style={{ display: "flex", gap: "10px", marginBottom: "8px" }}>
-              <span style={{ fontFamily: "Georgia, serif", fontSize: "11px", fontWeight: 700, color: "#1a2744", flexShrink: 0 }}>8.{i + 1}</span>
+              <span style={{ fontFamily: "Georgia, serif", fontSize: "11px", fontWeight: 700, color: "#1a2744", flexShrink: 0 }}>9.{i + 1}</span>
               <p style={{ fontFamily: "Georgia, serif", fontSize: "11px", lineHeight: 1.7, color: "#1f2937", textAlign: "justify", margin: 0 }}>{c}</p>
             </div>
           ))}
