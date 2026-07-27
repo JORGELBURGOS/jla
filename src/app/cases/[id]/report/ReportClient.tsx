@@ -128,7 +128,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
   // ── Abrir página limpia para imprimir/guardar como PDF ──────────────
   function imprimir() {
     const execParam = narrativa ? encodeURIComponent(JSON.stringify(narrativa)) : ""
-    const url = `/cases/${caseId}/report/print${execParam ? "?exec=" + execParam : ""}`
+    const url = `/print/${caseId}${execParam ? "?exec=" + execParam : ""}`
     window.open(url, "_blank", "width=900,height=800")
   }
 
