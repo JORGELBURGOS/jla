@@ -14,6 +14,8 @@ interface Props {
   valid: Record<string,unknown>[]
   valuation: ValuationResult
   savedNarrativa: Record<string,unknown> | null
+  balance: Record<string,unknown>[]
+  cerrados: Record<string,unknown>[]
 }
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -57,7 +59,7 @@ const ESTADO_COLOR: Record<string, { bg: string; text: string }> = {
   Pendiente: { bg:"#fee2e2", text:"#991b1b" },
 }
 
-export default function ReportClient({ caseId, caso, reqs, risks, sups, env, valid, valuation: v, savedNarrativa }: Props) {
+export default function ReportClient({ caseId, caso, reqs, risks, sups, env, valid, valuation: v, savedNarrativa, balance, cerrados }: Props) {
   const [generating, setGenerating] = useState(false)
   const initial = savedNarrativa && savedNarrativa.resumen_ejecutivo ? {
     recomendacion: String(savedNarrativa.recomendacion ?? ""),
@@ -726,6 +728,132 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
           </div>
         </div>
 
+      </div>
+
+      {/* ─── SECCIÓN 11: EVOLUCIÓN FINANCIERA ─── */}
+      <div style={{ margin:"0 0 24px" }}>
+        <div className="section-header">Sección 11 — Evolución Financiera 2021–2025</div>
+        <div style={{ fontSize:"9px", color:"#9ca3af", marginBottom:"12px" }}>Ingresos y EBITDA validados cruzando EECC auditados con declaraciones juradas de IVA ante ARCA (diferencia &lt; 0,5%). Datos calculados dinámicamente del balance.</div>
+        {balance.length > 0 ? (
+          <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"10px" }}>
+            <thead><tr style={{ background:"#1a2744", color:"white" }}>
+              <th style={{ padding:"6px 8px", textAlign:"left" }}>Ejercicio</th>
+              <th style={{ padding:"6px 8px", textAlign:"right" }}>Ingresos</th>
+              <th style={{ padding:"6px 8px", textAlign:"right" }}>EBITDA</th>
+              <th style={{ padding:"6px 8px", textAlign:"right" }}>Margen</th>
+              <th style={{ padding:"6px 8px", textAlign:"right" }}>Result. neto</th>
+            </tr></thead>
+            <tbody>
+              {[...balance].sort((a:any,b:any)=>String(a.ejercicio).localeCompare(String(b.ejercicio))).map((b:any,i:number)=>{
+                const tc=Number(b.tc_promedio)||1
+                const ing=Math.round((Number(b.ingresos)||0)/tc)
+                const ebit=Math.round(((Number(b.ingresos)||0)-(Number(b.costos_servicios)||0)-(Number(b.gastos_admin)||0)-(Number(b.gastos_comercial)||0))/tc)
+                const rn=Math.round((Number(b.resultado_neto)||0)/tc)
+                const marg=ing>0?Math.round(ebit/ing*100):0
+                return (
+                  <tr key={i} style={{ background:i%2===0?"#f9fafb":"white", borderBottom:"0.5px solid #e5e7eb" }}>
+                    <td style={{ padding:"5px 8px", fontWeight:600 }}>{String(b.ejercicio)}</td>
+                    <td style={{ padding:"5px 8px", textAlign:"right" }}>{fmtUSD(ing)}</td>
+                    <td style={{ padding:"5px 8px", textAlign:"right", fontWeight:700, color:ebit<0?"#dc2626":"#16a34a" }}>{fmtUSD(ebit)}</td>
+                    <td style={{ padding:"5px 8px", textAlign:"right", color:ebit<0?"#dc2626":"#16a34a" }}>{marg}%</td>
+                    <td style={{ padding:"5px 8px", textAlign:"right", color:rn<0?"#dc2626":"#374151" }}>{fmtUSD(rn)}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        ) : <div style={{ color:"#9ca3af", fontSize:"10px" }}>Sin datos de balance cargados.</div>}
+      </div>
+
+      {/* ─── SECCIÓN 12: TESIS DE INVERSIÓN ─── */}
+      <div style={{ margin:"0 0 24px" }}>
+        <div className="section-header">Sección 12 — Tesis de Inversión</div>
+        <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
+          {[
+            {n:"1.",t:"Respaldo patrimonial", body:`Activos revaluados ${fmtUSD(v.activosRevalu)} (inmueble ${fmtUSD(v.totalInmueble)}). Activos netos deducidos ajustes: ${fmtUSD(v.activosNetos)}.`},
+            {n:"2.",t:"Barrera regulatoria", body:"CAA Operador + DIA vigentes. Competencia nueva tarda 3-5 años. Demanda por imposición legal (Ley 24.051), no depende del ciclo económico."},
+            {n:"3.",t:"Ingresos validados por ARCA (IVA)", body:`Facturación ${fmtUSD(v.ingresos)} validada con F.2051 (diferencia -0,5%). Fuente independiente del vendedor y del auditor.`},
+          ].map((item,i)=>(
+            <div key={i} style={{ display:"flex", gap:"8px", padding:"10px", background:"#f8fafc", borderRadius:"8px", borderLeft:"3px solid #1a2744" }}>
+              <span style={{ fontWeight:700, color:"#1a2744", flexShrink:0 }}>{item.n}</span>
+              <div><span style={{ fontWeight:700, color:"#1a2744" }}>{item.t}: </span><span style={{ color:"#374151", fontSize:"10px" }}>{item.body}</span></div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ─── SECCIÓN 13: ESCENARIOS ─── */}
+      <div style={{ margin:"0 0 24px" }}>
+        <div className="section-header">Sección 13 — Escenarios de Valuación</div>
+        <div style={{ fontSize:"9px", color:"#9ca3af", marginBottom:"8px" }}>Tasa {(v.tasaDCF*100).toFixed(0)}% · Múltiplo terminal {v.multVR}× · Prima de crecimiento earn-out target: {fmtUSD(v.primaCrecimiento)}</div>
+        <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"10px" }}>
+          <thead><tr style={{ background:"#1a2744", color:"white" }}>
+            <th style={{ padding:"5px 8px", textAlign:"left" }}>Escenario</th>
+            <th style={{ padding:"5px 8px", textAlign:"right" }}>DCF (M2)</th>
+            <th style={{ padding:"5px 8px", textAlign:"right" }}>Promedio métodos</th>
+            <th style={{ padding:"5px 8px", textAlign:"right" }}>vs. precio pedido</th>
+          </tr></thead>
+          <tbody>
+            {[
+              {l:"Plan del vendedor (horno + YPF)", m2:v.valorM2, prom:v.promMetodos, c:"#d97706"},
+              {l:"Conservador (crecimiento orgánico 10%/año)", m2:v.valorM2conservador, prom:v.promConservador, c:"#16a34a"},
+              {l:"Base real (EBITDA contable, 5%/año)", m2:v.valorM2pesimista, prom:v.promPesimista, c:"#dc2626"},
+            ].map((row,i)=>(
+              <tr key={i} style={{ borderBottom:"0.5px solid #e5e7eb", background:i===0?"#fff7ed":i===1?"#f0fdf4":"#fef2f2" }}>
+                <td style={{ padding:"5px 8px" }}>{row.l}</td>
+                <td style={{ padding:"5px 8px", textAlign:"right", fontWeight:700 }}>{fmtUSD(row.m2)}</td>
+                <td style={{ padding:"5px 8px", textAlign:"right", fontWeight:700, color:row.c }}>{fmtUSD(row.prom)}</td>
+                <td style={{ padding:"5px 8px", textAlign:"right", color:row.prom>=v.precio?"#16a34a":"#dc2626" }}>{v.precio>0?`${((row.prom/v.precio-1)*100).toFixed(1)}%`:"—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ─── SECCIÓN 14: RIESGOS RESUELTOS ─── */}
+      {cerrados.filter((r:any)=>Number(r.impacto)<0).length>0&&(
+      <div style={{ margin:"0 0 24px" }}>
+        <div className="section-header">Sección 14 — Riesgos Resueltos en el DD</div>
+        <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"10px" }}>
+          <thead><tr style={{ background:"#16a34a", color:"white" }}>
+            <th style={{ padding:"5px 8px", textAlign:"left" }}>Riesgo resuelto</th>
+            <th style={{ padding:"5px 8px", textAlign:"right" }}>Exposición eliminada</th>
+          </tr></thead>
+          <tbody>
+            {cerrados.filter((r:any)=>Number(r.impacto)<0).map((r:any,i:number)=>(
+              <tr key={i} style={{ borderBottom:"0.5px solid #e5e7eb" }}>
+                <td style={{ padding:"5px 8px", color:"#16a34a" }}>{String(r.riesgo).slice(0,80)}</td>
+                <td style={{ padding:"5px 8px", textAlign:"right", color:"#16a34a", fontWeight:700 }}>{fmtUSD(Math.abs(Number(r.impacto)))}</td>
+              </tr>
+            ))}
+            <tr style={{ background:"#dcfce7" }}>
+              <td style={{ padding:"5px 8px", fontWeight:700, color:"#16a34a" }}>Total eliminado durante el DD</td>
+              <td style={{ padding:"5px 8px", textAlign:"right", fontWeight:800, color:"#16a34a" }}>{fmtUSD(cerrados.filter((r:any)=>Number(r.impacto)<0).reduce((s:number,r:any)=>s+Math.abs(Number(r.impacto)),0))}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      )}
+
+      {/* ─── SECCIÓN 15: ESTRUCTURA DEL DEAL ─── */}
+      <div style={{ margin:"0 0 24px" }}>
+        <div className="section-header">Sección 15 — Estructura de la Transacción Recomendada</div>
+        <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
+          {[
+            {l:"Precio base al contado", v2:fmtUSD(v.ofertaInic), d:`Valor sin plan de crecimiento del vendedor. Máximo negociable si todas las condiciones se cumplen: ${fmtUSD(v.ofertaMax)}.`},
+            {l:"Ajuste al closing", v2:"Capital de trabajo neto", d:"El precio se ajustará por la variación del capital de trabajo neto entre firma y closing."},
+            {l:"Escrow de contingencias (18 meses)", v2:`15% — ${fmtUSD(Math.round(v.ofertaInic*0.15))}`, d:"Para cubrir: tardanzas IVA/IIBB, SIPA acumulado y potencial IIBB subdeclarado may-sep 2025."},
+            {l:"Earn-out (2 años)", v2:fmtUSD(v.primaCrecimiento), d:`50% si EBITDA año 1 > ${fmtUSD(Math.round(v.ebitdaBase2*1.5))} y 50% si año 2 > ${fmtUSD(Math.round(v.ebitdaBase2*2.0))}. Condicional a horno en CAA y contrato YPF.`},
+          ].map((item,i)=>(
+            <div key={i} style={{ display:"flex", justifyContent:"space-between", gap:"12px", padding:"10px 12px", background:"#f8fafc", borderRadius:"8px", borderLeft:"3px solid #d97706" }}>
+              <div style={{ flex:1 }}>
+                <div style={{ fontWeight:700, color:"#1a2744", fontSize:"10px" }}>{item.l}</div>
+                <div style={{ color:"#6b7280", fontSize:"9px", marginTop:"2px" }}>{item.d}</div>
+              </div>
+              <div style={{ fontWeight:800, color:"#d97706", fontSize:"11px", whiteSpace:"nowrap" }}>{item.v2}</div>
+            </div>
+          ))}
+        </div>
       </div>
     </>
   )

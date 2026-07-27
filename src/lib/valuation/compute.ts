@@ -94,6 +94,14 @@ export interface ValuationResult {
   ofertaMax: number
   multImpl: number
   scaleMax: number
+
+  // Escenario conservador (sin plan de crecimiento del vendedor)
+  // Base: ebitdaNorm estabilizado, crecimiento orgánico del 10% anual
+  valorM2conservador: number   // DCF conservador: base normalizado sin proyecciones del vendedor
+  valorM2pesimista: number     // DCF pesimista: base EBITDA real sin normalizar
+  promConservador: number      // promedio de métodos con M2 conservador
+  promPesimista: number        // promedio de métodos con M2 pesimista
+  primaCrecimiento: number     // diferencia entre escenario vendedor y conservador = earn-out target
 }
 
 const sup = (rows: {label:string;valor:string}[], label: string, fallback = 0): number => {
@@ -202,6 +210,25 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
   const multImpl = ebitdaBase2 > 0 ? Math.round(ofertaInic / ebitdaBase2) : 0
   const scaleMax = Math.max(precio, valorM1, ofertaMax) * 1.05
 
+  // ── Escenarios alternativos de DCF ──
+  // Conservador: ebitdaNorm como base estabilizada, crecimiento orgánico 10%/año
+  const consBase = ebitdaBase2 > 0 ? ebitdaBase2 : ebitda
+  const flujosCons = [consBase, consBase*1.10, consBase*1.21, consBase*1.33, consBase*1.46]
+  const vpCons = flujosCons.reduce((s,f,i) => s + f/Math.pow(1+tasaDCF,i+1), 0)
+  const vpConsTerm = (consBase*1.46*multVR)/Math.pow(1+tasaDCF,5)
+  const valorM2conservador = Math.round(vpCons + vpConsTerm)
+
+  // Pesimista: EBITDA real sin normalizar, crecimiento 5%/año
+  const pesBase = ebitda
+  const flujosPes = [pesBase, pesBase*1.05, pesBase*1.10, pesBase*1.16, pesBase*1.22]
+  const vpPes = flujosPes.reduce((s,f,i) => s + f/Math.pow(1+tasaDCF,i+1), 0)
+  const vpPesTerm = (pesBase*1.22*multVR)/Math.pow(1+tasaDCF,5)
+  const valorM2pesimista = Math.round(vpPes + vpPesTerm)
+
+  const promConservador = Math.round((valorM1 + valorM2conservador + valorM3mid) / 3)
+  const promPesimista   = Math.round((valorM1 + valorM2pesimista   + valorM3mid) / 3)
+  const primaCrecimiento = Math.max(0, valorM2 - valorM2conservador)
+
   return {
     caseName, precio, ingresos, ebitda, ebitdaNorm, ebitdaBase2,
     activosRevalu, totalInmueble, totalMaquinaria, totalIntangLive, totalCarteraLive, flotaVal, totalOtros,
@@ -210,6 +237,7 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
     tasaDCF, dcfY1, dcfY2, dcfY3, dcfY4, multVR, vpTerminal, valorM2,
     multMinComp, multMaxComp, valorM3min, valorM3max, valorM3mid,
     promMetodos, descLiq, valorLiq, ofertaInic, ofertaMax, multImpl, scaleMax,
+    valorM2conservador, valorM2pesimista, promConservador, promPesimista, primaCrecimiento,
   }
 }
 
