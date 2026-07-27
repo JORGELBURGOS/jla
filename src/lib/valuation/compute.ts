@@ -95,13 +95,22 @@ export interface ValuationResult {
   multImpl: number
   scaleMax: number
 
-  // Escenario conservador (sin plan de crecimiento del vendedor)
-  // Base: ebitdaNorm estabilizado, crecimiento orgánico del 10% anual
-  valorM2conservador: number   // DCF conservador: base normalizado sin proyecciones del vendedor
-  valorM2pesimista: number     // DCF pesimista: base EBITDA real sin normalizar
-  promConservador: number      // promedio de métodos con M2 conservador
-  promPesimista: number        // promedio de métodos con M2 pesimista
-  primaCrecimiento: number     // diferencia entre escenario vendedor y conservador = earn-out target
+  // Escenario conservador
+  valorM2conservador: number
+  valorM2pesimista: number
+  promConservador: number
+  promPesimista: number
+  primaCrecimiento: number
+
+  // Escenarios de negociación (para tabla de proyecciones)
+  // B: sin horno ni cliente estratégico — crecimiento orgánico 10%/año sobre base norm.
+  // C: con horno habilitado, sin cliente estratégico (~70-80% del plan del vendedor)
+  flB: number[]          // flujos año a año escenario B
+  flC: number[]          // flujos año a año escenario C
+  valorM2B: number       // DCF escenario B
+  valorM2C: number       // DCF escenario C
+  promB: number          // promedio 3 métodos escenario B
+  promC: number          // promedio 3 métodos escenario C
 }
 
 const sup = (rows: {label:string;valor:string}[], label: string, fallback = 0): number => {
@@ -229,6 +238,19 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
   const promPesimista   = Math.round((valorM1 + valorM2pesimista   + valorM3mid) / 3)
   const primaCrecimiento = Math.max(0, valorM2 - valorM2conservador)
 
+  // ── Escenarios de negociación ──
+  const b = ebitdaBase2
+  const flB = [b, Math.round(b*1.10), Math.round(b*1.21), Math.round(b*1.33), Math.round(b*1.46)]
+  const vpB = flB.reduce((s,f,i)=>s+f/Math.pow(1+tasaDCF,i+1),0)
+  const valorM2B = Math.round(vpB + (flB[4]*multVR)/Math.pow(1+tasaDCF,5))
+  const promB = Math.round((valorM1 + valorM2B + valorM3mid) / 3)
+
+  const flC = [b, Math.round(dcfY1*0.80), Math.round(dcfY2*0.73),
+               Math.round(dcfY3*0.66), Math.round(dcfY4*0.71)]
+  const vpC = flC.reduce((s,f,i)=>s+f/Math.pow(1+tasaDCF,i+1),0)
+  const valorM2C = Math.round(vpC + (flC[4]*multVR)/Math.pow(1+tasaDCF,5))
+  const promC = Math.round((valorM1 + valorM2C + valorM3mid) / 3)
+
   return {
     caseName, precio, ingresos, ebitda, ebitdaNorm, ebitdaBase2,
     activosRevalu, totalInmueble, totalMaquinaria, totalIntangLive, totalCarteraLive, flotaVal, totalOtros,
@@ -238,6 +260,7 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
     multMinComp, multMaxComp, valorM3min, valorM3max, valorM3mid,
     promMetodos, descLiq, valorLiq, ofertaInic, ofertaMax, multImpl, scaleMax,
     valorM2conservador, valorM2pesimista, promConservador, promPesimista, primaCrecimiento,
+    flB, flC, valorM2B, valorM2C, promB, promC,
   }
 }
 

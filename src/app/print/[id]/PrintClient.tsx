@@ -70,12 +70,29 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
   // ── Derivados ─────────────────────────────────────────────────────
   // ── Defaults seguros para propiedades nuevas de compute.ts ──────────────────
   // Evita crashes en runtime si alguna propiedad nueva no está disponible
-  const flB   = (v as any).flB   as number[] | undefined ?? [v.ebitdaNorm ?? 0, 0, 0, 0, 0]
-  const flC   = (v as any).flC   as number[] | undefined ?? [v.ebitdaNorm ?? 0, 0, 0, 0, 0]
-  const promB = Number((v as any).promB   ?? 0)
-  const promC = Number((v as any).promC   ?? 0)
-  const valorM2B = Number((v as any).valorM2B ?? 0)
-  const valorM2C = Number((v as any).valorM2C ?? 0)
+  // Si compute.ts no provee los flujos, los calculamos localmente con los datos disponibles
+  const _eb2 = Number((v as any).ebitdaBase2 ?? v.ebitdaNorm ?? 0)
+  const _y1  = Number((v as any).dcfY1 ?? 0)
+  const _y2  = Number((v as any).dcfY2 ?? 0)
+  const _y3  = Number((v as any).dcfY3 ?? 0)
+  const _y4  = Number((v as any).dcfY4 ?? 0)
+  const _tasa = Number((v as any).tasaDCF ?? 0.25)
+  const _mVR  = Number((v as any).multVR  ?? 8)
+  const _m3   = Number((v as any).valorM3mid ?? 0)
+  const _m1   = Number((v as any).valorM1  ?? 0)
+  function _dcfCalc(fl: number[]): number {
+    const vp = fl.reduce((s,f,i)=>s+f/Math.pow(1+_tasa,i+1),0)
+    return Math.round(vp+(fl[fl.length-1]*_mVR)/Math.pow(1+_tasa,fl.length))
+  }
+  const _flB_def = [_eb2,Math.round(_eb2*1.10),Math.round(_eb2*1.21),Math.round(_eb2*1.33),Math.round(_eb2*1.46)]
+  const _flC_def = _y1>0 ? [_eb2,Math.round(_y1*0.80),Math.round(_y2*0.73),Math.round(_y3*0.66),Math.round(_y4*0.71)]
+                          : [_eb2,Math.round(_eb2*1.30),Math.round(_eb2*1.65),Math.round(_eb2*1.95),Math.round(_eb2*2.10)]
+  const flB = (v as any).flB ?? _flB_def
+  const flC = (v as any).flC ?? _flC_def
+  const valorM2B = Number((v as any).valorM2B ?? _dcfCalc(flB))
+  const valorM2C = Number((v as any).valorM2C ?? _dcfCalc(flC))
+  const promB = Number((v as any).promB ?? Math.round((_m1+valorM2B+_m3)/3))
+  const promC = Number((v as any).promC ?? Math.round((_m1+valorM2C+_m3)/3))
   const dcfY1 = Number((v as any).dcfY1 ?? 0)
   const dcfY2 = Number((v as any).dcfY2 ?? 0)
   const dcfY3 = Number((v as any).dcfY3 ?? 0)
@@ -362,7 +379,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
                   ].map((row,i)=>(
                     <tr key={i} style={{ background:row.bg, borderBottom:"0.5px solid #e5e7eb" }}>
                       <td style={{ padding:"5px 8px", fontSize:"8px", fontWeight:row.bold?700:400 }}>{row.lbl}</td>
-                      {row.fl.map((f,j)=>(
+                      {row.fl.map((f:number,j:number)=>(
                         <td key={j} style={{ padding:"5px 8px", textAlign:"right",
                                              fontSize:"8.5px", fontFamily:"Inter,sans-serif",
                                              fontWeight:row.bold?700:400 }}>{fmtUSDc(f)}</td>
