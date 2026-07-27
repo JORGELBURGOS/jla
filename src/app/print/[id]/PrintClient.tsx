@@ -79,7 +79,6 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
   const avance = total ? Math.round((recibidos + parciales * 0.5) / total * 100) : 0
 
   const activos = risks.filter(r => ACTIVOS.includes(String(r.estado)))
-  const cerrados = risks.filter(r => String(r.estado) === "CERRADO")
   const expActiva = activos.reduce((s, r) => s + (Number(r.impacto) || 0), 0)
   const topRiesgos = [...activos].filter(r => Number(r.impacto) < 0)
     .sort((a, b) => Number(a.impacto) - Number(b.impacto)).slice(0, 10)
