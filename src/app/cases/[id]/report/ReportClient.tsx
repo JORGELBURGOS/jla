@@ -440,6 +440,106 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
         </div>
 
 
+        {/* ══════════ S2.5: PROYECCIONES Y SENSIBILIDAD ══════════ */}
+        <div style={{ margin:"0 0 24px", padding:"24px 32px", background:"white",
+                      borderRadius:"8px", border:"1px solid #e5e7eb" }}>
+          <div style={{ fontWeight:700, fontSize:"12px", color:"#1a2744",
+                        marginBottom:"12px", borderBottom:"2px solid #1a2744",
+                        paddingBottom:"6px" }}>
+            Proyecciones y Sensibilidad de Precio
+          </div>
+          <p style={{ fontSize:"9.5px", lineHeight:"1.65", color:"#374151",
+                      textAlign:"justify", marginBottom:"12px" }}>
+            El valor del Método 2 (DCF) es altamente sensible a dos variables cuya
+            confirmación documental permanece pendiente: la habilitación del horno rotativo
+            en el CAA de Operador, y la materialización de contratos con clientes estratégicos.
+            La tabla muestra los flujos proyectados bajo cada hipótesis y la oferta implícita,
+            para anclar la discusión de precio en la negociación.
+          </p>
+
+          <div style={{ fontWeight:700, fontSize:"9px", color:"#6b7280",
+                        marginBottom:"6px", textTransform:"uppercase", letterSpacing:"0.08em" }}>
+            Flujos EBITDA proyectados por escenario (USD)
+          </div>
+          <table style={{ width:"100%", borderCollapse:"collapse", marginBottom:"16px",
+                          fontSize:"9px" }}>
+            <thead><tr style={{ background:"#1a2744" }}>
+              {["Escenario","Base","Año 1","Año 2","Año 3","Año 4"].map((h,i)=>(
+                <th key={i} style={{ padding:"6px 8px", color:"white", fontWeight:700,
+                  textAlign:i===0?"left":"right" }}>{h}</th>
+              ))}
+            </tr></thead>
+            <tbody>
+              {[
+                {lbl:"A — Plan del vendedor (horno + cliente estratégico)",
+                 fl:[v.ebitdaBase2,v.dcfY1,v.dcfY2,v.dcfY3,v.dcfY4],
+                 bold:true, bg:"#EFF4FF"},
+                {lbl:"B — Sin horno ni cliente (crecimiento orgánico 10%/año)",
+                 fl:v.flB, bold:false, bg:"white"},
+                {lbl:"C — Horno habilitado, sin cliente estratégico",
+                 fl:v.flC, bold:false, bg:"#f9fafb"},
+              ].map((row,i)=>(
+                <tr key={i} style={{ background:row.bg, borderBottom:"0.5px solid #e5e7eb" }}>
+                  <td style={{ padding:"6px 8px", fontWeight:row.bold?700:400 }}>{row.lbl}</td>
+                  {row.fl.map((f,j)=>(
+                    <td key={j} style={{ padding:"6px 8px", textAlign:"right",
+                                         fontWeight:row.bold?700:400 }}>{fmtUSD(f)}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div style={{ fontWeight:700, fontSize:"9px", color:"#6b7280",
+                        marginBottom:"6px", textTransform:"uppercase", letterSpacing:"0.08em" }}>
+            Valor y oferta implícita por escenario
+          </div>
+          <table style={{ width:"100%", borderCollapse:"collapse", marginBottom:"12px",
+                          fontSize:"9px" }}>
+            <thead><tr style={{ background:"#1a2744" }}>
+              {["Escenario","M2 (DCF)","Prom. métodos","Oferta inicial","Precio máx.","Condición"].map((h,i)=>(
+                <th key={i} style={{ padding:"6px 8px", color:"white", fontWeight:700,
+                  textAlign:i===0||i===5?"left":"right" }}>{h}</th>
+              ))}
+            </tr></thead>
+            <tbody>
+              {[
+                {lbl:"A — Plan del vendedor", m2:v.valorM2, prom:v.promMetodos,
+                 ofi:v.ofertaInic, ofm:v.ofertaMax,
+                 cond:"Horno en CAA + contrato cliente estratégico", bold:true, bg:"#EFF4FF"},
+                {lbl:"B — Sin horno ni cliente", m2:v.valorM2B, prom:v.promB,
+                 ofi:Math.round(v.promB*0.77), ofm:Math.round(v.promB*0.98),
+                 cond:"Base verificable con data room actual", bold:false, bg:"white"},
+                {lbl:"C — Solo horno habilitado", m2:v.valorM2C, prom:v.promC,
+                 ofi:Math.round(v.promC*0.77), ofm:Math.round(v.promC*0.98),
+                 cond:"Horno acreditado en CAA (ítems 33 y 34)", bold:false, bg:"#f9fafb"},
+              ].map((row,i)=>(
+                <tr key={i} style={{ background:row.bg, borderBottom:"0.5px solid #e5e7eb" }}>
+                  <td style={{ padding:"6px 8px", fontWeight:row.bold?700:400 }}>{row.lbl}</td>
+                  <td style={{ padding:"6px 8px", textAlign:"right", fontWeight:700 }}>{fmtUSD(row.m2)}</td>
+                  <td style={{ padding:"6px 8px", textAlign:"right", fontWeight:700,
+                               color:"#1a2744" }}>{fmtUSD(row.prom)}</td>
+                  <td style={{ padding:"6px 8px", textAlign:"right", fontWeight:700,
+                               color:row.bold?"#1a2744":"#6b7280" }}>{fmtUSD(row.ofi)}</td>
+                  <td style={{ padding:"6px 8px", textAlign:"right", fontWeight:700,
+                               color:row.bold?"#1a2744":"#6b7280" }}>{fmtUSD(row.ofm)}</td>
+                  <td style={{ padding:"6px 8px", color:"#4b5563" }}>{row.cond}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <p style={{ fontSize:"9.5px", lineHeight:"1.65", color:"#374151",
+                      textAlign:"justify", margin:0 }}>
+            <strong>Argumento para la negociación:</strong> el vendedor usará el escenario A para justificar
+            su precio de {fmtUSD(v.precio)}. El inversor puede responder que sin el horno en el CAA ni
+            contrato firmado con el cliente estratégico, el DCF soporta el escenario B
+            ({fmtUSD(Math.round(v.promB*0.77))} como oferta inicial). Cada uno de los dos hitos
+            documentados mueve el precio entre USD 300.000 y USD 460.000 — lo que convierte
+            la negociación en una discusión de documentos concretos, no de expectativas.
+          </p>
+        </div>
+
         {/* ══════════ S3: MAPA DE RIESGOS ══════════ */}
         <div className="page-break" style={{ padding:"40px 50px" }}>
           <div className="section-header">Sección 3 — Mapa de Riesgos</div>
@@ -729,6 +829,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
         </div>
 
       </div>
+
 
       {/* ─── SECCIÓN 11: EVOLUCIÓN FINANCIERA ─── */}
       <div style={{ margin:"0 0 24px" }}>
