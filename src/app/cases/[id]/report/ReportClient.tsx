@@ -31,7 +31,7 @@ function fmtSupuesto(label: string, valor: unknown): string {
   if (isNaN(n)) return raw.slice(0, 42)
   const miles = (x: number) => Math.abs(Math.round(x)).toLocaleString("es-AR")
   const sign = n < 0 ? "-" : ""
-  if (label.includes("(ARS)") && label.includes("2026")) return `${sign}USD ${miles(n / 1500)} (@ TC 1.500)`
+  if (label.includes("(ARS)") && label.includes("2026")) return `${sign}USD ${miles(n / 1500)}`
   if (label.includes("(ARS)")) return `${sign}ARS ${miles(n)}`
   if (label.includes("ARS por USD")) return `ARS ${n.toLocaleString("es-AR")}`
   if (label.includes("(USD)")) return `${sign}USD ${miles(n)}`
@@ -612,6 +612,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
         {/* ══════════ S7: SUPUESTOS DEL MODELO ══════════ */}
         <div className="page-break" style={{ padding:"40px 50px" }}>
           <div className="section-header">Sección 7 — Supuestos del Modelo</div>
+          <div style={{ fontSize:"9px", color:"#9ca3af", marginBottom:"12px" }}>Importes expresados en dólares estadounidenses. Los valores del ejercicio en curso originalmente denominados en pesos fueron convertidos al tipo de cambio de referencia de ARS 1.500 por dólar.</div>
 
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"24px" }}>
             {/* Financieros */}
