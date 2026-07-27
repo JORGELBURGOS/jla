@@ -28,7 +28,7 @@ function fmtSupuesto(label: string, valor: unknown): string {
   const raw = String(valor ?? "").split("|")[0].trim()
   if (!raw) return "Pendiente"
   const n = Number(raw)
-  if (isNaN(n)) return raw.slice(0, 42)
+  if (isNaN(n)) return raw
   const miles = (x: number) => Math.abs(Math.round(x)).toLocaleString("es-AR")
   const sign = n < 0 ? "-" : ""
   if (label.includes("(ARS)") && label.includes("2026")) return `${sign}USD ${miles(n / 1500)}`
@@ -458,7 +458,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
             <tbody>
               {risks.map((r, i) => (
                 <tr key={i}>
-                  <td style={{ maxWidth:"280px", fontSize:"9px" }}>{String(r.riesgo ?? "").slice(0,90)}</td>
+                  <td style={{ maxWidth:"280px", fontSize:"9px" }}>{String(r.riesgo ?? "")}</td>
                   <td style={{ whiteSpace:"nowrap" }}>{String(r.area ?? "")}</td>
                   <td><span style={{ color: r.probabilidad === "ALTA" ? "#dc2626" : r.probabilidad === "MEDIA" ? "#d97706" : "#16a34a", fontWeight:700 }}>{String(r.probabilidad ?? "")}</span></td>
                   <td style={{ textAlign:"right", fontWeight:700, color: Number(r.impacto) < 0 ? "#dc2626" : "#374151" }}>{Number(r.impacto) !== 0 ? fmtUSD(Number(r.impacto)) : "—"}</td>
@@ -514,7 +514,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
                 {/* Alertas de esta sección */}
                 {secReqs.filter(r => r.alertas).slice(0,2).map((r, i) => (
                   <div key={i} style={{ marginTop:"4px", fontSize:"9px", color:"#dc2626", paddingLeft:"8px", borderLeft:"2px solid #fca5a5" }}>
-                    N°{String(r.n_item)}: {String(r.alertas ?? "").slice(0,120)}
+                    N°{String(r.n_item)}: {String(r.alertas ?? "")}
                   </div>
                 ))}
               </div>
@@ -560,7 +560,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
               {corrientes.map((c, i) => (
                 <div key={i} style={{ border:"1px solid #e5e7eb", borderRadius:"6px", padding:"8px", background: String(c.estado) === "VIGENTE" ? "#f8fafc" : "#fef2f2" }}>
                   <div style={{ fontWeight:700, fontSize:"10px", color:"#1a2744" }}>{String(c.clave ?? "")}</div>
-                  <div style={{ fontSize:"8px", color:"#6b7280", marginTop:"2px" }}>{String(c.categoria ?? "").slice(0,45)}</div>
+                  <div style={{ fontSize:"8px", color:"#6b7280", marginTop:"2px" }}>{String(c.categoria ?? "")}</div>
                   <div style={{ marginTop:"4px" }}>
                     <span className="badge" style={{ background: String(c.estado) === "VIGENTE" ? "#d1fae5" : "#fee2e2", color: String(c.estado) === "VIGENTE" ? "#065f46" : "#991b1b" }}>
                       {String(c.estado ?? "")}
@@ -587,9 +587,9 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
                 return (
                   <tr key={i}>
                     <td style={{ fontWeight:600, maxWidth:"160px" }}>{String(v.clave ?? "")}</td>
-                    <td style={{ fontSize:"9px", color:"#374151", maxWidth:"140px" }}>{String(v.dato_plan ?? "—").slice(0,80)}</td>
-                    <td style={{ fontSize:"9px", fontWeight:600, maxWidth:"140px" }}>{String(v.dato_real ?? "Pendiente").slice(0,80)}</td>
-                    <td style={{ fontSize:"9px", color: String(v.brecha ?? "").includes("CRÍTICA") || String(v.brecha ?? "").includes("-") ? "#dc2626" : "#374151", maxWidth:"120px" }}>{String(v.brecha ?? "—").slice(0,60)}</td>
+                    <td style={{ fontSize:"9px", color:"#374151", maxWidth:"140px" }}>{String(v.dato_plan ?? "—")}</td>
+                    <td style={{ fontSize:"9px", fontWeight:600, maxWidth:"140px" }}>{String(v.dato_real ?? "Pendiente")}</td>
+                    <td style={{ fontSize:"9px", color: String(v.brecha ?? "").includes("CRÍTICA") || String(v.brecha ?? "").includes("-") ? "#dc2626" : "#374151", maxWidth:"120px" }}>{String(v.brecha ?? "—")}</td>
                     <td>
                       <span className="badge" style={{ background:estadoColor.bg, color:estadoColor.text }}>
                         {estado}
@@ -605,7 +605,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
           {valid.filter(v => v.estado === "Cuestionado" && v.observaciones).slice(0,4).map((v, i) => (
             <div key={i} style={{ background:"#fef2f2", border:"1px solid #fecaca", borderRadius:"6px", padding:"10px", marginBottom:"8px", fontSize:"10px" }}>
               <div style={{ fontWeight:700, color:"#dc2626", marginBottom:"4px" }}>✗ {String(v.clave ?? "")}</div>
-              <div style={{ color:"#7f1d1d", lineHeight:1.5 }}>{String(v.observaciones ?? "").slice(0,250)}</div>
+              <div style={{ color:"#7f1d1d", lineHeight:1.5 }}>{String(v.observaciones ?? "")}</div>
             </div>
           ))}
         </div>
@@ -636,7 +636,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
                 <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"5px 0", borderBottom:"1px solid #f3f4f6", fontSize:"10px" }}>
                   <span style={{ color:"#6b7280", flex:1, paddingRight:"8px" }}>{String(s.label ?? "")}</span>
                   <span style={{ fontWeight: s.valor ? 700 : 400, color: s.valor ? "#1a2744" : "#9ca3af" }}>
-                    {s.valor ? String(s.valor).slice(0,25) : "Pendiente"}
+                    {s.valor ? String(s.valor) : "Pendiente"}
                   </span>
                 </div>
               ))}
@@ -682,7 +682,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
                       {items.length === 0 && <div style={{ fontSize:"9px", color:"#9ca3af" }}>Sin ítems en esta etapa</div>}
                       {items.slice(0,5).map(r => (
                         <div key={r.id} style={{ fontSize:"9px", color:"#374151", marginBottom:"6px", lineHeight:1.4 }}>
-                          · {r.descripcion.length > 70 ? r.descripcion.slice(0,70)+"…" : r.descripcion}
+                          · {r.descripcion}
                         </div>
                       ))}
                     </div>

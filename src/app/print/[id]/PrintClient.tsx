@@ -30,7 +30,7 @@ function fmtSupuesto(label: string, valor: unknown): string {
   const raw = String(valor ?? "").split("|")[0].trim()
   if (!raw) return "Pendiente"
   const n = Number(raw)
-  if (isNaN(n)) return raw.slice(0, 46)
+  if (isNaN(n)) return raw
   const sign = n < 0 ? "-" : ""
   if (label.includes("(ARS)") && label.includes("2026")) return `${sign}USD ${miles(n / 1500)}`
   if (label.includes("(ARS)")) return `${sign}ARS ${miles(n)}`
@@ -306,7 +306,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
               {topRiesgos.map((r, i) => (
                 <tr key={i}>
                   <td style={{...td, color:"#9ca3af"}}>{i + 1}</td>
-                  <td style={td}>{String(r.riesgo).slice(0, 110)}</td>
+                  <td style={td}>{String(r.riesgo)}</td>
                   <td style={{...td, whiteSpace:"nowrap"}}>{String(r.estado).toLowerCase()}</td>
                   <td style={tdNum}>{fmtUSDc(Math.abs(Number(r.impacto)))}</td>
                 </tr>
@@ -329,7 +329,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
             <div key={i} style={{ borderLeft: "3px solid #dc2626", padding: "8px 12px", marginBottom: "8px", background: "#fef2f2" }}>
               <div style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", fontWeight: 700, color: "#991b1b", marginBottom: "3px" }}>{String(c.clave ?? "")}</div>
               <div style={{ fontFamily: "Georgia, serif", fontSize: "10px", color: "#7f1d1d", lineHeight: 1.6 }}>
-                {String(c.observaciones ?? c.dato_real ?? "").slice(0, 260)}
+                {String(c.observaciones ?? c.dato_real ?? "")}
               </div>
             </div>
           ))}
@@ -376,7 +376,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
                 <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: "8px", padding: "5px 0", borderBottom: "0.5px solid #f3f4f6" }}>
                   <span style={{ fontFamily: "Inter, sans-serif", fontSize: "9.5px", color: "#6b7280", flex: 1 }}>{String(s.label ?? "")}</span>
                   <span style={{ fontFamily: "Inter, sans-serif", fontSize: "9.5px", fontWeight: 700, color: "#1a2744" }}>
-                    {String(s.valor ?? "").slice(0, 28) || "Pendiente"}
+                    {String(s.valor ?? "") || "Pendiente"}
                   </span>
                 </div>
               ))}
