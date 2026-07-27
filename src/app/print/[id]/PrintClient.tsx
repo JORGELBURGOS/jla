@@ -246,7 +246,8 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
               {[...balance].sort((a:any,b:any)=>String(a.ejercicio).localeCompare(String(b.ejercicio))).map((b:any,i:number) => {
                 const tc = Number(b.tc_promedio)||1
                 const ing = Math.round((Number(b.ingresos)||0)/tc)
-                const ebit = Math.round(((Number(b.ingresos)||0)-(Number(b.costos_servicios)||0)-(Number(b.gastos_admin)||0)-(Number(b.gastos_comercial)||0))/tc)
+                const dep = Number(b.depreciacion)||0
+                const ebit = Math.round(((Number(b.ingresos)||0)-(Number(b.costos_servicios)||0)-(Number(b.gastos_admin)||0)-(Number(b.gastos_comercial)||0)+dep)/tc)
                 const rn = Math.round((Number(b.resultado_neto)||0)/tc)
                 const marg = ing>0?Math.round(ebit/ing*100):0
                 return (
@@ -300,7 +301,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
             <thead><tr><th style={th}>Método</th><th style={{...th, textAlign:"right"}}>Valor resultante</th></tr></thead>
             <tbody>
               <tr><td style={td}>M1 — Activos netos revaluados + fondo de comercio</td><td style={tdNum}>{fmtUSDc(v.valorM1)}</td></tr>
-              <tr><td style={td}>M2 — Flujo de fondos descontado (escenario del vendedor)</td><td style={tdNum}>{fmtUSDc(v.valorM2)}</td></tr>
+              <tr><td style={td}>M2 — Flujo de fondos descontado (el plan de negocios)</td><td style={tdNum}>{fmtUSDc(v.valorM2)}</td></tr>
               <tr><td style={td}>M3 — Múltiplos comparables (punto medio)</td><td style={tdNum}>{fmtUSDc(v.valorM3mid)}</td></tr>
               <tr><td style={{...td, fontWeight: 700}}>Valor central (promedio de métodos)</td><td style={{...tdNum, fontWeight: 700}}>{fmtUSDc(v.promMetodos)}</td></tr>
               <tr><td style={td}>Precio solicitado por el vendedor</td><td style={tdNum}>{fmtUSDc(v.precio)}</td></tr>
@@ -309,41 +310,62 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
           <P>
             Con ajuste por los riesgos identificados y sus mitigantes verificados ({fmtUSDc(v.riesgosAjust)}), equivalentes al {Math.round(Math.abs(v.riesgosAjust) / (v.riesgosAbs||1) * 100)}% de la exposición bruta, se recomienda estructurar
             la negociación con una oferta inicial de {fmtUSDc(v.ofertaInic)} y un precio máximo justificable de {fmtUSDc(v.ofertaMax)},
-            sujetando todo valor por encima del central a mecanismos contingentes (earn-out) atados al cumplimiento
-            efectivo del plan de negocios.
+            
           </P>
         </div>
 
 
-        {/* ══════ 6. ESCENARIOS ══════ */}
+                {/* ══════ 6. SÍNTESIS DE LA OFERTA ══════ */}
         <div className="page-break" style={{ padding: "30px 50px" }}>
-          <H n="13." t="Análisis de escenarios — plan del vendedor vs. escenario conservador" />
-          <P>La pregunta más importante de este proceso no es cuánto vale el negocio hoy, sino cuánto le paga el inversor al vendedor por el crecimiento futuro. Para responderla, el flujo de fondos descontado fue calculado bajo tres escenarios con la misma tasa ({(v.tasaDCF*100).toFixed(0)}%) y múltiplo terminal ({v.multVR}×). La brecha entre el escenario del vendedor y el conservador cuantifica la prima de crecimiento que debería estructurarse como earn-out.</P>
-          <table style={{ width:"100%", borderCollapse:"collapse", margin:"12px 0" }}>
+          <H n="6." t="Síntesis de la oferta recomendada" />
+          <P>
+            Los tres métodos de valuación convergen en un rango coherente que sustenta la oferta.
+            El método de activos netos revaluados establece el piso patrimonial independiente del desempeño
+            operativo. El flujo de fondos descontado captura el potencial de crecimiento sobre la base del
+            plan de negocios y los contratos en desarrollo. Los múltiplos de mercado comparables ubican
+            a la Sociedad dentro de los rangos habituales para operadores de servicios ambientales en
+            jurisdicciones con regulación activa.
+          </P>
+          <table style={{ width: "100%", borderCollapse: "collapse", margin: "12px 0 16px" }}>
             <thead><tr>
-              <th style={th}>Escenario</th>
-              <th style={{...th, textAlign:"right"}}>M2 (DCF)</th>
-              <th style={{...th, textAlign:"right"}}>Promedio métodos</th>
-              <th style={{...th, textAlign:"right"}}>vs. precio pedido</th>
+              <th style={th}>Método</th>
+              <th style={{...th, textAlign:"right"}}>Valor resultante</th>
+              <th style={th}>Fundamento</th>
             </tr></thead>
             <tbody>
-              {[
-                {label:"Plan del vendedor (horno + YPF, condicional)", m2:v.valorM2, prom:v.promMetodos, color:"#d97706"},
-                {label:"Conservador (crecimiento orgánico 10%/año, sin plan vendedor)", m2:v.valorM2conservador, prom:v.promConservador, color:"#16a34a"},
-                {label:"Base real (EBITDA contable 2025, crecimiento 5%/año)", m2:v.valorM2pesimista, prom:v.promPesimista, color:"#dc2626"},
-              ].map((row,i)=>(
-                <tr key={i} style={{ borderTop:"0.5px solid #e5e7eb" }}>
-                  <td style={{...td, fontSize:"9px"}}>{row.label}</td>
-                  <td style={{...tdNum, fontWeight:700}}>{fmtUSDc(row.m2)}</td>
-                  <td style={{...tdNum, fontWeight:700, color:row.color}}>{fmtUSDc(row.prom)}</td>
-                  <td style={{...tdNum, color:row.prom>=v.precio?"#16a34a":"#dc2626"}}>{v.precio>0?`${((row.prom/v.precio-1)*100).toFixed(1)}%`:"—"}</td>
-                </tr>
-              ))}
+              <tr style={{ borderTop:"0.5px solid #e5e7eb" }}>
+                <td style={{...td, fontWeight:600}}>M1 — Activos netos revaluados</td>
+                <td style={tdNum}>{fmtUSDc(v.valorM1)}</td>
+                <td style={{...td, fontSize:"9px", color:"#6b7280"}}>Inmueble industrial + maquinaria + intangibles regulatorios + cartera, neto de ajustes por riesgos.</td>
+              </tr>
+              <tr style={{ borderTop:"0.5px solid #e5e7eb" }}>
+                <td style={{...td, fontWeight:600}}>M2 — Flujo de fondos descontado</td>
+                <td style={tdNum}>{fmtUSDc(v.valorM2)}</td>
+                <td style={{...td, fontSize:"9px", color:"#6b7280"}}>Proyecciones del plan de negocios. Tasa {(v.tasaDCF*100).toFixed(0)}% · Múltiplo terminal {v.multVR}×. Incluye el potencial de los contratos en desarrollo con clientes estratégicos.</td>
+              </tr>
+              <tr style={{ borderTop:"0.5px solid #e5e7eb" }}>
+                <td style={{...td, fontWeight:600}}>M3 — Múltiplos comparables</td>
+                <td style={tdNum}>{fmtUSDc(v.valorM3mid)}</td>
+                <td style={{...td, fontSize:"9px", color:"#6b7280"}}>{v.multMinComp}×–{v.multMaxComp}× EBITDA normalizado. Rango habitual para operadores de residuos peligrosos en mercados regulados.</td>
+              </tr>
+              <tr style={{ background:"#f8fafc", borderTop:"1.5px solid #1a2744" }}>
+                <td style={{...td, fontWeight:700, fontSize:"11px"}}>Valor central (promedio)</td>
+                <td style={{...tdNum, fontWeight:800, fontSize:"13px", color:"#1a2744"}}>{fmtUSDc(v.promMetodos)}</td>
+                <td style={{...td, fontSize:"9px", color:"#6b7280"}}>Promedio simple de los tres métodos.</td>
+              </tr>
             </tbody>
           </table>
-          <P>La prima de crecimiento implícita en el precio del vendedor asciende a {fmtUSDc(v.primaCrecimiento)}. Este monto no debería pagarse al contado: representa exactamente el componente que el contrato debería estructurar como earn-out, atado a la acreditación del horno rotativo en el CAA de Operador y a la materialización de la relación comercial con YPF. Sin esos dos hitos, el negocio vale el escenario conservador — no el del vendedor.</P>
+          <div style={{ display:"flex", gap:"16px", marginTop:"8px" }}>
+            <div style={{ flex:1, background:"#1a2744", borderRadius:"8px", padding:"16px 20px" }}>
+              <div style={{ fontFamily:"Inter,sans-serif", fontSize:"9px", fontWeight:700, letterSpacing:"0.15em", color:"#f59e0b", textTransform:"uppercase", marginBottom:"6px" }}>Oferta inicial recomendada</div>
+              <div style={{ fontFamily:"Georgia,serif", fontSize:"22px", fontWeight:700, color:"white" }}>{fmtUSDc(v.ofertaInic)}</div>
+            </div>
+            <div style={{ flex:1, background:"#f8fafc", border:"1.5px solid #1a2744", borderRadius:"8px", padding:"16px 20px" }}>
+              <div style={{ fontFamily:"Inter,sans-serif", fontSize:"9px", fontWeight:700, letterSpacing:"0.15em", color:"#1a2744", textTransform:"uppercase", marginBottom:"6px" }}>Precio máximo justificable</div>
+              <div style={{ fontFamily:"Georgia,serif", fontSize:"22px", fontWeight:700, color:"#1a2744" }}>{fmtUSDc(v.ofertaMax)}</div>
+            </div>
+          </div>
         </div>
-
 
         {/* ══════ 7. RIESGOS ══════ */}
         <div className="page-break" style={{ padding: "30px 50px" }}>
