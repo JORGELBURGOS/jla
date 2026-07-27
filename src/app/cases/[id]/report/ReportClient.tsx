@@ -93,7 +93,8 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
   const multiploImplicito = (precio && ebitda && ebitda > 0) ? precio / ebitda : null
 
   // Riesgos: desglose cualitativo por estado del workflow de DD (no confundir con el $ ajustado de la valuación)
-  const riesgoTotal = risks.reduce((s, r) => s + (Number(r.impacto) || 0), 0)
+  const ACTIVOS_EST = ["CONFIRMADO","IDENTIFICADO","CONDICIONAL"]
+  const riesgoTotal = risks.filter(r => ACTIVOS_EST.includes(String(r.estado))).reduce((s, r) => s + (Number(r.impacto) || 0), 0)
   const riesgoConf  = risks.filter(r => r.estado === "CONFIRMADO").reduce((s,r) => s + Number(r.impacto||0), 0)
   const riesgoIden  = risks.filter(r => r.estado === "IDENTIFICADO").reduce((s,r) => s + Number(r.impacto||0), 0)
   const riesgoCond  = risks.filter(r => r.estado === "CONDICIONAL").reduce((s,r) => s + Number(r.impacto||0), 0)

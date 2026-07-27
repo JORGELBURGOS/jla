@@ -83,6 +83,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
   const nConf = activos.filter(r => r.estado === "CONFIRMADO").length
   const nIden = activos.filter(r => r.estado === "IDENTIFICADO").length
   const nCond = activos.filter(r => r.estado === "CONDICIONAL").length
+  const nActivos = nConf + nIden + nCond
 
   const validRows = valid.filter(r => r.seccion !== "resumen")
   const nVal = validRows.filter(r => r.estado === "Validado").length
@@ -174,9 +175,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
           {narrativa ? <P>{narrativa.resumen_ejecutivo}</P> : (
             <P>
               Sobre un precio solicitado de {fmtUSDc(v.precio)}, la valuación independiente arroja un valor central de {fmtUSDc(v.promMetodos)},
-              con una exposición de riesgos activos identificada de {fmtUSDc(Math.abs(expActiva))}. Los hallazgos societarios,
-              regulatorios y de calidad de resultados detallados en las secciones siguientes condicionan la estructura y el
-              precio de la eventual transacción.
+              con una exposición de riesgos activos de {fmtUSDc(Math.abs(expActiva))} ({nActivos} hallazgos). Los hallazgos societarios, regulatorios y de calidad de resultados detallados en las secciones siguientes condicionan la estructura y el precio de la eventual transacción.
             </P>
           )}
           <table style={{ width: "100%", borderCollapse: "collapse", margin: "16px 0" }}>
@@ -285,7 +284,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
             </tbody>
           </table>
           <P>
-            Con ajuste por los riesgos identificados y sus mitigantes ({fmtUSDc(v.riesgosAjust)}), se recomienda estructurar
+            Con ajuste por los riesgos identificados y sus mitigantes verificados ({fmtUSDc(v.riesgosAjust)}), equivalentes al {Math.round(Math.abs(v.riesgosAjust) / (v.riesgosAbs||1) * 100)}% de la exposición bruta, se recomienda estructurar
             la negociación con una oferta inicial de {fmtUSDc(v.ofertaInic)} y un precio máximo justificable de {fmtUSDc(v.ofertaMax)},
             sujetando todo valor por encima del central a mecanismos contingentes (earn-out) atados al cumplimiento
             efectivo del plan de negocios.
@@ -296,8 +295,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
         <div className="page-break" style={{ padding: "30px 50px" }}>
           <H n="6." t="Evaluación de riesgos" />
           <P>
-            El mapa de riesgos activo comprende {activos.length} hallazgos ({nConf} confirmados con evidencia documental,
-            {" "}{nIden} identificados y {nCond} condicionales), con una exposición agregada de {fmtUSDc(Math.abs(expActiva))}.
+            El mapa de riesgos activo comprende {nActivos} hallazgos ({nConf} confirmados con evidencia documental, {nIden} identificados y {nCond} condicionales), con una exposición agregada de {fmtUSDc(Math.abs(expActiva))}.
             Adicionalmente, durante el proceso se resolvieron o descartaron {cerrados.length} riesgos que, de haberse
             confirmado, habrían representado una exposición sustancialmente mayor; su cierre documenta el valor del
             trabajo de verificación realizado.
