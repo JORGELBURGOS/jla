@@ -371,67 +371,57 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
         <div className="page-break" style={{ padding: "30px 50px" }}>
           <H n="7." t="Evaluación de riesgos" />
           <P>
-            El mapa de riesgos activo comprende {nActivos} hallazgos ({nConf} confirmados con evidencia documental, {nIden} identificados y {nCond} condicionales), con una exposición agregada de {fmtUSDc(Math.abs(expActiva))}.
-            Adicionalmente, durante el proceso se resolvieron o descartaron {cerrados.length} riesgos que, de haberse
-            confirmado, habrían representado una exposición sustancialmente mayor; su cierre documenta el valor del
-            trabajo de verificación realizado.
+            El mapa de riesgos activo comprende {nActivos} hallazgos ({nConf} confirmados con evidencia documental,{" "}
+            {nIden} identificados y {nCond} condicionales), con una exposición bruta de{" "}
+            {fmtUSDc(Math.abs(expActiva))}. De esa exposición, el analista llevó a valuación{" "}
+            {v.riesgoAjustesLive.length} riesgos con criterio explícito de selección y ponderación,{" "}
+            resultando un ajuste neto de {fmtUSDc(v.riesgosAjust)} —{" "}
+            equivalente al {Math.round(Math.abs(v.riesgosAjust) / (v.riesgosAbs||1) * 100)}% de la exposición bruta activa.
           </P>
-          <table style={{ width: "100%", borderCollapse: "collapse", margin: "10px 0" }}>
-            <thead><tr><th style={th}>#</th><th style={th}>Riesgo</th><th style={th}>Estado</th><th style={{...th, textAlign:"right"}}>Exposición</th></tr></thead>
-            <tbody>
-              {topRiesgos.map((r, i) => (
-                <tr key={i}>
-                  <td style={{...td, color:"#9ca3af"}}>{i + 1}</td>
-                  <td style={td}>{String(r.riesgo)}</td>
-                  <td style={{...td, whiteSpace:"nowrap"}}>{String(r.estado).toLowerCase()}</td>
-                  <td style={tdNum}>{fmtUSDc(Math.abs(Number(r.impacto)))}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div style={{ marginTop: "20px" }}>
-            <div style={{ fontFamily:"Georgia, serif", fontSize:"12px", fontWeight:700, color:"#1a2744", marginBottom:"10px" }}>
-              7.2 Ajustes por riesgos — criterio del analista
+          <div style={{ marginTop:"12px" }}>
+            {[...v.riesgoAjustesLive].sort((a,b)=>b.monto-a.monto).map((r,i) => (
+              <div key={i} style={{ marginBottom:"14px", borderTop: i===0?"none":"1px solid #f3f4f6", paddingTop: i===0?0:"14px" }}>
+                {/* Nombre del riesgo */}
+                <div style={{ fontFamily:"Inter,sans-serif", fontSize:"10px", fontWeight:700, color:"#1f2937", marginBottom:"5px" }}>
+                  {r.descripcion}
+                </div>
+                {/* Fila de números */}
+                <div style={{ display:"flex", gap:"0", marginBottom:"6px" }}>
+                  <div style={{ flex:1, background:"#f9fafb", border:"0.5px solid #e5e7eb", borderRight:"none", padding:"5px 10px" }}>
+                    <div style={{ fontFamily:"Inter,sans-serif", fontSize:"8px", color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.08em" }}>Exposición</div>
+                    <div style={{ fontFamily:"Inter,sans-serif", fontSize:"11px", fontWeight:700, color:"#374151" }}>{fmtUSDc(r.impactoActual)}</div>
+                  </div>
+                  <div style={{ flex:"0 0 60px", background:"#f9fafb", border:"0.5px solid #e5e7eb", borderRight:"none", padding:"5px 10px", textAlign:"center" }}>
+                    <div style={{ fontFamily:"Inter,sans-serif", fontSize:"8px", color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.08em" }}>%</div>
+                    <div style={{ fontFamily:"Inter,sans-serif", fontSize:"11px", fontWeight:700, color:"#374151" }}>{r.porcentaje.toFixed(0)}%</div>
+                  </div>
+                  <div style={{ flex:1, background:"#fef2f2", border:"0.5px solid #fecaca", padding:"5px 10px", textAlign:"right" }}>
+                    <div style={{ fontFamily:"Inter,sans-serif", fontSize:"8px", color:"#fca5a5", textTransform:"uppercase", letterSpacing:"0.08em" }}>Ajuste</div>
+                    <div style={{ fontFamily:"Inter,sans-serif", fontSize:"11px", fontWeight:800, color:"#dc2626" }}>{fmtUSDc(r.monto)}</div>
+                  </div>
+                </div>
+                {/* Motivos */}
+                {r.descripcion_analista && (
+                  <p style={{ fontFamily:"Georgia,serif", fontSize:"9.5px", lineHeight:1.65, color:"#4b5563", margin:"0 0 3px", paddingLeft:"8px", borderLeft:"2px solid #e5e7eb" }}>
+                    <span style={{ fontWeight:700, color:"#374151" }}>Por qué fue elegido: </span>{r.descripcion_analista}
+                  </p>
+                )}
+                {r.nota_porcentaje && (
+                  <p style={{ fontFamily:"Georgia,serif", fontSize:"9.5px", lineHeight:1.65, color:"#6b7280", margin:0, paddingLeft:"8px", borderLeft:"2px solid #f3f4f6" }}>
+                    <span style={{ fontWeight:700, color:"#4b5563" }}>Por qué este %: </span>{r.nota_porcentaje}
+                  </p>
+                )}
+              </div>
+            ))}
+            {/* Total */}
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:"14px", borderTop:"2px solid #1a2744", paddingTop:"10px" }}>
+              <span style={{ fontFamily:"Inter,sans-serif", fontSize:"10px", fontWeight:700, color:"#1a2744" }}>
+                Total ajuste por riesgos identificados
+              </span>
+              <span style={{ fontFamily:"Inter,sans-serif", fontSize:"14px", fontWeight:800, color:"#dc2626" }}>
+                {fmtUSDc(v.riesgosAjust)}
+              </span>
             </div>
-            <P>Para cada riesgo incluido en la valuación se explicita a continuación el criterio de selección y la justificación del porcentaje de ajuste aplicado.</P>
-            <table style={{ width:"100%", borderCollapse:"collapse", margin:"8px 0" }}>
-              <thead><tr>
-                <th style={th}>Riesgo</th>
-                <th style={{...th, textAlign:"right"}}>Impacto</th>
-                <th style={{...th, textAlign:"right"}}>%</th>
-                <th style={{...th, textAlign:"right"}}>Ajuste</th>
-              </tr></thead>
-              <tbody>
-                {[...v.riesgoAjustesLive].sort((a,b)=>b.monto-a.monto).map((r,i) => (
-                  <>
-                    <tr key={i} style={{ borderTop:"1.5px solid #e5e7eb" }}>
-                      <td style={{...td, fontWeight:600}}>{r.descripcion}</td>
-                      <td style={tdNum}>{fmtUSDc(r.impactoActual)}</td>
-                      <td style={tdNum}>{r.porcentaje.toFixed(0)}%</td>
-                      <td style={{...tdNum, fontWeight:700, color:"#dc2626"}}>{fmtUSDc(r.monto)}</td>
-                    </tr>
-                    {r.descripcion_analista && (
-                      <tr key={i+"-why"}>
-                        <td colSpan={4} style={{ padding:"3px 8px 2px", fontSize:"9px", color:"#4b5563", borderLeft:"2px solid #e5e7eb" }}>
-                          <span style={{ fontWeight:600 }}>Por qué fue elegido: </span>{r.descripcion_analista}
-                        </td>
-                      </tr>
-                    )}
-                    {r.nota_porcentaje && (
-                      <tr key={i+"-pct"}>
-                        <td colSpan={4} style={{ padding:"2px 8px 6px", fontSize:"9px", color:"#6b7280", borderLeft:"2px solid #e5e7eb" }}>
-                          <span style={{ fontWeight:600 }}>Por qué este %: </span>{r.nota_porcentaje}
-                        </td>
-                      </tr>
-                    )}
-                  </>
-                ))}
-                <tr style={{ background:"#fef2f2" }}>
-                  <td colSpan={3} style={{...td, fontWeight:700}}>Total ajuste</td>
-                  <td style={{...tdNum, fontWeight:700, color:"#dc2626"}}>{fmtUSDc(v.riesgosAjust)}</td>
-                </tr>
-              </tbody>
-            </table>
           </div>
         </div>
 
