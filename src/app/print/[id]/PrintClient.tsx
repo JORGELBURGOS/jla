@@ -68,6 +68,27 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
   }, [])
 
   // ── Derivados ─────────────────────────────────────────────────────
+  // ── Defaults seguros para propiedades nuevas de compute.ts ──────────────────
+  // Evita crashes en runtime si alguna propiedad nueva no está disponible
+  const flB   = (v as any).flB   as number[] | undefined ?? [v.ebitdaNorm ?? 0, 0, 0, 0, 0]
+  const flC   = (v as any).flC   as number[] | undefined ?? [v.ebitdaNorm ?? 0, 0, 0, 0, 0]
+  const promB = Number((v as any).promB   ?? 0)
+  const promC = Number((v as any).promC   ?? 0)
+  const valorM2B = Number((v as any).valorM2B ?? 0)
+  const valorM2C = Number((v as any).valorM2C ?? 0)
+  const dcfY1 = Number((v as any).dcfY1 ?? 0)
+  const dcfY2 = Number((v as any).dcfY2 ?? 0)
+  const dcfY3 = Number((v as any).dcfY3 ?? 0)
+  const dcfY4 = Number((v as any).dcfY4 ?? 0)
+  const tasaDCF     = Number((v as any).tasaDCF     ?? 0.25)
+  const multVR      = Number((v as any).multVR      ?? 8)
+  const multMinComp = Number((v as any).multMinComp ?? 12)
+  const multMaxComp = Number((v as any).multMaxComp ?? 15)
+  const ebitdaBase2   = Number((v as any).ebitdaBase2   ?? v.ebitdaNorm ?? 0)
+  const activosRevalu = Number((v as any).activosRevalu ?? 0)
+  const totalInmueble = Number((v as any).totalInmueble ?? 0)
+  const riesgosAbs    = Number((v as any).riesgosAbs    ?? Math.abs(v.riesgosAjust ?? 0))
+
   const nombre = String(caso?.nombre ?? "Empresa objetivo")
   const cuit = caso?.cuit ? String(caso.cuit) : null
   const hoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" })
@@ -213,7 +234,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
           <P>Antes de profundizar en los números, conviene responder la pregunta que naturalmente surge al ver el EBITDA histórico del negocio: ¿por qué debería valer más de lo que genera hoy? La respuesta descansa sobre tres pilares que el proceso de due diligence ha confirmado con evidencia documental.</P>
           {[
             {n:"1.", titulo:"Respaldo patrimonial independiente del negocio",
-             body:`Los activos revaluados ascienden a ${fmtUSDc(v.activosRevalu)}, de los cuales ${fmtUSDc(v.totalInmueble)} corresponden al inmueble industrial de 50.635 m² en zona industrial de Luján de Cuyo, un activo con valor propio. Los activos netos (deducidos los ajustes por riesgos identificados de ${fmtUSDc(v.riesgosAjust)}) alcanzan ${fmtUSDc(v.activosNetos)}, respaldando una parte sustancial del precio de oferta inicial de ${fmtUSDc(v.ofertaInic)}.`},
+             body:`Los activos revaluados ascienden a ${fmtUSDc(activosRevalu)}, de los cuales ${fmtUSDc(totalInmueble)} corresponden al inmueble industrial de 50.635 m² en zona industrial de Luján de Cuyo, un activo con valor propio. Los activos netos (deducidos los ajustes por riesgos identificados de ${fmtUSDc(v.riesgosAjust)}) alcanzan ${fmtUSDc(v.activosNetos)}, respaldando una parte sustancial del precio de oferta inicial de ${fmtUSDc(v.ofertaInic)}.`},
             {n:"2.", titulo:"Barrera de entrada regulatoria en sector de cumplimiento obligatorio",
              body:`El negocio opera bajo un CAA de Operador (DPA Mendoza) y una DIA vigentes — habilitaciones que representan una barrera de entrada de tres a cinco años de gestión. La demanda no depende del ciclo económico: los generadores de residuos peligrosos tienen obligación legal de contratar un operador habilitado (Ley 24.051). Este marco protege los ingresos y limita la competencia de nuevos entrantes.`},
             {n:"3.", titulo:"Ingresos validados por fuente independiente del Estado (ARCA)",
@@ -293,8 +314,8 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
           <P>
             La valuación se construyó por tres métodos complementarios: (i) activos netos revaluados con adición de un
             fondo de comercio; (ii) flujo de fondos descontado sobre las proyecciones del plan de negocios, a una tasa
-            del {v.tasaDCF.toLocaleString("es-AR")}%; y (iii) múltiplos comparables de mercado de entre {v.multMinComp.toLocaleString("es-AR")}×
-            y {v.multMaxComp.toLocaleString("es-AR")}× EBITDA. Las proyecciones del método (ii) corresponden al escenario del
+            del {tasaDCF.toLocaleString("es-AR")}%; y (iii) múltiplos comparables de mercado de entre {multMinComp.toLocaleString("es-AR")}×
+            y {multMaxComp.toLocaleString("es-AR")}× EBITDA. Las proyecciones del método (ii) corresponden al escenario del
             vendedor y su validación se encuentra condicionada según se expone en la Sección 7.
           </P>
           <table style={{ width: "100%", borderCollapse: "collapse", margin: "10px 0 16px" }}>
@@ -308,10 +329,84 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
             </tbody>
           </table>
           <P>
-            Con ajuste por los riesgos identificados y sus mitigantes verificados ({fmtUSDc(v.riesgosAjust)}), equivalentes al {Math.round(Math.abs(v.riesgosAjust) / (v.riesgosAbs||1) * 100)}% de la exposición bruta, se recomienda estructurar
+            Con ajuste por los riesgos identificados y sus mitigantes verificados ({fmtUSDc(v.riesgosAjust)}), equivalentes al {Math.round(Math.abs(v.riesgosAjust) / (riesgosAbs||1) * 100)}% de la exposición bruta, se recomienda estructurar
             la negociación con una oferta inicial de {fmtUSDc(v.ofertaInic)} y un precio máximo justificable de {fmtUSDc(v.ofertaMax)},
             
           </P>
+            {/* ── 5.1 Proyecciones y sensibilidad de precio ── */}
+            <div style={{ marginTop:"24px" }}>
+              <div style={{ fontFamily:"Georgia,serif", fontSize:"11.5px", fontWeight:700, color:"#1a2744",
+                            marginBottom:"8px", borderBottom:"1.5px solid #1a2744", paddingBottom:"4px" }}>
+                5.1 Proyecciones y sensibilidad de precio
+              </div>
+              <P>El valor del Método 2 (flujo de fondos descontado) es altamente sensible a dos variables cuya confirmación documental permanece pendiente: la habilitación del horno rotativo de 1.500 kg/h en el CAA de Operador, y la materialización de contratos con clientes estratégicos de gran volumen. La siguiente tabla muestra los flujos proyectados bajo cada hipótesis y el precio implícito resultante, con el objetivo de brindar al inversor los elementos necesarios para anclar la discusión de precio en la negociación.</P>
+              <div style={{ fontFamily:"Inter,sans-serif", fontSize:"8.5px", fontWeight:700, color:"#4b5563",
+                            margin:"10px 0 4px", textTransform:"uppercase", letterSpacing:"0.08em" }}>
+                Flujos proyectados de EBITDA por escenario (USD)
+              </div>
+              <table style={{ width:"100%", borderCollapse:"collapse", marginBottom:"10px" }}>
+                <thead><tr style={{ background:"#1a2744" }}>
+                  {["Escenario","Base (norm.)","Año 1","Año 2","Año 3","Año 4"].map((h,i)=>(
+                    <th key={i} style={{ padding:"5px 8px", fontSize:"8px", color:"white",
+                      fontWeight:700, textAlign:i===0?"left":"right" }}>{h}</th>
+                  ))}
+                </tr></thead>
+                <tbody>
+                  {[
+                    {lbl:"A — Plan del vendedor (horno + cliente estratégico)",
+                     fl:[ebitdaBase2,dcfY1,dcfY2,dcfY3,dcfY4], bold:true, bg:"#EFF4FF"},
+                    {lbl:"B — Sin horno ni cliente (crecimiento orgánico 10%/año)",
+                     fl:flB, bold:false, bg:"white"},
+                    {lbl:"C — Horno habilitado, sin cliente estratégico",
+                     fl:flC, bold:false, bg:"#f9fafb"},
+                  ].map((row,i)=>(
+                    <tr key={i} style={{ background:row.bg, borderBottom:"0.5px solid #e5e7eb" }}>
+                      <td style={{ padding:"5px 8px", fontSize:"8px", fontWeight:row.bold?700:400 }}>{row.lbl}</td>
+                      {row.fl.map((f,j)=>(
+                        <td key={j} style={{ padding:"5px 8px", textAlign:"right",
+                                             fontSize:"8.5px", fontFamily:"Inter,sans-serif",
+                                             fontWeight:row.bold?700:400 }}>{fmtUSDc(f)}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div style={{ fontFamily:"Inter,sans-serif", fontSize:"8.5px", fontWeight:700, color:"#4b5563",
+                            margin:"0 0 4px", textTransform:"uppercase", letterSpacing:"0.08em" }}>
+                Valor y oferta implícita por escenario
+              </div>
+              <table style={{ width:"100%", borderCollapse:"collapse", marginBottom:"10px" }}>
+                <thead><tr style={{ background:"#1a2744" }}>
+                  {["Escenario","M2 (DCF)","Prom. métodos","Oferta inicial","Precio máximo","Condición"].map((h,i)=>(
+                    <th key={i} style={{ padding:"5px 8px", fontSize:"8px", color:"white", fontWeight:700,
+                      textAlign:i===0||i===5?"left":"right" }}>{h}</th>
+                  ))}
+                </tr></thead>
+                <tbody>
+                  {[
+                    {lbl:"A — Plan del vendedor", m2:v.valorM2, prom:v.promMetodos,
+                     ofi:v.ofertaInic, ofm:v.ofertaMax,
+                     cond:"Horno en CAA + contrato cliente estratégico firmado", bold:true, bg:"#EFF4FF"},
+                    {lbl:"B — Sin horno ni cliente", m2:valorM2B, prom:promB,
+                     ofi:Math.round(promB*0.77), ofm:Math.round(promB*0.98),
+                     cond:"Base verificable con data room actual", bold:false, bg:"white"},
+                    {lbl:"C — Solo horno habilitado", m2:valorM2C, prom:promC,
+                     ofi:Math.round(promC*0.77), ofm:Math.round(promC*0.98),
+                     cond:"Horno acreditado en CAA (ítems 33 y 34)", bold:false, bg:"#f9fafb"},
+                  ].map((row,i)=>(
+                    <tr key={i} style={{ background:row.bg, borderBottom:"0.5px solid #e5e7eb" }}>
+                      <td style={{ padding:"5px 8px", fontSize:"8px", fontWeight:row.bold?700:400 }}>{row.lbl}</td>
+                      <td style={{ padding:"5px 8px", textAlign:"right", fontSize:"8.5px", fontFamily:"Inter,sans-serif", fontWeight:700 }}>{fmtUSDc(row.m2)}</td>
+                      <td style={{ padding:"5px 8px", textAlign:"right", fontSize:"8.5px", fontFamily:"Inter,sans-serif", fontWeight:700, color:"#1a2744" }}>{fmtUSDc(row.prom)}</td>
+                      <td style={{ padding:"5px 8px", textAlign:"right", fontSize:"8.5px", fontFamily:"Inter,sans-serif", fontWeight:700, color:row.bold?"#1a2744":"#6b7280" }}>{fmtUSDc(row.ofi)}</td>
+                      <td style={{ padding:"5px 8px", textAlign:"right", fontSize:"8.5px", fontFamily:"Inter,sans-serif", fontWeight:700, color:row.bold?"#1a2744":"#6b7280" }}>{fmtUSDc(row.ofm)}</td>
+                      <td style={{ padding:"5px 8px", fontSize:"8px", color:"#4b5563" }}>{row.cond}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <P>En la negociación: el vendedor puede argumentar el escenario A para justificar su precio de {fmtUSDc(v.precio)}. El inversor puede responder que, sin documentación del horno ni contrato con cliente estratégico, el soporte del DCF corresponde al escenario B ({fmtUSDc(Math.round(promB*0.77))} como oferta inicial). Cada uno de los dos hitos documentados mueve el precio entre USD 300.000 y USD 460.000, lo que convierte la negociación en una discusión de milestones concretos.</P>
+            </div>
         </div>
 
 
@@ -341,12 +436,12 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
               <tr style={{ borderTop:"0.5px solid #e5e7eb" }}>
                 <td style={{...td, fontWeight:600}}>M2 — Flujo de fondos descontado</td>
                 <td style={tdNum}>{fmtUSDc(v.valorM2)}</td>
-                <td style={{...td, fontSize:"9px", color:"#6b7280"}}>Proyecciones del plan de negocios. Tasa {(v.tasaDCF*100).toFixed(0)}% · Múltiplo terminal {v.multVR}×. Incluye el potencial de los contratos en desarrollo con clientes estratégicos.</td>
+                <td style={{...td, fontSize:"9px", color:"#6b7280"}}>Proyecciones del plan de negocios. Tasa {(tasaDCF*100).toFixed(0)}% · Múltiplo terminal {multVR}×. Incluye el potencial de los contratos en desarrollo con clientes estratégicos.</td>
               </tr>
               <tr style={{ borderTop:"0.5px solid #e5e7eb" }}>
                 <td style={{...td, fontWeight:600}}>M3 — Múltiplos comparables</td>
                 <td style={tdNum}>{fmtUSDc(v.valorM3mid)}</td>
-                <td style={{...td, fontSize:"9px", color:"#6b7280"}}>{v.multMinComp}×–{v.multMaxComp}× EBITDA normalizado. Rango habitual para operadores de residuos peligrosos en mercados regulados.</td>
+                <td style={{...td, fontSize:"9px", color:"#6b7280"}}>{multMinComp}×–{multMaxComp}× EBITDA normalizado. Rango habitual para operadores de residuos peligrosos en mercados regulados.</td>
               </tr>
               <tr style={{ background:"#f8fafc", borderTop:"1.5px solid #1a2744" }}>
                 <td style={{...td, fontWeight:700, fontSize:"11px"}}>Valor central (promedio)</td>
@@ -376,7 +471,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
             {fmtUSDc(Math.abs(expActiva))}. De esa exposición, el analista llevó a valuación{" "}
             {v.riesgoAjustesLive.length} riesgos con criterio explícito de selección y ponderación,{" "}
             resultando un ajuste neto de {fmtUSDc(v.riesgosAjust)} —{" "}
-            equivalente al {Math.round(Math.abs(v.riesgosAjust) / (v.riesgosAbs||1) * 100)}% de la exposición bruta activa.
+            equivalente al {Math.round(Math.abs(v.riesgosAjust) / (riesgosAbs||1) * 100)}% de la exposición bruta activa.
           </P>
           <div style={{ marginTop:"12px" }}>
             {[...v.riesgoAjustesLive].sort((a,b)=>b.monto-a.monto).map((r,i) => (

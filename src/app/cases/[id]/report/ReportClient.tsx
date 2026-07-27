@@ -60,6 +60,27 @@ const ESTADO_COLOR: Record<string, { bg: string; text: string }> = {
 }
 
 export default function ReportClient({ caseId, caso, reqs, risks, sups, env, valid, valuation: v, savedNarrativa, balance, cerrados }: Props) {
+  // ── Defaults seguros para propiedades nuevas de compute.ts ──────────────────
+  // Evita crashes en runtime si alguna propiedad nueva no está disponible
+  const flB   = (v as any).flB   as number[] | undefined ?? [v.ebitdaNorm ?? 0, 0, 0, 0, 0]
+  const flC   = (v as any).flC   as number[] | undefined ?? [v.ebitdaNorm ?? 0, 0, 0, 0, 0]
+  const promB = Number((v as any).promB   ?? 0)
+  const promC = Number((v as any).promC   ?? 0)
+  const valorM2B = Number((v as any).valorM2B ?? 0)
+  const valorM2C = Number((v as any).valorM2C ?? 0)
+  const dcfY1 = Number((v as any).dcfY1 ?? 0)
+  const dcfY2 = Number((v as any).dcfY2 ?? 0)
+  const dcfY3 = Number((v as any).dcfY3 ?? 0)
+  const dcfY4 = Number((v as any).dcfY4 ?? 0)
+  const tasaDCF     = Number((v as any).tasaDCF     ?? 0.25)
+  const multVR      = Number((v as any).multVR      ?? 8)
+  const multMinComp = Number((v as any).multMinComp ?? 12)
+  const multMaxComp = Number((v as any).multMaxComp ?? 15)
+  const ebitdaBase2   = Number((v as any).ebitdaBase2   ?? v.ebitdaNorm ?? 0)
+  const activosRevalu = Number((v as any).activosRevalu ?? 0)
+  const totalInmueble = Number((v as any).totalInmueble ?? 0)
+  const riesgosAbs    = Number((v as any).riesgosAbs    ?? Math.abs(v.riesgosAjust ?? 0))
+
   const [generating, setGenerating] = useState(false)
   const initial = savedNarrativa && savedNarrativa.resumen_ejecutivo ? {
     recomendacion: String(savedNarrativa.recomendacion ?? ""),
@@ -90,7 +111,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
   // Financiero y valuación: TODO viene del motor compartido (src/lib/valuation/compute.ts),
   // el mismo que usa la herramienta interactiva de Valuación. Ver ahí antes de tocar fórmulas acá.
   const ingresos = v.ingresos || null
-  const ebitda   = v.ebitdaBase2 || null   // normalizado si existe, si no el contable — igual que en Valuación
+  const ebitda   = ebitdaBase2 || null   // normalizado si existe, si no el contable — igual que en Valuación
   const precio   = v.precio
   const margen   = (ingresos && ebitda && ingresos > 0) ? ebitda / ingresos * 100 : null
   const multiploImplicito = (precio && ebitda && ebitda > 0) ? precio / ebitda : null
@@ -351,15 +372,15 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
                 <tr>
                   <td style={{ fontWeight:600 }}>1. Activos netos + Fondo de comercio</td>
                   <td style={{ textAlign:"right", fontWeight:700 }}>{fmtUSD(v.valorM1Cont)} a {fmtUSD(v.valorM1)}</td>
-                  <td style={{ fontSize:"9px" }}>Activos revaluados {fmtUSD(v.activosRevalu)} − riesgos ajustados {fmtUSD(v.riesgosAjust)} + fondo de comercio sobre EBITDA normalizado</td>
+                  <td style={{ fontSize:"9px" }}>Activos revaluados {fmtUSD(activosRevalu)} − riesgos ajustados {fmtUSD(v.riesgosAjust)} + fondo de comercio sobre EBITDA normalizado</td>
                 </tr>
                 <tr>
-                  <td style={{ fontWeight:600 }}>2. Flujo de fondos descontado al {Math.round(v.tasaDCF*100)}%</td>
+                  <td style={{ fontWeight:600 }}>2. Flujo de fondos descontado al {Math.round(tasaDCF*100)}%</td>
                   <td style={{ textAlign:"right", fontWeight:700 }}>{fmtUSD(v.valorM2)}</td>
                   <td style={{ fontSize:"9px" }}>Proyección propia 2026-2030 con crecimiento gradual Oil & Gas, no la del vendedor</td>
                 </tr>
                 <tr>
-                  <td style={{ fontWeight:600 }}>3. Múltiplo comparable ({v.multMinComp}-{v.multMaxComp}× EBITDA)</td>
+                  <td style={{ fontWeight:600 }}>3. Múltiplo comparable ({multMinComp}-{multMaxComp}× EBITDA)</td>
                   <td style={{ textAlign:"right", fontWeight:700 }}>{fmtUSD(v.valorM3min)} a {fmtUSD(v.valorM3max)}</td>
                   <td style={{ fontSize:"9px" }}>Empresas con posición monopólica y barreras regulatorias 7-9 años en el sector</td>
                 </tr>
@@ -376,7 +397,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
           <div style={{ border:"1px solid #e5e7eb", borderRadius:"8px", padding:"16px", marginBottom:"20px" }}>
             <div style={{ fontWeight:700, fontSize:"11px", marginBottom:"4px", color:"#dc2626" }}>3. Ajustes por riesgos identificados</div>
             <div style={{ fontSize:"9px", color:"#6b7280", marginBottom:"12px" }}>
-              Total riesgos activos en el mapa de due diligence: <strong>{fmtUSD(v.riesgosAbs)}</strong> · Ajustados con mitigantes reales: <strong>{fmtUSD(v.riesgosAjust)}</strong>
+              Total riesgos activos en el mapa de due diligence: <strong>{fmtUSD(riesgosAbs)}</strong> · Ajustados con mitigantes reales: <strong>{fmtUSD(v.riesgosAjust)}</strong>
             </div>
             <table className="tabla" style={{ width:"100%" }}>
               <thead><tr><th>Riesgo</th><th>Área</th><th style={{textAlign:"right"}}>En el mapa</th><th style={{textAlign:"right"}}>%</th><th style={{textAlign:"right"}}>Ajustado</th></tr></thead>
@@ -431,7 +452,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
               </div>
             </div>
             <div style={{ marginTop:"14px", paddingTop:"14px", borderTop:"1px solid rgba(255,255,255,0.2)", fontSize:"9px", lineHeight:1.6 }}>
-              Valor en liquidación forzada de referencia (activos {fmtUSD(v.activosRevalu)} con descuento del {v.descLiq}%): {fmtUSD(v.valorLiq)}.
+              Valor en liquidación forzada de referencia (activos {fmtUSD(activosRevalu)} con descuento del {v.descLiq}%): {fmtUSD(v.valorLiq)}.
               {v.ofertaInic > v.valorLiq
                 ? ` La oferta supera lo que recuperaría el vendedor liquidando activos por separado — rechazarla implica resignar ${fmtUSD(v.ofertaInic - v.valorLiq)} frente al peor escenario alternativo.`
                 : ` El valor de liquidación es la referencia del piso patrimonial; la oferta se apoya en los métodos de flujos y comparables.`}
@@ -472,12 +493,12 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
             <tbody>
               {[
                 {lbl:"A — Plan del vendedor (horno + cliente estratégico)",
-                 fl:[v.ebitdaBase2,v.dcfY1,v.dcfY2,v.dcfY3,v.dcfY4],
+                 fl:[ebitdaBase2,dcfY1,dcfY2,dcfY3,dcfY4],
                  bold:true, bg:"#EFF4FF"},
                 {lbl:"B — Sin horno ni cliente (crecimiento orgánico 10%/año)",
-                 fl:v.flB, bold:false, bg:"white"},
+                 fl:flB, bold:false, bg:"white"},
                 {lbl:"C — Horno habilitado, sin cliente estratégico",
-                 fl:v.flC, bold:false, bg:"#f9fafb"},
+                 fl:flC, bold:false, bg:"#f9fafb"},
               ].map((row,i)=>(
                 <tr key={i} style={{ background:row.bg, borderBottom:"0.5px solid #e5e7eb" }}>
                   <td style={{ padding:"6px 8px", fontWeight:row.bold?700:400 }}>{row.lbl}</td>
@@ -507,11 +528,11 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
                 {lbl:"A — Plan del vendedor", m2:v.valorM2, prom:v.promMetodos,
                  ofi:v.ofertaInic, ofm:v.ofertaMax,
                  cond:"Horno en CAA + contrato cliente estratégico", bold:true, bg:"#EFF4FF"},
-                {lbl:"B — Sin horno ni cliente", m2:v.valorM2B, prom:v.promB,
-                 ofi:Math.round(v.promB*0.77), ofm:Math.round(v.promB*0.98),
+                {lbl:"B — Sin horno ni cliente", m2:valorM2B, prom:promB,
+                 ofi:Math.round(promB*0.77), ofm:Math.round(promB*0.98),
                  cond:"Base verificable con data room actual", bold:false, bg:"white"},
-                {lbl:"C — Solo horno habilitado", m2:v.valorM2C, prom:v.promC,
-                 ofi:Math.round(v.promC*0.77), ofm:Math.round(v.promC*0.98),
+                {lbl:"C — Solo horno habilitado", m2:valorM2C, prom:promC,
+                 ofi:Math.round(promC*0.77), ofm:Math.round(promC*0.98),
                  cond:"Horno acreditado en CAA (ítems 33 y 34)", bold:false, bg:"#f9fafb"},
               ].map((row,i)=>(
                 <tr key={i} style={{ background:row.bg, borderBottom:"0.5px solid #e5e7eb" }}>
@@ -534,7 +555,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
             <strong>Argumento para la negociación:</strong> el vendedor usará el escenario A para justificar
             su precio de {fmtUSD(v.precio)}. El inversor puede responder que sin el horno en el CAA ni
             contrato firmado con el cliente estratégico, el DCF soporta el escenario B
-            ({fmtUSD(Math.round(v.promB*0.77))} como oferta inicial). Cada uno de los dos hitos
+            ({fmtUSD(Math.round(promB*0.77))} como oferta inicial). Cada uno de los dos hitos
             documentados mueve el precio entre USD 300.000 y USD 460.000 — lo que convierte
             la negociación en una discusión de documentos concretos, no de expectativas.
           </p>
@@ -872,7 +893,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
         <div className="section-header">Sección 12 — Tesis de Inversión</div>
         <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
           {[
-            {n:"1.",t:"Respaldo patrimonial", body:`Activos revaluados ${fmtUSD(v.activosRevalu)} (inmueble ${fmtUSD(v.totalInmueble)}). Activos netos deducidos ajustes: ${fmtUSD(v.activosNetos)}.`},
+            {n:"1.",t:"Respaldo patrimonial", body:`Activos revaluados ${fmtUSD(activosRevalu)} (inmueble ${fmtUSD(totalInmueble)}). Activos netos deducidos ajustes: ${fmtUSD(v.activosNetos)}.`},
             {n:"2.",t:"Barrera regulatoria", body:"CAA Operador + DIA vigentes. Competencia nueva tarda 3-5 años. Demanda por imposición legal (Ley 24.051), no depende del ciclo económico."},
             {n:"3.",t:"Ingresos validados por ARCA (IVA)", body:`Facturación ${fmtUSD(v.ingresos)} validada con F.2051 (diferencia -0,5%). Fuente independiente del vendedor y del auditor.`},
           ].map((item,i)=>(
