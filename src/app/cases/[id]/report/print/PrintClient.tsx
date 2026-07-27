@@ -1,10 +1,11 @@
 "use client"
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Loader } from "lucide-react"
 import type { ValuationResult } from "@/lib/valuation/compute"
 
 interface Props {
   caseId: string
+  execOverride?: string | null
   caso: Record<string,unknown>
   reqs: Record<string,unknown>[]
   risks: Record<string,unknown>[]
@@ -56,15 +57,18 @@ const ESTADO_COLOR: Record<string, { bg: string; text: string }> = {
   Pendiente: { bg:"#fee2e2", text:"#991b1b" },
 }
 
-export default function ReportClient({ caseId, caso, reqs, risks, sups, env, valid, valuation: v, savedNarrativa }: Props) {
+export default function PrintClient({ caseId, caso, reqs, risks, sups, env, valid, valuation: v, savedNarrativa, execOverride }: Props) {
   const [generating, setGenerating] = useState(false)
-  const initial = savedNarrativa && savedNarrativa.resumen_ejecutivo ? {
-    recomendacion: String(savedNarrativa.recomendacion ?? ""),
-    resumen_ejecutivo: String(savedNarrativa.resumen_ejecutivo ?? ""),
-    hallazgos_criticos: (savedNarrativa.hallazgos_criticos as string[]) ?? [],
-    condiciones_cierre: (savedNarrativa.condiciones_cierre as string[]) ?? [],
-    precio_sugerido: String(savedNarrativa.precio_sugerido ?? ""),
-    semaforo: (savedNarrativa.semaforo as "VERDE"|"AMARILLO"|"ROJO") ?? "AMARILLO",
+  let fromExec: Record<string,unknown> | null = null
+  try { if (execOverride) fromExec = JSON.parse(execOverride) } catch { fromExec = null }
+  const src = (fromExec && fromExec.resumen_ejecutivo) ? fromExec : savedNarrativa
+  const initial = src && src.resumen_ejecutivo ? {
+    recomendacion: String(src.recomendacion ?? ""),
+    resumen_ejecutivo: String(src.resumen_ejecutivo ?? ""),
+    hallazgos_criticos: (src.hallazgos_criticos as string[]) ?? [],
+    condiciones_cierre: (src.condiciones_cierre as string[]) ?? [],
+    precio_sugerido: String(src.precio_sugerido ?? ""),
+    semaforo: (src.semaforo as "VERDE"|"AMARILLO"|"ROJO") ?? "AMARILLO",
   } : null
   const [narrativa, setNarrativa] = useState<{
     recomendacion: string
@@ -125,12 +129,12 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
     setGenerating(false)
   }
 
-  // ── Abrir página limpia para imprimir/guardar como PDF ──────────────
-  function imprimir() {
-    const execParam = narrativa ? encodeURIComponent(JSON.stringify(narrativa)) : ""
-    const url = `/cases/${caseId}/report/print${execParam ? "?exec=" + execParam : ""}`
-    window.open(url, "_blank", "width=900,height=800")
-  }
+  // ── En la pagina de impresion se imprime directo ──────────────
+  function imprimir() { window.print() }
+  useEffect(() => {
+    const t = setTimeout(() => { try { window.print() } catch {} }, 1200)
+    return () => clearTimeout(t)
+  }, [])
 
   const SEMAFORO_COLOR = { VERDE: "#16a34a", AMARILLO: "#d97706", ROJO: "#dc2626" }
   const today = new Date().toLocaleDateString("es-AR", { day:"2-digit", month:"long", year:"numeric" })
@@ -155,7 +159,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
           </button>
           <button onClick={imprimir}
             className="flex items-center gap-2 bg-[#1a2744] text-white text-sm font-bold px-5 py-2 rounded-lg hover:bg-[#0d1525]">
-            ⬇ Descargar PDF
+            🖨 Imprimir / Guardar como PDF
           </button>
         </div>
       </div>
