@@ -1,4 +1,5 @@
 "use client"
+import React from "react"
 import { useState, useEffect } from "react"
 import type { ValuationResult } from "@/lib/valuation/compute"
 
@@ -313,6 +314,50 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
               ))}
             </tbody>
           </table>
+          <div style={{ marginTop: "20px" }}>
+            <div style={{ fontFamily:"Georgia, serif", fontSize:"12px", fontWeight:700, color:"#1a2744", marginBottom:"10px" }}>
+              6.2 Ajustes por riesgos — criterio del analista
+            </div>
+            <P>Para cada riesgo incluido en la valuación se explicita a continuación el criterio de selección y la justificación del porcentaje de ajuste aplicado.</P>
+            <table style={{ width:"100%", borderCollapse:"collapse", margin:"8px 0" }}>
+              <thead><tr>
+                <th style={th}>Riesgo</th>
+                <th style={{...th, textAlign:"right"}}>Impacto</th>
+                <th style={{...th, textAlign:"right"}}>%</th>
+                <th style={{...th, textAlign:"right"}}>Ajuste</th>
+              </tr></thead>
+              <tbody>
+                {[...v.riesgoAjustesLive].sort((a,b)=>b.monto-a.monto).map((r,i) => (
+                  <>
+                    <tr key={i} style={{ borderTop:"1.5px solid #e5e7eb" }}>
+                      <td style={{...td, fontWeight:600}}>{r.descripcion}</td>
+                      <td style={tdNum}>{fmtUSDc(r.impactoActual)}</td>
+                      <td style={tdNum}>{r.porcentaje.toFixed(0)}%</td>
+                      <td style={{...tdNum, fontWeight:700, color:"#dc2626"}}>{fmtUSDc(r.monto)}</td>
+                    </tr>
+                    {r.descripcion_analista && (
+                      <tr key={i+"-why"}>
+                        <td colSpan={4} style={{ padding:"3px 8px 2px", fontSize:"9px", color:"#4b5563", borderLeft:"2px solid #e5e7eb" }}>
+                          <span style={{ fontWeight:600 }}>Por qué fue elegido: </span>{r.descripcion_analista}
+                        </td>
+                      </tr>
+                    )}
+                    {r.nota_porcentaje && (
+                      <tr key={i+"-pct"}>
+                        <td colSpan={4} style={{ padding:"2px 8px 6px", fontSize:"9px", color:"#6b7280", borderLeft:"2px solid #e5e7eb" }}>
+                          <span style={{ fontWeight:600 }}>Por qué este %: </span>{r.nota_porcentaje}
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                ))}
+                <tr style={{ background:"#fef2f2" }}>
+                  <td colSpan={3} style={{...td, fontWeight:700}}>Total ajuste</td>
+                  <td style={{...tdNum, fontWeight:700, color:"#dc2626"}}>{fmtUSDc(v.riesgosAjust)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* ══════ 7. VALIDACIÓN DEL PLAN ══════ */}

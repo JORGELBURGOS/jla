@@ -33,9 +33,11 @@ export interface RiesgoAjustadoLive {
   origen_riesgo_id: string
   porcentaje: number
   estado: string
-  descripcion: string
+  descripcion: string      // texto del riesgo del mapa (nombre corto)
   area: string
-  nota: string
+  nota: string             // accion_requerida del riesgo
+  descripcion_analista: string  // por qué fue elegido (de dd_case_risk_adjustments.descripcion)
+  nota_porcentaje: string       // por qué este % (de dd_case_risk_adjustments.nota)
   impactoActual: number
   monto: number
 }
@@ -113,14 +115,14 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
     db.from("dd_case_assets").select("categoria,cantidad,precio_unitario,valor_usd").eq("case_id", caseId),
     db.from("dd_case_risks").select("id,riesgo,area,impacto,accion_requerida").eq("case_id", caseId)
       .not("estado", "in", '("DUPLICADO","RECLASIFICADO","CERRADO")').lt("impacto", 0),
-    db.from("dd_case_risk_adjustments").select("id,origen_riesgo_id,porcentaje,estado").eq("case_id", caseId),
+    db.from("dd_case_risk_adjustments").select("id,origen_riesgo_id,porcentaje,estado,descripcion,nota").eq("case_id", caseId),
   ])
 
   const casoR = (caso ?? {}) as { nombre?: string; precio_pedido?: number }
   const supsR = (sups ?? []) as { label: string; valor: string }[]
   const assetsR = (assets ?? []) as Asset[]
   const riesgosR = (riesgosMapa ?? []) as { id:string; riesgo:string; area:string; impacto:number; accion_requerida:string }[]
-  const ajustesR = (riesgoAjustes ?? []) as { id:string; origen_riesgo_id:string; porcentaje:number; estado:string }[]
+  const ajustesR = (riesgoAjustes ?? []) as { id:string; origen_riesgo_id:string; porcentaje:number; estado:string; descripcion:string|null; nota:string|null }[]
 
   const caseName = casoR.nombre ?? ""
   const precio   = Number(casoR.precio_pedido ?? 0)
@@ -156,7 +158,9 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
 
   // ── Riesgos: total del mapa + cruce en vivo de los ajustados con mitigantes ──
   const riesgosAbs = riesgosR.reduce((s, r) => s + Math.abs(r.impacto), 0)
-  const riesgoAjustesLive: RiesgoAjustadoLive[] = ajustesR.map(r => {
+  const riesgoAjustesLive: RiesgoAjustadoLive[] = ajustesR
+    .filter(r => r.estado !== 'Reencuadrado') // excluye los reencuadrados a condicion precedente
+    .map(r => {
     const origen = riesgosR.find(rd => rd.id === r.origen_riesgo_id)
     const impactoActual = origen ? Math.abs(origen.impacto) : 0
     return {
@@ -166,6 +170,8 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
       nota: origen?.accion_requerida ?? "",
       impactoActual,
       monto: Math.round(impactoActual * r.porcentaje / 100),
+      descripcion_analista: r.descripcion ?? "",
+      nota_porcentaje: r.nota ?? "",
     }
   })
   const riesgosAjust = riesgoAjustesLive.reduce((s, r) => s + r.monto, 0)

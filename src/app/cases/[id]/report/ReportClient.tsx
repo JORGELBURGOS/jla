@@ -1,4 +1,5 @@
 "use client"
+import React from "react"
 import { useState, useRef } from "react"
 import { Loader } from "lucide-react"
 import type { ValuationResult } from "@/lib/valuation/compute"
@@ -379,13 +380,25 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
               <thead><tr><th>Riesgo</th><th>Área</th><th style={{textAlign:"right"}}>En el mapa</th><th style={{textAlign:"right"}}>%</th><th style={{textAlign:"right"}}>Ajustado</th></tr></thead>
               <tbody>
                 {[...v.riesgoAjustesLive].sort((a,b)=>b.monto-a.monto).map(r => (
-                  <tr key={r.id}>
-                    <td style={{ fontSize:"9px" }}>{r.descripcion}</td>
-                    <td style={{ fontSize:"9px", color:"#6b7280" }}>{r.area}</td>
-                    <td style={{ textAlign:"right", fontSize:"9px" }}>{fmtUSD(r.impactoActual)}</td>
-                    <td style={{ textAlign:"right", fontSize:"9px" }}>{r.porcentaje.toFixed(0)}%</td>
-                    <td style={{ textAlign:"right", fontSize:"9px", fontWeight:700, color:"#dc2626" }}>{fmtUSD(r.monto)}</td>
-                  </tr>
+                  <React.Fragment key={r.id}>
+                    <tr style={{ borderTop: "1.5px solid #f3f4f6" }}>
+                      <td style={{ fontSize:"9px", fontWeight:600, paddingTop:"6px" }}>{r.descripcion}</td>
+                      <td style={{ fontSize:"9px", color:"#6b7280" }}>{r.area}</td>
+                      <td style={{ textAlign:"right", fontSize:"9px" }}>{fmtUSD(r.impactoActual)}</td>
+                      <td style={{ textAlign:"right", fontSize:"9px" }}>{r.porcentaje.toFixed(0)}%</td>
+                      <td style={{ textAlign:"right", fontSize:"9px", fontWeight:700, color:"#dc2626" }}>{fmtUSD(r.monto)}</td>
+                    </tr>
+                    {r.descripcion_analista && (
+                      <tr><td colSpan={5} style={{ fontSize:"8px", color:"#4b5563", paddingBottom:"2px", paddingLeft:"6px", borderLeft:"2px solid #e5e7eb" }}>
+                        <span style={{ fontWeight:600, color:"#374151" }}>Por qué fue elegido: </span>{r.descripcion_analista}
+                      </td></tr>
+                    )}
+                    {r.nota_porcentaje && (
+                      <tr><td colSpan={5} style={{ fontSize:"8px", color:"#6b7280", paddingBottom:"6px", paddingLeft:"6px", borderLeft:"2px solid #e5e7eb" }}>
+                        <span style={{ fontWeight:600, color:"#4b5563" }}>Por qué este %: </span>{r.nota_porcentaje}
+                      </td></tr>
+                    )}
+                  </React.Fragment>
                 ))}
                 <tr style={{ background:"#fef2f2" }}>
                   <td colSpan={4} style={{ fontWeight:800 }}>Total riesgos ajustados</td>
