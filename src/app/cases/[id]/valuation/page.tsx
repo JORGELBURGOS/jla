@@ -15,7 +15,7 @@ type Asset = {
 type RiskAdj = {
   id: string; origen_riesgo_id: string; porcentaje: number; estado: string; orden: number
 }
-type RiesgoFull = { id: string; riesgo: string; area: string; impacto: number; accion: string }
+type RiesgoFull = { id: string; riesgo: string; area: string; impacto: number; accion: string; estado: string }
 // Riesgo ajustado con sus datos en vivo, ya cruzado con el riesgo original del mapa
 type RiskAdjLive = RiskAdj & { descripcion:string; area:string; nota:string; impactoActual:number; monto:number }
 const RIESGO_ESTADOS = ["Vigente","Reducido","Resoluble","Condición"]
@@ -283,6 +283,8 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const [riskAdding, setRiskAdding]     = useState(false)
   const [riskJustAdded, setRiskJustAdded] = useState<string|null>(null)
   const [showTraerPicker, setShowTraerPicker] = useState(false)
+  const [pickerSearch, setPickerSearch]       = useState("")
+  const [pickerSort, setPickerSort]           = useState<"impacto"|"area"|"estado">("impacto")
   const [notasMetodos, setNotasMetodos] = useState<Record<string,string>>({})
   // Riesgos individuales clave para el cuadro de oferta
   const [caseName, setCaseName]     = useState("")
@@ -377,14 +379,14 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
         setPnContable(Math.round((d.capital_social+d.reservas+d.resultados_acumulados+(d.ajuste_inflacion_pn||0))/tc))
       })
     // Detalle completo de riesgos activos — alimenta el desplegable del total Y el selector "traer riesgo"
-    db.from("dd_case_risks").select("id,riesgo,area,impacto,accion_requerida")
+    db.from("dd_case_risks").select("id,riesgo,area,impacto,accion_requerida,estado")
       .eq("case_id",caseId)
       .not("estado","in",'("DUPLICADO","RECLASIFICADO","CERRADO")')
       .lt("impacto",0)
       .order("impacto",{ascending:true})
       .then(({data}) => {
-        setRiesgoDetalle((data as {id:string;riesgo:string;area:string;impacto:number;accion_requerida:string}[]??[])
-          .map(r => ({id:r.id, riesgo:r.riesgo, area:r.area||"General", impacto:r.impacto, accion:r.accion_requerida||""})))
+        setRiesgoDetalle((data as {id:string;riesgo:string;area:string;impacto:number;accion_requerida:string;estado:string}[]??[])
+          .map(r => ({id:r.id, riesgo:r.riesgo, area:r.area||"General", impacto:r.impacto, accion:r.accion_requerida||"", estado:r.estado||"IDENTIFICADO"})))
       })
 
     // Tres pools de riesgos según tipo de deal
@@ -774,24 +776,86 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
           </div>
           {showTraerPicker && (() => {
             const yaTraidos = new Set(riesgoAjustes.map(r=>r.origen_riesgo_id).filter(Boolean))
-            const disponibles = riesgoDetalle.filter(r => !yaTraidos.has(r.id))
+            const sq = pickerSearch.toLowerCase().trim()
+            const estadoColor: Record<string,string> = {
+              "CONFIRMADO":  "bg-red-100 text-red-700",
+              "IDENTIFICADO":"bg-amber-100 text-amber-700",
+              "CONDICIONAL": "bg-blue-100 text-blue-700",
+            }
+            const estadoOrd: Record<string,number> = { CONFIRMADO:0, IDENTIFICADO:1, CONDICIONAL:2 }
+            const disponibles = riesgoDetalle
+              .filter(r => !yaTraidos.has(r.id))
+              .filter(r => !sq || r.riesgo.toLowerCase().includes(sq) || (r.area||"").toLowerCase().includes(sq))
+              .sort((a,b) => {
+                if (pickerSort==="impacto") return a.impacto - b.impacto          // más negativo primero
+                if (pickerSort==="estado")  return (estadoOrd[a.estado]??9) - (estadoOrd[b.estado]??9)
+                return (a.area||"").localeCompare(b.area||"")
+              })
             return (
-              <div className="mb-3 max-h-72 overflow-y-auto bg-gray-50 rounded-lg border border-gray-200 divide-y divide-gray-100">
-                <div className="px-2.5 py-1.5 text-xs text-gray-400 bg-gray-100 sticky top-0">
-                  Elegí un riesgo del mapa completo — se suma con 100% de impacto, después ajustás el % como quieras.
+              <div className="mb-4 rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                {/* Cabecera con buscador y orden */}
+                <div className="bg-[#1a2744] px-3 py-2.5 flex items-center gap-2">
+                  <input
+                    autoFocus
+                    value={pickerSearch}
+                    onChange={e => setPickerSearch(e.target.value)}
+                    placeholder="Buscar por nombre o área..."
+                    className="flex-1 text-xs bg-white/10 text-white placeholder-white/50 rounded-lg px-2.5 py-1.5 outline-none border border-white/20 focus:border-white/50"
+                  />
+                  <select value={pickerSort} onChange={e=>setPickerSort(e.target.value as any)}
+                    className="text-xs bg-white/10 text-white rounded-lg px-2 py-1.5 outline-none border border-white/20 cursor-pointer">
+                    <option value="impacto">Mayor impacto</option>
+                    <option value="estado">Por estado</option>
+                    <option value="area">Por área</option>
+                  </select>
+                  <span className="text-white/60 text-xs whitespace-nowrap">{disponibles.length} disponibles</span>
                 </div>
-                {disponibles.map(r => (
-                  <button key={r.id} onClick={() => traerRiesgo(r,100)} disabled={riskAdding}
-                    className="w-full flex items-center justify-between gap-2 text-xs px-2.5 py-1.5 hover:bg-blue-50 text-left disabled:opacity-50">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-gray-700 truncate">{r.riesgo}</div>
-                      <div className="text-gray-400 text-xs">{r.area}</div>
+
+                {/* Lista */}
+                <div className="max-h-96 overflow-y-auto divide-y divide-gray-100 bg-white">
+                  {disponibles.length === 0 && (
+                    <div className="px-4 py-6 text-center text-xs text-gray-400">
+                      {sq ? "Sin resultados para esa búsqueda." : "Todos los riesgos del mapa ya están en valuación."}
                     </div>
-                    <span className="font-bold text-red-600 flex-shrink-0 whitespace-nowrap">−{usd(Math.abs(r.impacto))}</span>
-                    <Plus size={13} className="text-[#1a2744] flex-shrink-0"/>
-                  </button>
-                ))}
-                {disponibles.length===0 && <div className="text-xs text-gray-400 px-2.5 py-2">Ya trajiste todos los riesgos del mapa a esta lista.</div>}
+                  )}
+                  {disponibles.map(r => (
+                    <button key={r.id} onClick={() => traerRiesgo(r,100)} disabled={riskAdding}
+                      className="w-full text-left px-3 py-2.5 hover:bg-blue-50 active:bg-blue-100 transition-colors disabled:opacity-40 group">
+                      <div className="flex items-start justify-between gap-3">
+                        {/* Texto del riesgo — completo, sin truncate */}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs text-gray-800 leading-snug mb-1 group-hover:text-[#1a2744] font-medium">
+                            {r.riesgo}
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className={`inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded ${estadoColor[r.estado] ?? "bg-gray-100 text-gray-600"}`}>
+                              {r.estado}
+                            </span>
+                            {r.area && (
+                              <span className="inline-block text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                                {r.area}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {/* Impacto + botón */}
+                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                          <span className="text-xs font-bold text-red-600 whitespace-nowrap">
+                            −{usd(Math.abs(r.impacto))}
+                          </span>
+                          <span className="flex items-center gap-0.5 text-[10px] font-semibold text-white bg-[#1a2744] group-hover:bg-blue-700 px-2 py-0.5 rounded-full transition-colors whitespace-nowrap">
+                            <Plus size={10}/> Agregar
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Pie */}
+                <div className="bg-gray-50 px-3 py-2 text-[10px] text-gray-400 border-t border-gray-100">
+                  Se agrega con 100% de impacto. Ajustá el porcentaje después desde la lista de arriba.
+                </div>
               </div>
             )
           })()}
