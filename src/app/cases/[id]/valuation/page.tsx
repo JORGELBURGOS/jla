@@ -776,30 +776,37 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
           </div>
           {showTraerPicker && (() => {
             const yaTraidos = new Set(riesgoAjustes.map(r=>r.origen_riesgo_id).filter(Boolean))
-            const sq = pickerSearch.toLowerCase().trim()
+            // normalizar texto para búsqueda sin importar tildes
+            const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+            const sq = norm(pickerSearch.trim())
             const estadoColor: Record<string,string> = {
               "CONFIRMADO":  "bg-red-100 text-red-700",
               "IDENTIFICADO":"bg-amber-100 text-amber-700",
               "CONDICIONAL": "bg-blue-100 text-blue-700",
             }
             const estadoOrd: Record<string,number> = { CONFIRMADO:0, IDENTIFICADO:1, CONDICIONAL:2 }
-            const disponibles = riesgoDetalle
-              .filter(r => !yaTraidos.has(r.id))
-              .filter(r => !sq || r.riesgo.toLowerCase().includes(sq) || (r.area||"").toLowerCase().includes(sq))
+            // Mostrar TODOS — los ya incluidos van al fondo con badge
+            const todos = riesgoDetalle
+              .filter(r => !sq || norm(r.riesgo).includes(sq) || norm(r.area||"").includes(sq))
               .sort((a,b) => {
-                if (pickerSort==="impacto") return a.impacto - b.impacto          // más negativo primero
+                // Ya incluidos siempre al fondo
+                const aY = yaTraidos.has(a.id) ? 1 : 0
+                const bY = yaTraidos.has(b.id) ? 1 : 0
+                if (aY !== bY) return aY - bY
+                if (pickerSort==="impacto") return a.impacto - b.impacto
                 if (pickerSort==="estado")  return (estadoOrd[a.estado]??9) - (estadoOrd[b.estado]??9)
                 return (a.area||"").localeCompare(b.area||"")
               })
+            const nDisp = todos.filter(r => !yaTraidos.has(r.id)).length
             return (
               <div className="mb-4 rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                {/* Cabecera con buscador y orden */}
+                {/* Cabecera */}
                 <div className="bg-[#1a2744] px-3 py-2.5 flex items-center gap-2">
                   <input
                     autoFocus
                     value={pickerSearch}
                     onChange={e => setPickerSearch(e.target.value)}
-                    placeholder="Buscar por nombre o área..."
+                    placeholder="Buscar por nombre o área (sin tildes también funciona)..."
                     className="flex-1 text-xs bg-white/10 text-white placeholder-white/50 rounded-lg px-2.5 py-1.5 outline-none border border-white/20 focus:border-white/50"
                   />
                   <select value={pickerSort} onChange={e=>setPickerSort(e.target.value as any)}
@@ -808,53 +815,85 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                     <option value="estado">Por estado</option>
                     <option value="area">Por área</option>
                   </select>
-                  <span className="text-white/60 text-xs whitespace-nowrap">{disponibles.length} disponibles</span>
+                  <span className="text-white/60 text-xs whitespace-nowrap">
+                    {nDisp} para agregar
+                  </span>
                 </div>
 
-                {/* Lista */}
+                {/* Lista — todos visibles */}
                 <div className="max-h-96 overflow-y-auto divide-y divide-gray-100 bg-white">
-                  {disponibles.length === 0 && (
+                  {todos.length === 0 && (
                     <div className="px-4 py-6 text-center text-xs text-gray-400">
-                      {sq ? "Sin resultados para esa búsqueda." : "Todos los riesgos del mapa ya están en valuación."}
+                      Sin resultados para esa búsqueda.
                     </div>
                   )}
-                  {disponibles.map(r => (
-                    <button key={r.id} onClick={() => traerRiesgo(r,100)} disabled={riskAdding}
-                      className="w-full text-left px-3 py-2.5 hover:bg-blue-50 active:bg-blue-100 transition-colors disabled:opacity-40 group">
-                      <div className="flex items-start justify-between gap-3">
-                        {/* Texto del riesgo — completo, sin truncate */}
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs text-gray-800 leading-snug mb-1 group-hover:text-[#1a2744] font-medium">
-                            {r.riesgo}
-                          </div>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className={`inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded ${estadoColor[r.estado] ?? "bg-gray-100 text-gray-600"}`}>
-                              {r.estado}
-                            </span>
-                            {r.area && (
-                              <span className="inline-block text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
-                                {r.area}
+                  {todos.map(r => {
+                    const yaEsta = yaTraidos.has(r.id)
+                    return yaEsta ? (
+                      // Ya incluido — visible pero deshabilitado con badge verde
+                      <div key={r.id} className="w-full text-left px-3 py-2.5 bg-green-50/60">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs text-gray-500 leading-snug mb-1">{r.riesgo}</div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className={`inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded ${estadoColor[r.estado] ?? "bg-gray-100 text-gray-600"}`}>
+                                {r.estado}
                               </span>
-                            )}
+                              {r.area && (
+                                <span className="inline-block text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                                  {r.area}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                        {/* Impacto + botón */}
-                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                          <span className="text-xs font-bold text-red-600 whitespace-nowrap">
-                            −{usd(Math.abs(r.impacto))}
-                          </span>
-                          <span className="flex items-center gap-0.5 text-[10px] font-semibold text-white bg-[#1a2744] group-hover:bg-blue-700 px-2 py-0.5 rounded-full transition-colors whitespace-nowrap">
-                            <Plus size={10}/> Agregar
-                          </span>
+                          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                            <span className="text-xs text-gray-400 whitespace-nowrap">
+                              −{usd(Math.abs(r.impacto))}
+                            </span>
+                            <span className="text-[10px] font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full whitespace-nowrap">
+                              ✓ Ya en valuación
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </button>
-                  ))}
+                    ) : (
+                      // Disponible para agregar
+                      <button key={r.id} onClick={() => traerRiesgo(r,100)} disabled={riskAdding}
+                        className="w-full text-left px-3 py-2.5 hover:bg-blue-50 active:bg-blue-100 transition-colors disabled:opacity-40 group">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs text-gray-800 leading-snug mb-1 group-hover:text-[#1a2744] font-medium">
+                              {r.riesgo}
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className={`inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded ${estadoColor[r.estado] ?? "bg-gray-100 text-gray-600"}`}>
+                                {r.estado}
+                              </span>
+                              {r.area && (
+                                <span className="inline-block text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                                  {r.area}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                            <span className="text-xs font-bold text-red-600 whitespace-nowrap">
+                              −{usd(Math.abs(r.impacto))}
+                            </span>
+                            <span className="flex items-center gap-0.5 text-[10px] font-semibold text-white bg-[#1a2744] group-hover:bg-blue-700 px-2 py-0.5 rounded-full transition-colors whitespace-nowrap">
+                              <Plus size={10}/> Agregar
+                            </span>
+                          </div>
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
 
                 {/* Pie */}
-                <div className="bg-gray-50 px-3 py-2 text-[10px] text-gray-400 border-t border-gray-100">
-                  Se agrega con 100% de impacto. Ajustá el porcentaje después desde la lista de arriba.
+                <div className="bg-gray-50 px-3 py-2 text-[10px] text-gray-400 border-t border-gray-100 flex items-center justify-between">
+                  <span>Los marcados con ✓ ya están incluidos en la valuación.</span>
+                  <span>Se agregan con 100% — ajustá el % después.</span>
                 </div>
               </div>
             )
