@@ -30,6 +30,8 @@ const MENSAJES_ESPERA = [
   "Casi listo...",
 ]
 
+interface CuitAlerta { archivo: string; cuitEncontrado: string; cuitCaso: string }
+
 export default function TriagePage({ params }: { params: { id: string } }) {
   const caseId = params.id
   const [files, setFiles] = useState<FileItem[]>([])
@@ -45,6 +47,11 @@ export default function TriagePage({ params }: { params: { id: string } }) {
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
   const [msgEspera, setMsgEspera] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
+  // ── Validación de CUIT ────────────────────────────────────────────────────
+  const [casoCuit, setCasoCuit]     = useState<string | null>(null)
+  const [casoNombre, setCasoNombre] = useState<string>("")
+  const [alertasCuit, setAlertasCuit] = useState<CuitAlerta[]>([])
+  const [ignorarAlertas, setIgnorarAlertas] = useState(false)
   const esperaTimer = useRef<ReturnType<typeof setInterval> | null>(null)
 
   function showToast(msg: string, ok = true) { setToast({ msg, ok }); setTimeout(() => setToast(null), 6000) }
@@ -62,6 +69,31 @@ export default function TriagePage({ params }: { params: { id: string } }) {
     }
     return () => { if (esperaTimer.current) clearInterval(esperaTimer.current) }
   }, [analyzing])
+
+  // Cargar CUIT del caso al montar
+  useEffect(() => {
+    const sb = (async () => {
+      const { createClient } = await import("@/lib/supabase/client")
+      const { data } = await createClient()
+        .from("dd_cases").select("cuit,nombre").eq("id", caseId).single()
+      if (data?.cuit) setCasoCuit(String(data.cuit).replace(/[\s]/g,""))
+      if (data?.nombre) setCasoNombre(String(data.nombre))
+    })
+    sb()
+  }, [caseId])
+
+  /** Extrae CUITs del texto crudo de un PDF leyendo sus bytes como texto */
+  function extractCuitsFromPdf(bytes: Uint8Array): string[] {
+    // Convertir bytes legibles a string — suficiente para encontrar números con guiones
+    let txt = ""
+    const lim = Math.min(bytes.length, 80000)
+    for (let i = 0; i < lim; i++) {
+      const c = bytes[i]
+      txt += (c >= 32 && c < 127) ? String.fromCharCode(c) : " "
+    }
+    const matches = [...txt.matchAll(/\b(\d{2}[\-\s]?\d{8}[\-\s]?\d)\b/g)]
+    return [...new Set(matches.map(m => m[1].replace(/[\-\s]/g,"")))]
+  }
 
   const readFiles = useCallback(async (fileList: FileList) => {
     const nuevos = Array.from(fileList)
@@ -84,6 +116,21 @@ export default function TriagePage({ params }: { params: { id: string } }) {
       if (ext === "pdf") mime = "application/pdf"
       else if (ext === "png") mime = "image/png"
       else if (ext === "jpg" || ext === "jpeg") mime = "image/jpeg"
+      // ── Validar CUIT ──────────────────────────────────────────────────────
+      if (mime === "application/pdf" && casoCuit) {
+        const buf = await f.arrayBuffer()
+        const cuitsDoc = extractCuitsFromPdf(new Uint8Array(buf))
+        // Solo alertar si el doc tiene CUITs Y ninguno coincide con el del caso
+        if (cuitsDoc.length > 0 && !cuitsDoc.includes(casoCuit)) {
+          const nuevas: CuitAlerta[] = cuitsDoc.map(c => ({
+            archivo: f.name,
+            cuitEncontrado: c,
+            cuitCaso: casoCuit,
+          }))
+          setAlertasCuit(prev => [...prev, ...nuevas])
+          setIgnorarAlertas(false)
+        }
+      }
       items.push({ file: f, base64: b64, mediaType: mime })
     }
     const totalMB = ([...files, ...items].reduce((s, fi) => s + fi.base64.length, 0) * 0.75) / 1024 / 1024
@@ -221,6 +268,51 @@ export default function TriagePage({ params }: { params: { id: string } }) {
         <h1 className="text-xl font-bold text-gray-900">Triage de Documentos</h1>
         <p className="text-sm text-gray-500">La IA identifica el documento, cruza con el tracker y propone cambios — vos aprobás antes de aplicar</p>
       </div>
+
+      {/* ── Alerta de CUIT incorrecto ──────────────────────────────────────────── */}
+      {alertasCuit.length > 0 && !ignorarAlertas && (
+        <div className="mb-5 rounded-xl border-2 border-red-400 bg-red-50 p-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="text-red-500 flex-shrink-0 mt-0.5" size={22}/>
+            <div className="flex-1">
+              <p className="font-bold text-red-700 text-sm mb-2">
+                Este documento no parece corresponder a la empresa en análisis
+              </p>
+              {alertasCuit.map((a, i) => (
+                <div key={i} className="text-xs text-red-700 mb-1.5 bg-red-100 rounded-lg px-3 py-2">
+                  <span className="font-semibold">{a.archivo}</span>
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    <span>CUIT en el documento:</span>
+                    <code className="bg-white px-1.5 py-0.5 rounded border border-red-300 font-bold">{a.cuitEncontrado}</code>
+                    <span className="text-red-400">≠</span>
+                    <span>CUIT del caso:</span>
+                    <code className="bg-white px-1.5 py-0.5 rounded border border-red-300 font-bold">{a.cuitCaso}</code>
+                  </div>
+                </div>
+              ))}
+              <p className="text-xs text-red-600 mt-2">
+                Continuar puede generar cambios incorrectos en el tracker, supuestos y mapa de riesgos de <strong>{casoNombre}</strong>.
+              </p>
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => {
+                    const archivos = new Set(alertasCuit.map(a => a.archivo))
+                    setFiles(prev => prev.filter(f => !archivos.has(f.file.name)))
+                    setAlertasCuit([])
+                  }}
+                  className="px-3 py-1.5 text-xs font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                  Remover documento{alertasCuit.length > 1 ? "s" : ""}
+                </button>
+                <button
+                  onClick={() => setIgnorarAlertas(true)}
+                  className="px-3 py-1.5 text-xs font-semibold border border-red-300 text-red-700 rounded-lg hover:bg-red-100 transition-colors">
+                  Continuar de todas formas
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Drop zone */}
       {!analyzing && !resultado && (
