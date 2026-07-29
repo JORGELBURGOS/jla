@@ -97,9 +97,11 @@ export default function TriagePage({ params }: { params: { id: string } }) {
 
   const readFiles = useCallback(async (fileList: FileList) => {
     const nuevos = Array.from(fileList)
-    // Límite generoso — vamos directo a Supabase Edge Function, no a Vercel
-    const MAX_FILES = 5
-    const MAX_MB = 20  // Supabase Edge Function soporta payloads grandes
+    // Vercel tiene un techo DURO de 4,5MB para el body completo del request — no es configurable,
+    // ni con Supabase Edge Function de por medio (esta ruta corre en Vercel, punto).
+    // Base64 infla el archivo original ~37% — dejamos margen para eso más el JSON envolvente.
+    const MAX_FILES = 15
+    const MAX_MB = 3  // techo real de archivos originales para no pasar los 4,5MB de Vercel en base64
 
     if (files.length + nuevos.length > MAX_FILES) {
       showToast(`Máximo ${MAX_FILES} archivos por análisis`, false); return

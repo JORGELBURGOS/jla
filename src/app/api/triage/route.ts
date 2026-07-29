@@ -6,6 +6,11 @@ import { createHash } from 'crypto'
 
 const ORG_ID = 'jl-advisory'
 
+// Analizar varios documentos con Claude puede tardar — sin esto, Vercel usa el default
+// de la plataforma (a veces solo 10s). Si tu plan no soporta este valor, Vercel lo capea
+// al máximo que tengas disponible, no debería romper nada.
+export const maxDuration = 300
+
 export async function POST(req: NextRequest) {
   const { caseId, files } = await req.json()
   if (!caseId || !files?.length) return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
