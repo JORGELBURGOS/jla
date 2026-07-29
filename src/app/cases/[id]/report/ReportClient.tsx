@@ -14,7 +14,6 @@ interface Props {
   valid: Record<string,unknown>[]
   valuation: ValuationResult
   savedNarrativa: Record<string,unknown> | null
-  balance: Record<string,unknown>[]
   cerrados: Record<string,unknown>[]
 }
 
@@ -59,7 +58,7 @@ const ESTADO_COLOR: Record<string, { bg: string; text: string }> = {
   Pendiente: { bg:"#fee2e2", text:"#991b1b" },
 }
 
-export default function ReportClient({ caseId, caso, reqs, risks, sups, env, valid, valuation: v, savedNarrativa, balance, cerrados }: Props) {
+export default function ReportClient({ caseId, caso, reqs, risks, sups, env, valid, valuation: v, savedNarrativa, cerrados }: Props) {
   const [generating, setGenerating] = useState(false)
   const initial = savedNarrativa && savedNarrativa.resumen_ejecutivo ? {
     recomendacion: String(savedNarrativa.recomendacion ?? ""),
@@ -739,7 +738,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
       <div style={{ margin:"0 0 24px" }}>
         <div className="section-header">Sección 11 — Evolución Financiera 2021–2025</div>
         <div style={{ fontSize:"9px", color:"#9ca3af", marginBottom:"12px" }}>Ingresos y EBITDA validados cruzando EECC auditados con declaraciones juradas de IVA ante ARCA (diferencia &lt; 0,5%). Datos calculados dinámicamente del balance.</div>
-        {balance.length > 0 ? (
+        {v.evolucionFinanciera.length > 0 ? (
           <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"10px" }}>
             <thead><tr style={{ background:"#1a2744", color:"white" }}>
               <th style={{ padding:"6px 8px", textAlign:"left" }}>Ejercicio</th>
@@ -749,12 +748,8 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
               <th style={{ padding:"6px 8px", textAlign:"right" }}>Result. neto</th>
             </tr></thead>
             <tbody>
-              {[...balance].sort((a:any,b:any)=>String(a.ejercicio).localeCompare(String(b.ejercicio))).map((b:any,i:number)=>{
-                const tc=Number(b.tc_promedio)||1
-                const ing=Math.round((Number(b.ingresos)||0)/tc)
-                const ebit=Math.round(((Number(b.ingresos)||0)-(Number(b.costos_servicios)||0)-(Number(b.gastos_admin)||0)-(Number(b.gastos_comercial)||0))/tc)
-                const rn=Math.round((Number(b.resultado_neto)||0)/tc)
-                const marg=ing>0?Math.round(ebit/ing*100):0
+              {v.evolucionFinanciera.map((b,i:number)=>{
+                const ing = b.ingresos, ebit = b.ebitda, rn = b.resultadoNeto, marg = b.margen
                 return (
                   <tr key={i} style={{ background:i%2===0?"#f9fafb":"white", borderBottom:"0.5px solid #e5e7eb" }}>
                     <td style={{ padding:"5px 8px", fontWeight:600 }}>{String(b.ejercicio)}</td>
@@ -801,8 +796,8 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
           <tbody>
             {[
               {l:"Plan del vendedor (horno + YPF)", m2:v.valorM2, prom:v.promMetodos, c:"#d97706"},
-              {l:"Conservador (crecimiento orgánico 10%/año)", m2:v.valorM2conservador, prom:v.promConservador, c:"#16a34a"},
-              {l:"Base real (EBITDA contable, 5%/año)", m2:v.valorM2pesimista, prom:v.promPesimista, c:"#dc2626"},
+              {l:"B — Sin horno ni cliente estratégico", m2:v.valorM2B, prom:v.promB, c:"#16a34a"},
+              {l:"C — Solo horno acreditado en CAA", m2:v.valorM2C, prom:v.promC, c:"#dc2626"},
             ].map((row,i)=>(
               <tr key={i} style={{ borderBottom:"0.5px solid #e5e7eb", background:i===0?"#fff7ed":i===1?"#f0fdf4":"#fef2f2" }}>
                 <td style={{ padding:"5px 8px" }}>{row.l}</td>

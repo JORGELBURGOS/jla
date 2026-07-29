@@ -134,6 +134,20 @@ export interface ValuationResult {
   promPesimista: number        // promedio de métodos con M2 pesimista
   primaCrecimiento: number     // diferencia entre escenario vendedor y conservador = earn-out target
 
+  // ── Escenarios B/C — atados a los riesgos reales del caso (horno, cliente estratégico) ──
+  // Consolidado acá: antes vivía calculado por separado y en paralelo en pantalla y PDF, con
+  // fórmulas que divergían entre sí. Única fuente de verdad de ahora en más.
+  flB: number[]
+  flC: number[]
+  valorM2B: number             // Escenario B — sin horno acreditado ni cliente estratégico confirmado
+  valorM2C: number             // Escenario C — solo horno acreditado en CAA (ítems 33/34)
+  promB: number
+  promC: number
+
+  // Evolución financiera 2021-2025 — consolidada acá, antes vivía calculada dos veces
+  // por separado (pantalla y PDF) con una divergencia real en la fórmula del EBITDA.
+  evolucionFinanciera: { ejercicio: string; ingresos: number; ebitda: number; margen: number; resultadoNeto: number }[]
+
   // ── Índice de Confiabilidad del DD — qué tan lista está la info para el inversor ──
   // NO es el % de avance del tracker (eso mide papeleo). Esto mide certeza real:
   // cuánto del riesgo en USD está confirmado con evidencia dura, cuánto de los
@@ -170,6 +184,7 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
     { data: riesgosMapa },
     { data: riesgoAjustes },
     { data: reqs },
+    { data: balanceSheet },
   ] = await Promise.all([
     db.from("dd_cases").select("nombre,precio_pedido").eq("id", caseId).single(),
     db.from("dd_case_assumptions").select("label,valor,nota").eq("case_id", caseId),
@@ -178,6 +193,7 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
       .not("estado", "in", '("DUPLICADO","RECLASIFICADO","CERRADO")').lt("impacto", 0),
     db.from("dd_case_risk_adjustments").select("id,origen_riesgo_id,porcentaje,estado,descripcion,nota").eq("case_id", caseId),
     db.from("dd_case_requirements").select("documento,estado,antes_sena").eq("case_id", caseId),
+    db.from("dd_case_balance_sheet").select("ejercicio,ingresos,costos_servicios,gastos_admin,gastos_comercial,depreciacion,resultado_neto,tc_promedio").eq("case_id", caseId),
   ])
 
   const casoR = (caso ?? {}) as { nombre?: string; precio_pedido?: number }
@@ -186,6 +202,18 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
   const riesgosR = (riesgosMapa ?? []) as { id:string; riesgo:string; area:string; impacto:number; accion_requerida:string; estado:string }[]
   const ajustesR = (riesgoAjustes ?? []) as { id:string; origen_riesgo_id:string; porcentaje:number; estado:string; descripcion:string|null; nota:string|null }[]
   const reqsR = (reqs ?? []) as { documento:string; estado:string; antes_sena:boolean }[]
+  const balanceR = (balanceSheet ?? []) as { ejercicio:string; ingresos:number; costos_servicios:number; gastos_admin:number; gastos_comercial:number; depreciacion:number; resultado_neto:number; tc_promedio:number }[]
+
+  const evolucionFinanciera = [...balanceR].sort((a,b) => a.ejercicio.localeCompare(b.ejercicio)).map(b => {
+    const tc = b.tc_promedio || 1
+    const ingresosUSD = Math.round(b.ingresos / tc)
+    const ebitdaUSD = Math.round((b.ingresos - b.costos_servicios - b.gastos_admin - b.gastos_comercial + b.depreciacion) / tc)
+    const resultadoNetoUSD = Math.round(b.resultado_neto / tc)
+    return {
+      ejercicio: b.ejercicio, ingresos: ingresosUSD, ebitda: ebitdaUSD, resultadoNeto: resultadoNetoUSD,
+      margen: ingresosUSD > 0 ? Math.round(ebitdaUSD / ingresosUSD * 100) : 0,
+    }
+  })
 
   const caseName = casoR.nombre ?? ""
   const precio   = Number(casoR.precio_pedido ?? 0)
@@ -284,6 +312,20 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
   const promPesimista   = Math.round((valorM1 + valorM2pesimista   + valorM3mid) / 3)
   const primaCrecimiento = Math.max(0, valorM2 - valorM2conservador)
 
+  // Escenario B: sin horno ni cliente estratégico — misma fórmula que "conservador" (10%/año orgánico)
+  const flB = [ebitdaBase2, Math.round(ebitdaBase2*1.10), Math.round(ebitdaBase2*1.21), Math.round(ebitdaBase2*1.33), Math.round(ebitdaBase2*1.46)]
+  const valorM2B = valorM2conservador
+  const promB = promConservador
+
+  // Escenario C: solo horno acreditado — aplica descuento sobre el plan del vendedor si existe,
+  // o una curva propia si no hay proyección cargada
+  const flC = dcfY1 > 0
+    ? [ebitdaBase2, Math.round(dcfY1*0.80), Math.round(dcfY2*0.73), Math.round(dcfY3*0.66), Math.round(dcfY4*0.71)]
+    : [ebitdaBase2, Math.round(ebitdaBase2*1.30), Math.round(ebitdaBase2*1.65), Math.round(ebitdaBase2*1.95), Math.round(ebitdaBase2*2.10)]
+  const vpC = flC.reduce((s, f, i) => s + f / Math.pow(1 + tasaDCF, i + 1), 0)
+  const valorM2C = Math.round(vpC + (flC[flC.length - 1] * multVR) / Math.pow(1 + tasaDCF, flC.length))
+  const promC = Math.round((valorM1 + valorM2C + valorM3mid) / 3)
+
   // ── Índice de Confiabilidad del DD ──
 
   // Componente 1: tracker ponderado por bloqueante + cascada por área (16%)
@@ -360,6 +402,7 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
     multMinComp, multMaxComp, valorM3min, valorM3max, valorM3mid,
     promMetodos, descLiq, valorLiq, ofertaInic, ofertaMax, multImpl, scaleMax,
     valorM2conservador, valorM2pesimista, promConservador, promPesimista, primaCrecimiento,
+    flB, flC, valorM2B, valorM2C, promB, promC, evolucionFinanciera,
     icddTracker, icddRiesgo, icddActivos, icddOferta, indiceConfiabilidad,
   }
 }

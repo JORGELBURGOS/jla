@@ -14,7 +14,6 @@ interface Props {
   valuation: ValuationResult
   savedNarrativa: Record<string,unknown> | null
   execOverride?: string | null
-  balance: Record<string,unknown>[]
   cerrados: Record<string,unknown>[]
 }
 
@@ -46,7 +45,7 @@ function fmtSupuesto(label: string, valor: unknown): string {
 
 const ACTIVOS = ["CONFIRMADO","IDENTIFICADO","CONDICIONAL"]
 
-export default function PrintClient({ caso, reqs, risks, sups, valid, valuation: v, savedNarrativa, execOverride, balance, cerrados }: Props) {
+export default function PrintClient({ caso, reqs, risks, sups, valid, valuation: v, savedNarrativa, execOverride, cerrados }: Props) {
   // Narrativa ejecutiva: la que viaja por ?exec= tiene prioridad; si no, la guardada.
   let fromExec: Record<string,unknown> | null = null
   try { if (execOverride) fromExec = JSON.parse(execOverride) } catch { fromExec = null }
@@ -68,31 +67,14 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
   }, [])
 
   // ── Derivados ─────────────────────────────────────────────────────
-  // ── Defaults seguros para propiedades nuevas de compute.ts ──────────────────
-  // Evita crashes en runtime si alguna propiedad nueva no está disponible
-  // Si compute.ts no provee los flujos, los calculamos localmente con los datos disponibles
-  const _eb2 = Number((v as any).ebitdaBase2 ?? v.ebitdaNorm ?? 0)
-  const _y1  = Number((v as any).dcfY1 ?? 0)
-  const _y2  = Number((v as any).dcfY2 ?? 0)
-  const _y3  = Number((v as any).dcfY3 ?? 0)
-  const _y4  = Number((v as any).dcfY4 ?? 0)
-  const _tasa = Number((v as any).tasaDCF ?? 0.25)
-  const _mVR  = Number((v as any).multVR  ?? 8)
-  const _m3   = Number((v as any).valorM3mid ?? 0)
-  const _m1   = Number((v as any).valorM1  ?? 0)
-  function _dcfCalc(fl: number[]): number {
-    const vp = fl.reduce((s,f,i)=>s+f/Math.pow(1+_tasa,i+1),0)
-    return Math.round(vp+(fl[fl.length-1]*_mVR)/Math.pow(1+_tasa,fl.length))
-  }
-  const _flB_def = [_eb2,Math.round(_eb2*1.10),Math.round(_eb2*1.21),Math.round(_eb2*1.33),Math.round(_eb2*1.46)]
-  const _flC_def = _y1>0 ? [_eb2,Math.round(_y1*0.80),Math.round(_y2*0.73),Math.round(_y3*0.66),Math.round(_y4*0.71)]
-                          : [_eb2,Math.round(_eb2*1.30),Math.round(_eb2*1.65),Math.round(_eb2*1.95),Math.round(_eb2*2.10)]
-  const flB = (v as any).flB ?? _flB_def
-  const flC = (v as any).flC ?? _flC_def
-  const valorM2B = Number((v as any).valorM2B ?? _dcfCalc(flB))
-  const valorM2C = Number((v as any).valorM2C ?? _dcfCalc(flC))
-  const promB = Number((v as any).promB ?? Math.round((_m1+valorM2B+_m3)/3))
-  const promC = Number((v as any).promC ?? Math.round((_m1+valorM2C+_m3)/3))
+  // Escenarios B/C: consolidados en compute.ts (única fuente de verdad).
+  // Antes se calculaban acá también, en paralelo, con riesgo real de divergencia.
+  const flB = v.flB
+  const flC = v.flC
+  const valorM2B = v.valorM2B
+  const valorM2C = v.valorM2C
+  const promB = v.promB
+  const promC = v.promC
   const dcfY1 = Number((v as any).dcfY1 ?? 0)
   const dcfY2 = Number((v as any).dcfY2 ?? 0)
   const dcfY3 = Number((v as any).dcfY3 ?? 0)
@@ -281,13 +263,8 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
               <th style={{...th, textAlign:"right"}}>Resultado neto</th>
             </tr></thead>
             <tbody>
-              {[...balance].sort((a:any,b:any)=>String(a.ejercicio).localeCompare(String(b.ejercicio))).map((b:any,i:number) => {
-                const tc = Number(b.tc_promedio)||1
-                const ing = Math.round((Number(b.ingresos)||0)/tc)
-                const dep = Number(b.depreciacion)||0
-                const ebit = Math.round(((Number(b.ingresos)||0)-(Number(b.costos_servicios)||0)-(Number(b.gastos_admin)||0)-(Number(b.gastos_comercial)||0)+dep)/tc)
-                const rn = Math.round((Number(b.resultado_neto)||0)/tc)
-                const marg = ing>0?Math.round(ebit/ing*100):0
+              {v.evolucionFinanciera.map((b,i:number) => {
+                const ing = b.ingresos, ebit = b.ebitda, rn = b.resultadoNeto, marg = b.margen
                 return (
                   <tr key={i} style={{ background:i%2===0?"#f9fafb":"white" }}>
                     <td style={td}>{String(b.ejercicio)}</td>
