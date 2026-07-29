@@ -1,4 +1,5 @@
 "use client"
+import React from "react"
 import { useState, useRef } from "react"
 import { Loader } from "lucide-react"
 import type { ValuationResult } from "@/lib/valuation/compute"
@@ -13,6 +14,8 @@ interface Props {
   valid: Record<string,unknown>[]
   valuation: ValuationResult
   savedNarrativa: Record<string,unknown> | null
+  balance: Record<string,unknown>[]
+  cerrados: Record<string,unknown>[]
 }
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -21,6 +24,25 @@ function fmtUSD(n: number) {
   if (a >= 1_000_000) return `${s}USD ${(a/1_000_000).toFixed(2)}M`
   return `${s}USD ${Math.round(a).toLocaleString("es-AR")}`
 }
+
+// Formatea los valores de la Seccion 7: todo en USD con miles con punto;
+// montos 2026 en ARS convertidos a TC 1.500; %, multiplos y TC con su unidad.
+function fmtSupuesto(label: string, valor: unknown): string {
+  const raw = String(valor ?? "").split("|")[0].trim()
+  if (!raw) return "Pendiente"
+  const n = Number(raw)
+  if (isNaN(n)) return raw
+  const miles = (x: number) => Math.abs(Math.round(x)).toLocaleString("es-AR")
+  const sign = n < 0 ? "-" : ""
+  if (label.includes("(ARS)") && label.includes("2026")) return `${sign}USD ${miles(n / 1500)}`
+  if (label.includes("(ARS)")) return `${sign}ARS ${miles(n)}`
+  if (label.includes("ARS por USD")) return `ARS ${n.toLocaleString("es-AR")}`
+  if (label.includes("(USD)")) return `${sign}USD ${miles(n)}`
+  if (label.includes("(%)")) return `${n.toLocaleString("es-AR")}%`
+  if (label.includes("(\u00d7)")) return `${n.toLocaleString("es-AR")}\u00d7`
+  return n.toLocaleString("es-AR")
+}
+
 function getSup(sups: Record<string,unknown>[], keys: string[]): number | null {
   const f = sups.find(s => keys.some(k => String(s.label).toLowerCase().includes(k.toLowerCase())))
   if (!f?.valor) return null
@@ -37,7 +59,7 @@ const ESTADO_COLOR: Record<string, { bg: string; text: string }> = {
   Pendiente: { bg:"#fee2e2", text:"#991b1b" },
 }
 
-export default function ReportClient({ caseId, caso, reqs, risks, sups, env, valid, valuation: v, savedNarrativa }: Props) {
+export default function ReportClient({ caseId, caso, reqs, risks, sups, env, valid, valuation: v, savedNarrativa, balance, cerrados }: Props) {
   const [generating, setGenerating] = useState(false)
   const initial = savedNarrativa && savedNarrativa.resumen_ejecutivo ? {
     recomendacion: String(savedNarrativa.recomendacion ?? ""),
@@ -74,13 +96,14 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
   const multiploImplicito = (precio && ebitda && ebitda > 0) ? precio / ebitda : null
 
   // Riesgos: desglose cualitativo por estado del workflow de DD (no confundir con el $ ajustado de la valuación)
-  const riesgoTotal = risks.reduce((s, r) => s + (Number(r.impacto) || 0), 0)
+  const ACTIVOS_EST = ["CONFIRMADO","IDENTIFICADO","CONDICIONAL"]
+  const riesgoTotal = risks.filter(r => ACTIVOS_EST.includes(String(r.estado))).reduce((s, r) => s + (Number(r.impacto) || 0), 0)
   const riesgoConf  = risks.filter(r => r.estado === "CONFIRMADO").reduce((s,r) => s + Number(r.impacto||0), 0)
   const riesgoIden  = risks.filter(r => r.estado === "IDENTIFICADO").reduce((s,r) => s + Number(r.impacto||0), 0)
   const riesgoCond  = risks.filter(r => r.estado === "CONDICIONAL").reduce((s,r) => s + Number(r.impacto||0), 0)
 
   // Secciones del tracker
-  const secciones = [...new Set(reqs.map(r => String(r.seccion ?? "")))]
+  const secciones = Array.from(new Set(reqs.map(r => String(r.seccion ?? ""))))
   const certs = env.filter(e => e.tipo === "certificado")
   const corrientes = env.filter(e => e.tipo === "corriente")
     .sort((a, b) => parseInt(String(a.clave).replace("Y","")) - parseInt(String(b.clave).replace("Y","")))
@@ -109,7 +132,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
   // ── Abrir página limpia para imprimir/guardar como PDF ──────────────
   function imprimir() {
     const execParam = narrativa ? encodeURIComponent(JSON.stringify(narrativa)) : ""
-    const url = `/cases/${caseId}/report/print${execParam ? "?exec=" + execParam : ""}`
+    const url = `/print/${caseId}${execParam ? "?exec=" + execParam : ""}`
     window.open(url, "_blank", "width=900,height=800")
   }
 
@@ -359,13 +382,30 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
               <thead><tr><th>Riesgo</th><th>Área</th><th style={{textAlign:"right"}}>En el mapa</th><th style={{textAlign:"right"}}>%</th><th style={{textAlign:"right"}}>Ajustado</th></tr></thead>
               <tbody>
                 {[...v.riesgoAjustesLive].sort((a,b)=>b.monto-a.monto).map(r => (
-                  <tr key={r.id}>
-                    <td style={{ fontSize:"9px" }}>{r.descripcion}</td>
-                    <td style={{ fontSize:"9px", color:"#6b7280" }}>{r.area}</td>
-                    <td style={{ textAlign:"right", fontSize:"9px" }}>{fmtUSD(r.impactoActual)}</td>
-                    <td style={{ textAlign:"right", fontSize:"9px" }}>{r.porcentaje.toFixed(0)}%</td>
-                    <td style={{ textAlign:"right", fontSize:"9px", fontWeight:700, color:"#dc2626" }}>{fmtUSD(r.monto)}</td>
-                  </tr>
+                  <React.Fragment key={r.id}>
+                    <tr style={{ borderTop: "1.5px solid #f3f4f6" }}>
+                      <td style={{ fontSize:"9px", fontWeight:600, paddingTop:"6px" }}>{r.descripcion}</td>
+                      <td style={{ fontSize:"9px", color:"#6b7280" }}>{r.area}</td>
+                      <td style={{ textAlign:"right", fontSize:"9px" }}>{fmtUSD(r.impactoActual)}</td>
+                      <td style={{ textAlign:"right", fontSize:"9px" }}>{r.porcentaje.toFixed(0)}%</td>
+                      <td style={{ textAlign:"right", fontSize:"9px", fontWeight:700, color:"#dc2626" }}>{fmtUSD(r.monto)}</td>
+                    </tr>
+                    {r.descripcion_analista && (
+                      <tr><td colSpan={5} style={{ fontSize:"8px", color:"#4b5563", paddingBottom:"2px", paddingLeft:"6px", borderLeft:"2px solid #e5e7eb" }}>
+                        <span style={{ fontWeight:600, color:"#374151" }}>Por qué fue elegido: </span>{r.descripcion_analista}
+                      </td></tr>
+                    )}
+                    {r.nota_porcentaje && (
+                      <tr><td colSpan={5} style={{ fontSize:"8px", color:"#6b7280", paddingBottom:"6px", paddingLeft:"6px", borderLeft:"2px solid #e5e7eb" }}>
+                        <span style={{ fontWeight:600, color:"#4b5563" }}>Por qué este %: </span>{r.nota_porcentaje}
+                      </td></tr>
+                    )}
+                    {!r.descripcion_analista && !r.nota_porcentaje && r.nota && (
+                      <tr><td colSpan={5} style={{ fontSize:"8px", color:"#6b7280", paddingBottom:"6px", paddingLeft:"6px", borderLeft:"2px solid #e5e7eb", whiteSpace:"pre-wrap" }}>
+                        <span style={{ fontWeight:600, color:"#4b5563" }}>Justificación: </span>{r.nota}
+                      </td></tr>
+                    )}
+                  </React.Fragment>
                 ))}
                 <tr style={{ background:"#fef2f2" }}>
                   <td colSpan={4} style={{ fontWeight:800 }}>Total riesgos ajustados</td>
@@ -373,26 +413,6 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
                 </tr>
               </tbody>
             </table>
-
-            <div style={{ marginTop:"16px", paddingTop:"12px", borderTop:"1px dashed #e5e7eb" }}>
-              <div style={{ fontWeight:700, fontSize:"10px", color:"#1a2744", marginBottom:"10px" }}>
-                Detalle y evidencia de cada riesgo — para que el inversor tenga el sustento completo, no solo el número
-              </div>
-              {[...v.riesgoAjustesLive].sort((a,b)=>b.monto-a.monto).map(r => (
-                <div key={r.id} style={{ border:"1px solid #fecaca", borderRadius:"8px", padding:"12px", marginBottom:"10px", background:"#fffbfb" }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"start", marginBottom:"4px", gap:"12px" }}>
-                    <div style={{ fontWeight:700, fontSize:"10px", color:"#1a2744" }}>{r.descripcion}</div>
-                    <div style={{ fontWeight:800, fontSize:"11px", color:"#dc2626", whiteSpace:"nowrap" }}>−{fmtUSD(r.monto)}</div>
-                  </div>
-                  <div style={{ fontSize:"8px", color:"#6b7280", marginBottom:"6px" }}>
-                    {r.area} · Impacto en el mapa de riesgos: {fmtUSD(r.impactoActual)} · Aplicado al {r.porcentaje.toFixed(0)}% en esta valuación
-                  </div>
-                  <div style={{ fontSize:"9px", color:"#374151", lineHeight:1.7, whiteSpace:"pre-wrap" }}>
-                    {r.nota || "Sin justificación adicional cargada para este riesgo."}
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
 
           {/* 4. Conclusión — oferta recomendada */}
@@ -458,7 +478,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
             <tbody>
               {risks.map((r, i) => (
                 <tr key={i}>
-                  <td style={{ maxWidth:"280px", fontSize:"9px" }}>{String(r.riesgo ?? "").slice(0,90)}</td>
+                  <td style={{ maxWidth:"280px", fontSize:"9px" }}>{String(r.riesgo ?? "")}</td>
                   <td style={{ whiteSpace:"nowrap" }}>{String(r.area ?? "")}</td>
                   <td><span style={{ color: r.probabilidad === "ALTA" ? "#dc2626" : r.probabilidad === "MEDIA" ? "#d97706" : "#16a34a", fontWeight:700 }}>{String(r.probabilidad ?? "")}</span></td>
                   <td style={{ textAlign:"right", fontWeight:700, color: Number(r.impacto) < 0 ? "#dc2626" : "#374151" }}>{Number(r.impacto) !== 0 ? fmtUSD(Number(r.impacto)) : "—"}</td>
@@ -514,7 +534,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
                 {/* Alertas de esta sección */}
                 {secReqs.filter(r => r.alertas).slice(0,2).map((r, i) => (
                   <div key={i} style={{ marginTop:"4px", fontSize:"9px", color:"#dc2626", paddingLeft:"8px", borderLeft:"2px solid #fca5a5" }}>
-                    N°{String(r.n_item)}: {String(r.alertas ?? "").slice(0,120)}
+                    N°{String(r.n_item)}: {String(r.alertas ?? "")}
                   </div>
                 ))}
               </div>
@@ -560,7 +580,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
               {corrientes.map((c, i) => (
                 <div key={i} style={{ border:"1px solid #e5e7eb", borderRadius:"6px", padding:"8px", background: String(c.estado) === "VIGENTE" ? "#f8fafc" : "#fef2f2" }}>
                   <div style={{ fontWeight:700, fontSize:"10px", color:"#1a2744" }}>{String(c.clave ?? "")}</div>
-                  <div style={{ fontSize:"8px", color:"#6b7280", marginTop:"2px" }}>{String(c.categoria ?? "").slice(0,45)}</div>
+                  <div style={{ fontSize:"8px", color:"#6b7280", marginTop:"2px" }}>{String(c.categoria ?? "")}</div>
                   <div style={{ marginTop:"4px" }}>
                     <span className="badge" style={{ background: String(c.estado) === "VIGENTE" ? "#d1fae5" : "#fee2e2", color: String(c.estado) === "VIGENTE" ? "#065f46" : "#991b1b" }}>
                       {String(c.estado ?? "")}
@@ -587,9 +607,9 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
                 return (
                   <tr key={i}>
                     <td style={{ fontWeight:600, maxWidth:"160px" }}>{String(v.clave ?? "")}</td>
-                    <td style={{ fontSize:"9px", color:"#374151", maxWidth:"140px" }}>{String(v.dato_plan ?? "—").slice(0,80)}</td>
-                    <td style={{ fontSize:"9px", fontWeight:600, maxWidth:"140px" }}>{String(v.dato_real ?? "Pendiente").slice(0,80)}</td>
-                    <td style={{ fontSize:"9px", color: String(v.brecha ?? "").includes("CRÍTICA") || String(v.brecha ?? "").includes("-") ? "#dc2626" : "#374151", maxWidth:"120px" }}>{String(v.brecha ?? "—").slice(0,60)}</td>
+                    <td style={{ fontSize:"9px", color:"#374151", maxWidth:"140px" }}>{String(v.dato_plan ?? "—")}</td>
+                    <td style={{ fontSize:"9px", fontWeight:600, maxWidth:"140px" }}>{String(v.dato_real ?? "Pendiente")}</td>
+                    <td style={{ fontSize:"9px", color: String(v.brecha ?? "").includes("CRÍTICA") || String(v.brecha ?? "").includes("-") ? "#dc2626" : "#374151", maxWidth:"120px" }}>{String(v.brecha ?? "—")}</td>
                     <td>
                       <span className="badge" style={{ background:estadoColor.bg, color:estadoColor.text }}>
                         {estado}
@@ -605,7 +625,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
           {valid.filter(v => v.estado === "Cuestionado" && v.observaciones).slice(0,4).map((v, i) => (
             <div key={i} style={{ background:"#fef2f2", border:"1px solid #fecaca", borderRadius:"6px", padding:"10px", marginBottom:"8px", fontSize:"10px" }}>
               <div style={{ fontWeight:700, color:"#dc2626", marginBottom:"4px" }}>✗ {String(v.clave ?? "")}</div>
-              <div style={{ color:"#7f1d1d", lineHeight:1.5 }}>{String(v.observaciones ?? "").slice(0,250)}</div>
+              <div style={{ color:"#7f1d1d", lineHeight:1.5 }}>{String(v.observaciones ?? "")}</div>
             </div>
           ))}
         </div>
@@ -613,6 +633,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
         {/* ══════════ S7: SUPUESTOS DEL MODELO ══════════ */}
         <div className="page-break" style={{ padding:"40px 50px" }}>
           <div className="section-header">Sección 7 — Supuestos del Modelo</div>
+          <div style={{ fontSize:"9px", color:"#9ca3af", marginBottom:"12px" }}>Importes expresados en dólares estadounidenses. Los valores del ejercicio en curso originalmente denominados en pesos fueron convertidos al tipo de cambio de referencia de ARS 1.500 por dólar.</div>
 
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"24px" }}>
             {/* Financieros */}
@@ -622,7 +643,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
                 <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"5px 0", borderBottom:"1px solid #f3f4f6", fontSize:"10px" }}>
                   <span style={{ color:"#6b7280", flex:1 }}>{String(s.label ?? "")}</span>
                   <span style={{ fontWeight: s.valor ? 700 : 400, color: s.valor ? "#1a2744" : "#9ca3af", marginLeft:"8px" }}>
-                    {s.valor ? String(s.valor).split("|")[0].trim().slice(0,30) : "Pendiente"}
+                    {fmtSupuesto(String(s.label ?? ""), s.valor)}
                   </span>
                 </div>
               ))}
@@ -635,7 +656,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
                 <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"5px 0", borderBottom:"1px solid #f3f4f6", fontSize:"10px" }}>
                   <span style={{ color:"#6b7280", flex:1, paddingRight:"8px" }}>{String(s.label ?? "")}</span>
                   <span style={{ fontWeight: s.valor ? 700 : 400, color: s.valor ? "#1a2744" : "#9ca3af" }}>
-                    {s.valor ? String(s.valor).slice(0,25) : "Pendiente"}
+                    {s.valor ? String(s.valor) : "Pendiente"}
                   </span>
                 </div>
               ))}
@@ -681,7 +702,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
                       {items.length === 0 && <div style={{ fontSize:"9px", color:"#9ca3af" }}>Sin ítems en esta etapa</div>}
                       {items.slice(0,5).map(r => (
                         <div key={r.id} style={{ fontSize:"9px", color:"#374151", marginBottom:"6px", lineHeight:1.4 }}>
-                          · {r.descripcion.length > 70 ? r.descripcion.slice(0,70)+"…" : r.descripcion}
+                          · {r.descripcion}
                         </div>
                       ))}
                     </div>
@@ -712,6 +733,132 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
           </div>
         </div>
 
+      </div>
+
+      {/* ─── SECCIÓN 11: EVOLUCIÓN FINANCIERA ─── */}
+      <div style={{ margin:"0 0 24px" }}>
+        <div className="section-header">Sección 11 — Evolución Financiera 2021–2025</div>
+        <div style={{ fontSize:"9px", color:"#9ca3af", marginBottom:"12px" }}>Ingresos y EBITDA validados cruzando EECC auditados con declaraciones juradas de IVA ante ARCA (diferencia &lt; 0,5%). Datos calculados dinámicamente del balance.</div>
+        {balance.length > 0 ? (
+          <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"10px" }}>
+            <thead><tr style={{ background:"#1a2744", color:"white" }}>
+              <th style={{ padding:"6px 8px", textAlign:"left" }}>Ejercicio</th>
+              <th style={{ padding:"6px 8px", textAlign:"right" }}>Ingresos</th>
+              <th style={{ padding:"6px 8px", textAlign:"right" }}>EBITDA</th>
+              <th style={{ padding:"6px 8px", textAlign:"right" }}>Margen</th>
+              <th style={{ padding:"6px 8px", textAlign:"right" }}>Result. neto</th>
+            </tr></thead>
+            <tbody>
+              {[...balance].sort((a:any,b:any)=>String(a.ejercicio).localeCompare(String(b.ejercicio))).map((b:any,i:number)=>{
+                const tc=Number(b.tc_promedio)||1
+                const ing=Math.round((Number(b.ingresos)||0)/tc)
+                const ebit=Math.round(((Number(b.ingresos)||0)-(Number(b.costos_servicios)||0)-(Number(b.gastos_admin)||0)-(Number(b.gastos_comercial)||0))/tc)
+                const rn=Math.round((Number(b.resultado_neto)||0)/tc)
+                const marg=ing>0?Math.round(ebit/ing*100):0
+                return (
+                  <tr key={i} style={{ background:i%2===0?"#f9fafb":"white", borderBottom:"0.5px solid #e5e7eb" }}>
+                    <td style={{ padding:"5px 8px", fontWeight:600 }}>{String(b.ejercicio)}</td>
+                    <td style={{ padding:"5px 8px", textAlign:"right" }}>{fmtUSD(ing)}</td>
+                    <td style={{ padding:"5px 8px", textAlign:"right", fontWeight:700, color:ebit<0?"#dc2626":"#16a34a" }}>{fmtUSD(ebit)}</td>
+                    <td style={{ padding:"5px 8px", textAlign:"right", color:ebit<0?"#dc2626":"#16a34a" }}>{marg}%</td>
+                    <td style={{ padding:"5px 8px", textAlign:"right", color:rn<0?"#dc2626":"#374151" }}>{fmtUSD(rn)}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        ) : <div style={{ color:"#9ca3af", fontSize:"10px" }}>Sin datos de balance cargados.</div>}
+      </div>
+
+      {/* ─── SECCIÓN 12: TESIS DE INVERSIÓN ─── */}
+      <div style={{ margin:"0 0 24px" }}>
+        <div className="section-header">Sección 12 — Tesis de Inversión</div>
+        <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
+          {[
+            {n:"1.",t:"Respaldo patrimonial", body:`Activos revaluados ${fmtUSD(v.activosRevalu)} (inmueble ${fmtUSD(v.totalInmueble)}). Activos netos deducidos ajustes: ${fmtUSD(v.activosNetos)}.`},
+            {n:"2.",t:"Barrera regulatoria", body:"CAA Operador + DIA vigentes. Competencia nueva tarda 3-5 años. Demanda por imposición legal (Ley 24.051), no depende del ciclo económico."},
+            {n:"3.",t:"Ingresos validados por ARCA (IVA)", body:`Facturación ${fmtUSD(v.ingresos)} validada con F.2051 (diferencia -0,5%). Fuente independiente del vendedor y del auditor.`},
+          ].map((item,i)=>(
+            <div key={i} style={{ display:"flex", gap:"8px", padding:"10px", background:"#f8fafc", borderRadius:"8px", borderLeft:"3px solid #1a2744" }}>
+              <span style={{ fontWeight:700, color:"#1a2744", flexShrink:0 }}>{item.n}</span>
+              <div><span style={{ fontWeight:700, color:"#1a2744" }}>{item.t}: </span><span style={{ color:"#374151", fontSize:"10px" }}>{item.body}</span></div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ─── SECCIÓN 13: ESCENARIOS ─── */}
+      <div style={{ margin:"0 0 24px" }}>
+        <div className="section-header">Sección 13 — Escenarios de Valuación</div>
+        <div style={{ fontSize:"9px", color:"#9ca3af", marginBottom:"8px" }}>Tasa {(v.tasaDCF*100).toFixed(0)}% · Múltiplo terminal {v.multVR}× · Prima de crecimiento earn-out target: {fmtUSD(v.primaCrecimiento)}</div>
+        <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"10px" }}>
+          <thead><tr style={{ background:"#1a2744", color:"white" }}>
+            <th style={{ padding:"5px 8px", textAlign:"left" }}>Escenario</th>
+            <th style={{ padding:"5px 8px", textAlign:"right" }}>DCF (M2)</th>
+            <th style={{ padding:"5px 8px", textAlign:"right" }}>Promedio métodos</th>
+            <th style={{ padding:"5px 8px", textAlign:"right" }}>vs. precio pedido</th>
+          </tr></thead>
+          <tbody>
+            {[
+              {l:"Plan del vendedor (horno + YPF)", m2:v.valorM2, prom:v.promMetodos, c:"#d97706"},
+              {l:"Conservador (crecimiento orgánico 10%/año)", m2:v.valorM2conservador, prom:v.promConservador, c:"#16a34a"},
+              {l:"Base real (EBITDA contable, 5%/año)", m2:v.valorM2pesimista, prom:v.promPesimista, c:"#dc2626"},
+            ].map((row,i)=>(
+              <tr key={i} style={{ borderBottom:"0.5px solid #e5e7eb", background:i===0?"#fff7ed":i===1?"#f0fdf4":"#fef2f2" }}>
+                <td style={{ padding:"5px 8px" }}>{row.l}</td>
+                <td style={{ padding:"5px 8px", textAlign:"right", fontWeight:700 }}>{fmtUSD(row.m2)}</td>
+                <td style={{ padding:"5px 8px", textAlign:"right", fontWeight:700, color:row.c }}>{fmtUSD(row.prom)}</td>
+                <td style={{ padding:"5px 8px", textAlign:"right", color:row.prom>=v.precio?"#16a34a":"#dc2626" }}>{v.precio>0?`${((row.prom/v.precio-1)*100).toFixed(1)}%`:"—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ─── SECCIÓN 14: RIESGOS RESUELTOS ─── */}
+      {cerrados.filter((r:any)=>Number(r.impacto)<0).length>0&&(
+      <div style={{ margin:"0 0 24px" }}>
+        <div className="section-header">Sección 14 — Riesgos Resueltos en el DD</div>
+        <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"10px" }}>
+          <thead><tr style={{ background:"#16a34a", color:"white" }}>
+            <th style={{ padding:"5px 8px", textAlign:"left" }}>Riesgo resuelto</th>
+            <th style={{ padding:"5px 8px", textAlign:"right" }}>Exposición eliminada</th>
+          </tr></thead>
+          <tbody>
+            {cerrados.filter((r:any)=>Number(r.impacto)<0).map((r:any,i:number)=>(
+              <tr key={i} style={{ borderBottom:"0.5px solid #e5e7eb" }}>
+                <td style={{ padding:"5px 8px", color:"#16a34a" }}>{String(r.riesgo).slice(0,80)}</td>
+                <td style={{ padding:"5px 8px", textAlign:"right", color:"#16a34a", fontWeight:700 }}>{fmtUSD(Math.abs(Number(r.impacto)))}</td>
+              </tr>
+            ))}
+            <tr style={{ background:"#dcfce7" }}>
+              <td style={{ padding:"5px 8px", fontWeight:700, color:"#16a34a" }}>Total eliminado durante el DD</td>
+              <td style={{ padding:"5px 8px", textAlign:"right", fontWeight:800, color:"#16a34a" }}>{fmtUSD(cerrados.filter((r:any)=>Number(r.impacto)<0).reduce((s:number,r:any)=>s+Math.abs(Number(r.impacto)),0))}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      )}
+
+      {/* ─── SECCIÓN 15: ESTRUCTURA DEL DEAL ─── */}
+      <div style={{ margin:"0 0 24px" }}>
+        <div className="section-header">Sección 15 — Estructura de la Transacción Recomendada</div>
+        <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
+          {[
+            {l:"Precio base al contado", v2:fmtUSD(v.ofertaInic), d:`Valor sin plan de crecimiento del vendedor. Máximo negociable si todas las condiciones se cumplen: ${fmtUSD(v.ofertaMax)}.`},
+            {l:"Ajuste al closing", v2:"Capital de trabajo neto", d:"El precio se ajustará por la variación del capital de trabajo neto entre firma y closing."},
+            {l:"Escrow de contingencias (18 meses)", v2:`15% — ${fmtUSD(Math.round(v.ofertaInic*0.15))}`, d:"Para cubrir: tardanzas IVA/IIBB, SIPA acumulado y potencial IIBB subdeclarado may-sep 2025."},
+            {l:"Earn-out (2 años)", v2:fmtUSD(v.primaCrecimiento), d:`50% si EBITDA año 1 > ${fmtUSD(Math.round(v.ebitdaBase2*1.5))} y 50% si año 2 > ${fmtUSD(Math.round(v.ebitdaBase2*2.0))}. Condicional a horno en CAA y contrato YPF.`},
+          ].map((item,i)=>(
+            <div key={i} style={{ display:"flex", justifyContent:"space-between", gap:"12px", padding:"10px 12px", background:"#f8fafc", borderRadius:"8px", borderLeft:"3px solid #d97706" }}>
+              <div style={{ flex:1 }}>
+                <div style={{ fontWeight:700, color:"#1a2744", fontSize:"10px" }}>{item.l}</div>
+                <div style={{ color:"#6b7280", fontSize:"9px", marginTop:"2px" }}>{item.d}</div>
+              </div>
+              <div style={{ fontWeight:800, color:"#d97706", fontSize:"11px", whiteSpace:"nowrap" }}>{item.v2}</div>
+            </div>
+          ))}
+        </div>
       </div>
     </>
   )
