@@ -26,7 +26,7 @@ export default async function PrintPage({
   ] = await Promise.all([
     db.from("dd_cases").select("*, industry:dd_industries(nombre), sub_sector:dd_sub_sectors(nombre)").eq("id", id).single(),
     db.from("dd_case_requirements").select("*").eq("case_id", id).order("seccion_orden").order("n_item"),
-    db.from("dd_case_risks").select("*").eq("case_id", id).neq("estado","DUPLICADO").neq("estado","RECLASIFICADO").order("fila_orden"),
+    db.from("dd_case_risks").select("*").eq("case_id", id).neq("estado","DUPLICADO").neq("estado","RECLASIFICADO").neq("estado","CERRADO").order("fila_orden"),
     db.from("dd_case_assumptions").select("*").eq("case_id", id).order("orden"),
     db.from("dd_case_environmental").select("*").eq("case_id", id).order("orden"),
     db.from("dd_case_validation").select("*").eq("case_id", id).order("seccion_orden"),
