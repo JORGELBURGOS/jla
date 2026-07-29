@@ -16,11 +16,6 @@ type ItemLink = {
   documento: string; estado: string
 }
 
-const ESTADOS = ["IDENTIFICADO","CONFIRMADO","CONDICIONAL","CERRADO","DUPLICADO","RECLASIFICADO"]
-const ACTIVE = ["IDENTIFICADO","CONFIRMADO","CONDICIONAL"]
-const PRIORIDADES = ["ALTA","MEDIA","BAJA","N/A"]
-const PROBS = ["ALTA","MEDIA","BAJA"]
-
 function fmtUSD(n: number) {
   return (n < 0 ? "-" : "") + "USD " + Math.abs(n).toLocaleString("es-AR")
 }
@@ -29,46 +24,15 @@ function ProbBadge({ p }: { p: string }) {
   const cls = p === "ALTA" ? "bg-red-100 text-red-800 border-red-200"
     : p === "MEDIA" ? "bg-amber-100 text-amber-800 border-amber-200"
     : "bg-gray-100 text-gray-600 border-gray-200"
-  return <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${cls}`}>Prob: {p}</span>
+  return <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${cls}`}>{p}</span>
 }
 
-function RiskRow({ r, defaultOpen, links, caseId, highlight, onUpdated }: {
+function RiskRow({ r, defaultOpen, links, caseId, highlight }: {
   r: Risk; defaultOpen?: boolean; links: ItemLink[]
   caseId: string; highlight?: boolean
-  onUpdated: (u: { id: string; impacto: number; estado: string; prioridad: string; probabilidad: string }) => void
 }) {
   const [open, setOpen] = useState(defaultOpen ?? false)
-  const [editing, setEditing] = useState(false)
-  const [impDraft, setImpDraft] = useState(String(r.impacto))
-  const [estDraft, setEstDraft] = useState(r.estado)
-  const [priDraft, setPriDraft] = useState(r.prioridad ?? "N/A")
-  const [probDraft, setProbDraft] = useState(r.probabilidad ?? "MEDIA")
-  const [motivo, setMotivo] = useState("")
-  const [saving, setSaving] = useState(false)
-  const [err, setErr] = useState<string | null>(null)
   const ref = useRef<HTMLDivElement>(null)
-
-  async function save() {
-    setSaving(true); setErr(null)
-    try {
-      const body: Record<string, unknown> = {}
-      const impNum = Math.round(Number(impDraft))
-      if (Number.isFinite(impNum) && impNum !== r.impacto) body.impacto = impNum
-      if (estDraft !== r.estado) body.estado = estDraft
-      if (priDraft !== (r.prioridad ?? "N/A")) body.prioridad = priDraft
-      if (probDraft !== (r.probabilidad ?? "MEDIA")) body.probabilidad = probDraft
-      if (motivo.trim()) body.motivo = motivo.trim()
-      if (!("impacto" in body) && !("estado" in body) && !("prioridad" in body) && !("probabilidad" in body)) { setEditing(false); setSaving(false); return }
-      const res = await fetch(`/api/cases/${caseId}/risks/${r.id}`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
-      })
-      const data = await res.json()
-      if (!res.ok || !data.ok) throw new Error(data.error || "No se pudo guardar")
-      onUpdated({ id: r.id, impacto: data.impacto, estado: data.estado, prioridad: data.prioridad, probabilidad: data.probabilidad })
-      setEditing(false); setMotivo("")
-    } catch (e) { setErr(e instanceof Error ? e.message : "Error") }
-    finally { setSaving(false) }
-  }
 
   useEffect(() => {
     if (highlight) {
@@ -101,7 +65,6 @@ function RiskRow({ r, defaultOpen, links, caseId, highlight, onUpdated }: {
         <div className="flex items-center gap-2 flex-shrink-0 ml-2">
           {r.es_dinamico && <span className="text-xs bg-purple-100 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded-full font-bold">Dinámico</span>}
           <ProbBadge p={r.probabilidad}/>
-          <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${r.prioridad==="ALTA"?"bg-red-50 text-red-700 border-red-200":"bg-gray-50 text-gray-600 border-gray-200"}`}>Prio: {r.prioridad ?? "N/A"}</span>
           <span className={`text-base font-black w-32 text-right ${r.impacto < 0 ? "text-red-700" : "text-gray-500"}`}>
             {fmtUSD(r.impacto)}
           </span>
@@ -117,56 +80,6 @@ function RiskRow({ r, defaultOpen, links, caseId, highlight, onUpdated }: {
                 {r.prioridad && <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${r.prioridad==="ALTA"?"bg-red-50 text-red-700 border-red-200":"bg-gray-50 text-gray-600 border-gray-200"}`}>Prioridad: {r.prioridad}</span>}
                 <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full">{r.estado}</span>
               </div>
-              {editing ? (
-                <div className="bg-white border border-blue-300 rounded-lg px-3 py-2 space-y-2">
-                  <div className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Editar impacto / estado</div>
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs text-gray-600 w-16">Impacto</label>
-                    <input type="number" step={1000} value={impDraft} onChange={e => setImpDraft(e.target.value)}
-                      className="border border-gray-300 rounded px-2 py-1 text-xs w-36 text-right" />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs text-gray-600 w-16">Estado</label>
-                    <select value={estDraft} onChange={e => setEstDraft(e.target.value)}
-                      className="border border-gray-300 rounded px-2 py-1 text-xs">
-                      {ESTADOS.map(op => <option key={op} value={op}>{op}</option>)}
-                    </select>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs text-gray-600 w-16">Prioridad</label>
-                    <select value={priDraft} onChange={e => setPriDraft(e.target.value)}
-                      className="border border-gray-300 rounded px-2 py-1 text-xs">
-                      {PRIORIDADES.map(op => <option key={op} value={op}>{op}</option>)}
-                    </select>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs text-gray-600 w-16">Probabilidad</label>
-                    <select value={probDraft} onChange={e => setProbDraft(e.target.value)}
-                      className="border border-gray-300 rounded px-2 py-1 text-xs">
-                      {PROBS.map(op => <option key={op} value={op}>{op}</option>)}
-                    </select>
-                  </div>
-                  <input type="text" placeholder="motivo (opcional)" value={motivo} onChange={e => setMotivo(e.target.value)}
-                    className="border border-gray-300 rounded px-2 py-1 text-xs w-full" />
-                  {!ACTIVE.includes(estDraft) && (
-                    <div className="text-xs text-amber-700">Con este estado el riesgo deja de sumar al total (el impacto se conserva).</div>
-                  )}
-                  {err && <div className="text-xs text-red-600">{err}</div>}
-                  <div className="flex gap-2">
-                    <button onClick={save} disabled={saving}
-                      className="text-xs bg-[#1a2744] text-white px-3 py-1 rounded font-bold disabled:opacity-50">
-                      {saving ? "Guardando..." : "Guardar"}
-                    </button>
-                    <button onClick={() => { setEditing(false); setErr(null) }} disabled={saving}
-                      className="text-xs border border-gray-300 px-3 py-1 rounded">Cancelar</button>
-                  </div>
-                </div>
-              ) : (
-                <button onClick={() => { setImpDraft(String(r.impacto)); setEstDraft(r.estado); setPriDraft(r.prioridad ?? "N/A"); setProbDraft(r.probabilidad ?? "MEDIA"); setEditing(true) }}
-                  className="text-xs text-blue-700 border border-blue-200 rounded px-2 py-1 hover:bg-blue-50 w-fit">
-                  Editar impacto / estado
-                </button>
-              )}
               {r.accion_requerida && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
                   <div className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-0.5">Justificación y valuación</div>
@@ -217,23 +130,20 @@ function RiskRow({ r, defaultOpen, links, caseId, highlight, onUpdated }: {
   )
 }
 
-function NivelSection({ titulo, descripcion, nivel, risks, total, expandAll, color, itemLinksMap, caseId, highlightId, onUpdated, badgeLabel, defaultCollapsed }: {
+function NivelSection({ titulo, descripcion, nivel, risks, total, expandAll, color, itemLinksMap, caseId, highlightId }: {
   titulo: string; descripcion: string; nivel: string
   risks: Risk[]; total: number; expandAll: boolean
-  color: "green" | "amber" | "purple" | "gray"
+  color: "green" | "amber" | "purple"
   itemLinksMap: Record<string, ItemLink[]>
   caseId: string; highlightId: string
-  onUpdated: (u: { id: string; impacto: number; estado: string; prioridad: string; probabilidad: string }) => void
-  badgeLabel?: string; defaultCollapsed?: boolean
 }) {
-  const [collapsed, setCollapsed] = useState(defaultCollapsed ?? false)
+  const [collapsed, setCollapsed] = useState(false)
   if (!risks.length) return null
 
   const colors = {
     green:  { header:"bg-green-50 border-green-200",   badge:"bg-green-100 text-green-800 border-green-300",   amt:"text-green-700" },
     amber:  { header:"bg-amber-50 border-amber-200",   badge:"bg-amber-100 text-amber-800 border-amber-300",   amt:"text-amber-700" },
     purple: { header:"bg-purple-50 border-purple-200", badge:"bg-purple-100 text-purple-800 border-purple-300", amt:"text-purple-700" },
-    gray:   { header:"bg-gray-50 border-gray-200", badge:"bg-gray-100 text-gray-700 border-gray-300", amt:"text-gray-500" },
   }
   const c = colors[color]
 
@@ -243,7 +153,7 @@ function NivelSection({ titulo, descripcion, nivel, risks, total, expandAll, col
         onClick={() => setCollapsed(x => !x)}>
         <div className="flex items-center gap-3">
           {collapsed ? <ChevronRight size={16}/> : <ChevronDown size={16}/>}
-          <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${c.badge}`}>{badgeLabel ?? `NIVEL ${nivel}`}</span>
+          <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${c.badge}`}>NIVEL {nivel}</span>
           <div className="text-left">
             <div className="font-bold text-sm text-gray-900">{titulo}</div>
             <div className="text-xs text-gray-500">{descripcion}</div>
@@ -261,8 +171,7 @@ function NivelSection({ titulo, descripcion, nivel, risks, total, expandAll, col
               defaultOpen={expandAll || r.id === highlightId}
               links={itemLinksMap[r.id] ?? []}
               caseId={caseId}
-              highlight={r.id === highlightId}
-              onUpdated={onUpdated}/>
+              highlight={r.id === highlightId}/>
           ))}
         </div>
       )}
@@ -287,6 +196,7 @@ export default function RisksPage({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     db.from("dd_case_risks").select("*").eq("case_id", caseId)
+      .not("estado", "in", '("DUPLICADO")')
       .order("fila_orden")
       .then(({ data }) => setRisks((data ?? []) as Risk[]))
 
@@ -317,19 +227,14 @@ export default function RisksPage({ params }: { params: { id: string } }) {
   const confirmados   = risks.filter(r => r.estado==="CONFIRMADO").sort((a,b) => a.impacto-b.impacto)
   const identificados = risks.filter(r => r.estado==="IDENTIFICADO").sort((a,b) => a.impacto-b.impacto)
   const condicionales = risks.filter(r => r.estado==="CONDICIONAL").sort((a,b) => a.impacto-b.impacto)
-  const cerrados      = risks.filter(r => r.estado==="CERRADO").sort((a,b) => a.impacto-b.impacto)
-  const duplicados    = risks.filter(r => r.estado==="DUPLICADO").sort((a,b) => a.impacto-b.impacto)
   const reclasif      = risks.filter(r => r.estado==="RECLASIFICADO")
-
-  const onRiskUpdated = (u: { id: string; impacto: number; estado: string; prioridad: string; probabilidad: string }) =>
-    setRisks(prev => prev.map(x => x.id === u.id ? { ...x, impacto: u.impacto, estado: u.estado, prioridad: u.prioridad, probabilidad: u.probabilidad } : x))
 
   const totalC  = confirmados.reduce((s,r) => s+r.impacto, 0)
   const totalI  = identificados.reduce((s,r) => s+r.impacto, 0)
   const totalCd = condicionales.reduce((s,r) => s+r.impacto, 0)
   const total   = totalC+totalI+totalCd
 
-  const sharedProps = { expandAll, itemLinksMap, caseId, highlightId, onUpdated: onRiskUpdated }
+  const sharedProps = { expandAll, itemLinksMap, caseId, highlightId }
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -337,7 +242,7 @@ export default function RisksPage({ params }: { params: { id: string } }) {
         <div>
           <h1 className="text-xl font-bold text-gray-900">Mapa de Riesgos</h1>
           <p className="text-sm text-gray-500">
-            {confirmados.length + identificados.length + condicionales.length} riesgos activos
+            {risks.filter(r => !["DUPLICADO","RECLASIFICADO","CERRADO"].includes(r.estado)).length} riesgos activos
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -355,8 +260,6 @@ export default function RisksPage({ params }: { params: { id: string } }) {
       <NivelSection titulo="CONFIRMADO" descripcion="Evidencia documental dura" nivel="1" risks={confirmados} total={totalC} color="green" {...sharedProps}/>
       <NivelSection titulo="IDENTIFICADO" descripcion="Respaldo parcial — notas o respuesta ambigua del vendedor" nivel="2" risks={identificados} total={totalI} color="amber" {...sharedProps}/>
       <NivelSection titulo="CONDICIONAL" descripcion="Depende de supuestos clave" nivel="3" risks={condicionales} total={totalCd} color="purple" {...sharedProps}/>
-      <NivelSection titulo="CERRADOS" descripcion="Resueltos o descartados — no suman al total" nivel="" badgeLabel="CERRADOS" defaultCollapsed risks={cerrados} total={cerrados.reduce((s,r)=>s+r.impacto,0)} color="gray" {...sharedProps}/>
-      <NivelSection titulo="DUPLICADOS" descripcion="Copias neutralizadas — no suman al total" nivel="" badgeLabel="DUPLICADOS" defaultCollapsed risks={duplicados} total={0} color="gray" {...sharedProps}/>
 
       <div className="bg-[#1a2744] text-white rounded-xl p-4 mt-2 flex justify-between items-center">
         <div>
