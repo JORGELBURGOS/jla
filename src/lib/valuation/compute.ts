@@ -33,11 +33,9 @@ export interface RiesgoAjustadoLive {
   origen_riesgo_id: string
   porcentaje: number
   estado: string
-  descripcion: string      // texto del riesgo del mapa (nombre corto)
+  descripcion: string
   area: string
-  nota: string             // accion_requerida del riesgo
-  descripcion_analista: string  // por qué fue elegido (de dd_case_risk_adjustments.descripcion)
-  nota_porcentaje: string       // por qué este % (de dd_case_risk_adjustments.nota)
+  nota: string
   impactoActual: number
   monto: number
 }
@@ -94,23 +92,6 @@ export interface ValuationResult {
   ofertaMax: number
   multImpl: number
   scaleMax: number
-
-  // Escenario conservador
-  valorM2conservador: number
-  valorM2pesimista: number
-  promConservador: number
-  promPesimista: number
-  primaCrecimiento: number
-
-  // Escenarios de negociación (para tabla de proyecciones)
-  // B: sin horno ni cliente estratégico — crecimiento orgánico 10%/año sobre base norm.
-  // C: con horno habilitado, sin cliente estratégico (~70-80% del plan del vendedor)
-  flB: number[]          // flujos año a año escenario B
-  flC: number[]          // flujos año a año escenario C
-  valorM2B: number       // DCF escenario B
-  valorM2C: number       // DCF escenario C
-  promB: number          // promedio 3 métodos escenario B
-  promC: number          // promedio 3 métodos escenario C
 }
 
 const sup = (rows: {label:string;valor:string}[], label: string, fallback = 0): number => {
@@ -132,14 +113,14 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
     db.from("dd_case_assets").select("categoria,cantidad,precio_unitario,valor_usd").eq("case_id", caseId),
     db.from("dd_case_risks").select("id,riesgo,area,impacto,accion_requerida").eq("case_id", caseId)
       .not("estado", "in", '("DUPLICADO","RECLASIFICADO","CERRADO")').lt("impacto", 0),
-    db.from("dd_case_risk_adjustments").select("id,origen_riesgo_id,porcentaje,estado,descripcion,nota").eq("case_id", caseId),
+    db.from("dd_case_risk_adjustments").select("id,origen_riesgo_id,porcentaje,estado").eq("case_id", caseId),
   ])
 
   const casoR = (caso ?? {}) as { nombre?: string; precio_pedido?: number }
   const supsR = (sups ?? []) as { label: string; valor: string }[]
   const assetsR = (assets ?? []) as Asset[]
   const riesgosR = (riesgosMapa ?? []) as { id:string; riesgo:string; area:string; impacto:number; accion_requerida:string }[]
-  const ajustesR = (riesgoAjustes ?? []) as { id:string; origen_riesgo_id:string; porcentaje:number; estado:string; descripcion:string|null; nota:string|null }[]
+  const ajustesR = (riesgoAjustes ?? []) as { id:string; origen_riesgo_id:string; porcentaje:number; estado:string }[]
 
   const caseName = casoR.nombre ?? ""
   const precio   = Number(casoR.precio_pedido ?? 0)
@@ -175,9 +156,7 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
 
   // ── Riesgos: total del mapa + cruce en vivo de los ajustados con mitigantes ──
   const riesgosAbs = riesgosR.reduce((s, r) => s + Math.abs(r.impacto), 0)
-  const riesgoAjustesLive: RiesgoAjustadoLive[] = ajustesR
-    .filter(r => r.estado !== 'Reencuadrado') // excluye los reencuadrados a condicion precedente
-    .map(r => {
+  const riesgoAjustesLive: RiesgoAjustadoLive[] = ajustesR.map(r => {
     const origen = riesgosR.find(rd => rd.id === r.origen_riesgo_id)
     const impactoActual = origen ? Math.abs(origen.impacto) : 0
     return {
@@ -187,8 +166,6 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
       nota: origen?.accion_requerida ?? "",
       impactoActual,
       monto: Math.round(impactoActual * r.porcentaje / 100),
-      descripcion_analista: r.descripcion ?? "",
-      nota_porcentaje: r.nota ?? "",
     }
   })
   const riesgosAjust = riesgoAjustesLive.reduce((s, r) => s + r.monto, 0)
@@ -219,38 +196,6 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
   const multImpl = ebitdaBase2 > 0 ? Math.round(ofertaInic / ebitdaBase2) : 0
   const scaleMax = Math.max(precio, valorM1, ofertaMax) * 1.05
 
-  // ── Escenarios alternativos de DCF ──
-  // Conservador: ebitdaNorm como base estabilizada, crecimiento orgánico 10%/año
-  const consBase = ebitdaBase2 > 0 ? ebitdaBase2 : ebitda
-  const flujosCons = [consBase, consBase*1.10, consBase*1.21, consBase*1.33, consBase*1.46]
-  const vpCons = flujosCons.reduce((s,f,i) => s + f/Math.pow(1+tasaDCF,i+1), 0)
-  const vpConsTerm = (consBase*1.46*multVR)/Math.pow(1+tasaDCF,5)
-  const valorM2conservador = Math.round(vpCons + vpConsTerm)
-
-  // Pesimista: EBITDA real sin normalizar, crecimiento 5%/año
-  const pesBase = ebitda
-  const flujosPes = [pesBase, pesBase*1.05, pesBase*1.10, pesBase*1.16, pesBase*1.22]
-  const vpPes = flujosPes.reduce((s,f,i) => s + f/Math.pow(1+tasaDCF,i+1), 0)
-  const vpPesTerm = (pesBase*1.22*multVR)/Math.pow(1+tasaDCF,5)
-  const valorM2pesimista = Math.round(vpPes + vpPesTerm)
-
-  const promConservador = Math.round((valorM1 + valorM2conservador + valorM3mid) / 3)
-  const promPesimista   = Math.round((valorM1 + valorM2pesimista   + valorM3mid) / 3)
-  const primaCrecimiento = Math.max(0, valorM2 - valorM2conservador)
-
-  // ── Escenarios de negociación ──
-  const b = ebitdaBase2
-  const flB = [b, Math.round(b*1.10), Math.round(b*1.21), Math.round(b*1.33), Math.round(b*1.46)]
-  const vpB = flB.reduce((s,f,i)=>s+f/Math.pow(1+tasaDCF,i+1),0)
-  const valorM2B = Math.round(vpB + (flB[4]*multVR)/Math.pow(1+tasaDCF,5))
-  const promB = Math.round((valorM1 + valorM2B + valorM3mid) / 3)
-
-  const flC = [b, Math.round(dcfY1*0.80), Math.round(dcfY2*0.73),
-               Math.round(dcfY3*0.66), Math.round(dcfY4*0.71)]
-  const vpC = flC.reduce((s,f,i)=>s+f/Math.pow(1+tasaDCF,i+1),0)
-  const valorM2C = Math.round(vpC + (flC[4]*multVR)/Math.pow(1+tasaDCF,5))
-  const promC = Math.round((valorM1 + valorM2C + valorM3mid) / 3)
-
   return {
     caseName, precio, ingresos, ebitda, ebitdaNorm, ebitdaBase2,
     activosRevalu, totalInmueble, totalMaquinaria, totalIntangLive, totalCarteraLive, flotaVal, totalOtros,
@@ -259,8 +204,6 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
     tasaDCF, dcfY1, dcfY2, dcfY3, dcfY4, multVR, vpTerminal, valorM2,
     multMinComp, multMaxComp, valorM3min, valorM3max, valorM3mid,
     promMetodos, descLiq, valorLiq, ofertaInic, ofertaMax, multImpl, scaleMax,
-    valorM2conservador, valorM2pesimista, promConservador, promPesimista, primaCrecimiento,
-    flB, flC, valorM2B, valorM2C, promB, promC,
   }
 }
 
