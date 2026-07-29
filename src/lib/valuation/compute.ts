@@ -20,12 +20,43 @@ type Asset = {
   cantidad: number | null
   precio_unitario: number | null
   valor_usd: number | null
+  estado: string | null
 }
 
 function getVal(a: Asset): number {
   return (a.cantidad != null && a.precio_unitario != null)
     ? Math.round(a.cantidad * a.precio_unitario)
     : (a.valor_usd || 0)
+}
+
+// ── Clasificador de área por palabra clave — gana la que aparece primero en el texto ──
+// Reutilizable para clasificar ítems del tracker NUEVOS, no solo los existentes.
+// Validado a mano contra los 60 ítems reales del caso antes de incorporarlo.
+const AREA_KEYWORDS: Record<string,string[]> = {
+  Ambiental:  ["ambiental","caa ","caa)","caa,","dia —","dia—","declaración de impacto",
+               "dpa","corriente y","corrientes y","residuo","manifiesto","amianto","desorción",
+               "pirolítico","rrpp","14001"],
+  Legal:      ["contrato social","libro de socios","actas","juicio","poder notarial","escritura",
+               "título","convenio","opinión legal","póliza","vtv","forense","legal","notarial","poder","contrato","cesion"],
+  Fiscal:     ["fiscal","iva","iibb","arca","ganancias","deuda municipal","municipal","f.2051","f.2002"],
+  Laboral:    ["nómina","personal","laboral","art vigente","convenio colectivo","45001","organigrama","epp"],
+  Financiero: ["contable","ingreso","costo","endeudamiento","cuentas por cobrar","cuentas por pagar",
+               "cuenta corriente de socios","cuentas corrientes de socios","cobrar","pagar",
+               "modelo financiero","ebitda","tasación","cliente","proveedor","gasto","generadores",
+               "ypf","referencias","activos fijos","plan de negocios","tesis de inversión"],
+  Operacional:["técnic","flota","mantenimiento","capacidad instalada","diagrama de flujo",
+               "disposición final","inventario técnico"],
+}
+export function clasificarAreaRequerimiento(documento: string): string {
+  const t = documento.toLowerCase()
+  let mejorArea: string | null = null, mejorPos = t.length + 1
+  for (const [area, palabras] of Object.entries(AREA_KEYWORDS)) {
+    for (const p of palabras) {
+      const pos = t.indexOf(p.toLowerCase())
+      if (pos !== -1 && pos < mejorPos) { mejorPos = pos; mejorArea = area }
+    }
+  }
+  return mejorArea ?? "Operacional"
 }
 
 export interface RiesgoAjustadoLive {
@@ -102,6 +133,27 @@ export interface ValuationResult {
   promConservador: number      // promedio de métodos con M2 conservador
   promPesimista: number        // promedio de métodos con M2 pesimista
   primaCrecimiento: number     // diferencia entre escenario vendedor y conservador = earn-out target
+
+  // ── Índice de Confiabilidad del DD — qué tan lista está la info para el inversor ──
+  // NO es el % de avance del tracker (eso mide papeleo). Esto mide certeza real:
+  // cuánto del riesgo en USD está confirmado con evidencia dura, cuánto de los
+  // activos está verificado físicamente, y cuánto del tracker está cubierto
+  // (ponderando doble los ítems bloqueantes para la seña).
+  // ── Índice de Confiabilidad del DD — qué tan lista está la info para el inversor ──
+  // NO es el % de avance del tracker (eso mide papeleo). Esto mide qué tan defendible
+  // es el número que se le va a discutir al vendedor, combinando 4 señales:
+  // (1) tracker ponderado por bloqueantes + "cascada" (áreas que históricamente
+  //     generan más hallazgos por cada documento pedido pesan más si siguen pendientes),
+  // (2) cuánto del riesgo en USD tiene evidencia dura vs. sigue siendo sospecha,
+  // (3) cuánto del valor de activos está verificado físicamente vs. estimado,
+  // (4) solidez de la OFERTA en sí: sustento real de los supuestos clave +
+  //     convergencia entre Método 2 (DCF) y Método 3 (comparables) — Método 1
+  //     queda afuera de esta comparación a propósito, es estructuralmente distinto.
+  icddTracker: number          // componente 1 (16%): tracker ponderado + cascada por área (0-100)
+  icddRiesgo: number           // componente 2 (16%): riesgo en USD verificado con evidencia (0-100)
+  icddActivos: number          // componente 3 (8%): % del valor de activos verificado en visita (0-100)
+  icddOferta: number           // componente 4 (60%): solidez de la oferta — sustento + convergencia M2/M3 (0-100)
+  indiceConfiabilidad: number  // 16% tracker + 16% riesgo + 8% activos + 60% solidez de la oferta
 }
 
 const sup = (rows: {label:string;valor:string}[], label: string, fallback = 0): number => {
@@ -117,20 +169,23 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
     { data: assets },
     { data: riesgosMapa },
     { data: riesgoAjustes },
+    { data: reqs },
   ] = await Promise.all([
     db.from("dd_cases").select("nombre,precio_pedido").eq("id", caseId).single(),
-    db.from("dd_case_assumptions").select("label,valor").eq("case_id", caseId),
-    db.from("dd_case_assets").select("categoria,cantidad,precio_unitario,valor_usd").eq("case_id", caseId),
-    db.from("dd_case_risks").select("id,riesgo,area,impacto,accion_requerida").eq("case_id", caseId)
+    db.from("dd_case_assumptions").select("label,valor,nota").eq("case_id", caseId),
+    db.from("dd_case_assets").select("categoria,cantidad,precio_unitario,valor_usd,estado").eq("case_id", caseId),
+    db.from("dd_case_risks").select("id,riesgo,area,impacto,accion_requerida,estado").eq("case_id", caseId)
       .not("estado", "in", '("DUPLICADO","RECLASIFICADO","CERRADO")').lt("impacto", 0),
     db.from("dd_case_risk_adjustments").select("id,origen_riesgo_id,porcentaje,estado,descripcion,nota").eq("case_id", caseId),
+    db.from("dd_case_requirements").select("documento,estado,antes_sena").eq("case_id", caseId),
   ])
 
   const casoR = (caso ?? {}) as { nombre?: string; precio_pedido?: number }
-  const supsR = (sups ?? []) as { label: string; valor: string }[]
+  const supsR = (sups ?? []) as { label: string; valor: string; nota: string|null }[]
   const assetsR = (assets ?? []) as Asset[]
-  const riesgosR = (riesgosMapa ?? []) as { id:string; riesgo:string; area:string; impacto:number; accion_requerida:string }[]
+  const riesgosR = (riesgosMapa ?? []) as { id:string; riesgo:string; area:string; impacto:number; accion_requerida:string; estado:string }[]
   const ajustesR = (riesgoAjustes ?? []) as { id:string; origen_riesgo_id:string; porcentaje:number; estado:string; descripcion:string|null; nota:string|null }[]
+  const reqsR = (reqs ?? []) as { documento:string; estado:string; antes_sena:boolean }[]
 
   const caseName = casoR.nombre ?? ""
   const precio   = Number(casoR.precio_pedido ?? 0)
@@ -229,6 +284,73 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
   const promPesimista   = Math.round((valorM1 + valorM2pesimista   + valorM3mid) / 3)
   const primaCrecimiento = Math.max(0, valorM2 - valorM2conservador)
 
+  // ── Índice de Confiabilidad del DD ──
+
+  // Componente 1: tracker ponderado por bloqueante + cascada por área (16%)
+  const areaMadre = (area: string) => area.split("/")[0].trim()
+  const riesgosPorAreaMadre: Record<string, number> = {}
+  for (const r of riesgosR) {
+    const a = areaMadre(r.area)
+    riesgosPorAreaMadre[a] = (riesgosPorAreaMadre[a] ?? 0) + 1
+  }
+  const reqsPorAreaMadre: Record<string, number> = {}
+  for (const req of reqsR) {
+    const a = clasificarAreaRequerimiento(req.documento)
+    reqsPorAreaMadre[a] = (reqsPorAreaMadre[a] ?? 0) + 1
+  }
+  const densidad: Record<string, number> = {}
+  for (const a of Object.keys(reqsPorAreaMadre)) {
+    densidad[a] = (riesgosPorAreaMadre[a] ?? 0) / reqsPorAreaMadre[a]
+  }
+  const densidadMax = Math.max(1e-9, ...Object.values(densidad))
+  const factorCascada = (a: string) => 1 + (densidad[a] ?? 0) / densidadMax
+
+  let numTracker = 0, denTracker = 0
+  for (const req of reqsR) {
+    const pesoBase = req.antes_sena ? 2 : 1
+    const puntaje = req.estado === "Recibido" ? 1 : req.estado === "Parcial" ? 0.5 : 0
+    const peso = req.estado === "Pendiente" ? pesoBase * factorCascada(clasificarAreaRequerimiento(req.documento)) : pesoBase
+    numTracker += peso * puntaje
+    denTracker += peso
+  }
+  const icddTracker = denTracker > 0 ? (numTracker / denTracker) * 100 : 0
+
+  // Componente 2: riesgo en USD verificado con evidencia (16%)
+  const CONF_RIESGO: Record<string, number> = { CONFIRMADO: 1.0, CONDICIONAL: 0.5, IDENTIFICADO: 0.15 }
+  let numRiesgo = 0, denRiesgo = 0
+  for (const r of riesgosR) {
+    const abs = Math.abs(r.impacto)
+    denRiesgo += abs
+    numRiesgo += abs * (CONF_RIESGO[r.estado] ?? 0)
+  }
+  const icddRiesgo = denRiesgo > 0 ? (numRiesgo / denRiesgo) * 100 : 0
+
+  // Componente 3: % del valor de activos verificado físicamente (8%)
+  let numActivos = 0, denActivos = 0
+  for (const a of assetsR) {
+    const v = getVal(a)
+    denActivos += v
+    if (a.estado === "Verificado en visita") numActivos += v
+  }
+  const icddActivos = denActivos > 0 ? (numActivos / denActivos) * 100 : 0
+
+  // Componente 4: solidez de la oferta — sustento real + convergencia M2/M3 (60%)
+  const SUPUESTOS_CLAVE = [
+    "Múltiplo fondo de comercio — Método 1 (×)", "Tasa de descuento flujo de fondos (%)",
+    "Múltiplo valor residual DCF (×)", "Múltiplo mínimo comparable — Método 3 (×)",
+    "Múltiplo máximo comparable — Método 3 (×)", "EBITDA normalizado — puente completo (USD)",
+  ]
+  const conSustento = SUPUESTOS_CLAVE.filter(label => {
+    const s = supsR.find(s => s.label === label)
+    return (s?.nota?.length ?? 0) > 100
+  }).length
+  const señalSustento = (conSustento / SUPUESTOS_CLAVE.length) * 100
+  const divergenciaM2M3 = Math.abs(valorM2 - valorM3mid) / ((valorM2 + valorM3mid) / 2)
+  const señalConvergencia = Math.max(0, 1 - divergenciaM2M3) * 100
+  const icddOferta = (señalSustento + señalConvergencia) / 2
+
+  const indiceConfiabilidad = icddTracker*0.16 + icddRiesgo*0.16 + icddActivos*0.08 + icddOferta*0.60
+
   return {
     caseName, precio, ingresos, ebitda, ebitdaNorm, ebitdaBase2,
     activosRevalu, totalInmueble, totalMaquinaria, totalIntangLive, totalCarteraLive, flotaVal, totalOtros,
@@ -238,6 +360,7 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
     multMinComp, multMaxComp, valorM3min, valorM3max, valorM3mid,
     promMetodos, descLiq, valorLiq, ofertaInic, ofertaMax, multImpl, scaleMax,
     valorM2conservador, valorM2pesimista, promConservador, promPesimista, primaCrecimiento,
+    icddTracker, icddRiesgo, icddActivos, icddOferta, indiceConfiabilidad,
   }
 }
 
