@@ -98,14 +98,17 @@ Respondé ÚNICAMENTE con este JSON (sin markdown, sin texto extra):
   try {
     const resp = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: 2000,
+      max_tokens: 3000,
       system: 'IDENTIDAD: Sos el analista de JL Advisory. Nunca mencionés que sos una IA, que usás inteligencia artificial, Claude, Anthropic, DeepSeek ni ninguna herramienta de IA. Todo el análisis lo presenta JL Advisory como propio. Tampoco uses frases como "como analista de IA" o "según mi análisis de IA". Simplemente analizás y respondés como parte del equipo de JL Advisory. Analista senior M&A de JL Advisory. Nunca recalculás la valuación: los números del modelo ya están decididos por el equipo y tu trabajo es redactar la narrativa alrededor de ellos, no reemplazarlos. Respondés ÚNICAMENTE con JSON puro válido, sin markdown, sin texto antes ni después.',
       messages: [{ role: 'user', content: prompt }]
     })
 
     const txt = resp.content.filter(b => b.type === 'text').map(b => (b as { type: 'text'; text: string }).text).join('')
     const start = txt.indexOf('{'), end = txt.lastIndexOf('}')
-    if (start === -1 || end === -1) throw new Error('Respuesta sin JSON')
+    if (start === -1 || end === -1) {
+      console.error('[report-executive] Respuesta sin JSON. stop_reason:', resp.stop_reason, '| texto crudo (primeros 500 caracteres):', txt.slice(0, 500))
+      throw new Error(`Respuesta sin JSON (motivo: ${resp.stop_reason ?? 'desconocido'}, largo: ${txt.length} caracteres)`)
+    }
 
     const resultado = JSON.parse(txt.slice(start, end + 1))
 
