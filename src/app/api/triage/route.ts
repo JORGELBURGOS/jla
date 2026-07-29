@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { anthropic, MODEL, MAX_TOKENS_TRIAGE } from '@/lib/claude/api'
 import Anthropic from '@anthropic-ai/sdk'
+import { createHash } from 'crypto'
 
 const ORG_ID = 'jl-advisory'
 
@@ -34,15 +35,44 @@ export async function POST(req: NextRequest) {
   const subSector = (case_?.sub_sector as Record<string,string>)?.nombre ?? ''
   const caseName = String(case_?.nombre ?? 'la empresa bajo análisis')
 
-  // Detectar posibles duplicados
-  const archivosYaAnalizados = (reqs ?? [])
-    .flatMap((r: Record<string,unknown>) => [
-      String(r.notas ?? ''), String(r.cobertura ?? ''), String(r.alertas ?? '')
-    ]).join(' ')
-  const nombresSubidos = files.map((f: Record<string,string>) => f.name)
-  const posibleDuplicado = nombresSubidos.filter((n: string) =>
-    archivosYaAnalizados.toLowerCase().includes(n.toLowerCase().replace('.pdf','').slice(0,20))
-  )
+  // ── DETECCIÓN DE DUPLICADOS — Capa 1: hash exacto (SHA-256) ──
+  // El mismo archivo, renombrado o no, tiene el mismo hash. 100% de certeza, sin gastar en Claude.
+  const filesConHash = files.map((f: Record<string,string>) => ({
+    ...f,
+    hash: createHash('sha256').update(f.base64, 'base64').digest('hex'),
+  }))
+
+  const { data: documentosPrevios } = await db.from('dd_case_documents')
+    .select('id,nombre_archivo,hash_sha256,fingerprint,items_vinculados,resumen,created_at')
+    .eq('case_id', caseId)
+
+  const previos = (documentosPrevios ?? []) as { id:string; nombre_archivo:string; hash_sha256:string; fingerprint:string|null; items_vinculados:number[]; resumen:string|null; created_at:string }[]
+  const hashesVistos = new Set(previos.map(p => p.hash_sha256))
+
+  const duplicadosExactos = filesConHash.filter((f: {hash:string}) => hashesVistos.has(f.hash))
+  const archivosNuevos = filesConHash.filter((f: {hash:string}) => !hashesVistos.has(f.hash))
+
+  // Si TODOS los archivos subidos ya existen exactos, ni siquiera llamamos a Claude — ahorro total.
+  if (archivosNuevos.length === 0 && duplicadosExactos.length > 0) {
+    const detalle = duplicadosExactos.map((f: {name:string;hash:string}) => {
+      const original = previos.find(p => p.hash_sha256 === f.hash)
+      return `"${f.name}" es idéntico a "${original?.nombre_archivo}" subido el ${original ? new Date(original.created_at).toLocaleDateString('es-AR') : '?'} — ya vinculado a los ítems ${original?.items_vinculados?.join(', ') || '(ninguno)'}. ${original?.resumen ?? ''}`
+    }).join(' | ')
+    return NextResponse.json({
+      ok: true,
+      resultado: {
+        resumen: `TODOS los archivos subidos ya fueron analizados antes, sin cambios: ${detalle}`,
+        duplicados_exactos: duplicadosExactos.map((f: {name:string}) => f.name),
+        actualizaciones_items: [], actualizaciones_supuestos: [], riesgos_propuestos: [],
+        actualizaciones_hojas: [], activos_propuestos: [], alertas_generales: '', items_no_identificados: '',
+      }
+    })
+  }
+
+  // Capa 3: contexto real de documentos ya procesados (no una heurística de substring del nombre)
+  const documentosPreviosCtx = previos.length
+    ? previos.map(p => `"${p.nombre_archivo}" (subido ${new Date(p.created_at).toLocaleDateString('es-AR')}) — huella: ${p.fingerprint ?? 'sin datos'} — tocó ítems: ${p.items_vinculados?.join(', ') || 'ninguno'}`).join('\n')
+    : 'Ningún documento procesado todavía en este caso.'
 
   // Contextos
   const trackerCtx = (reqs ?? []).map((it: Record<string,unknown>) => {
@@ -119,8 +149,9 @@ Para asociar un documento a un ítem del tracker:
 - Un mismo documento puede corresponder a múltiples ítems
 - Si el documento tiene información sobre algo que NO está en el tracker, proponelo como alerta o riesgo nuevo
 
-════ DOCUMENTOS YA ANALIZADOS ════
-${posibleDuplicado.length ? `POSIBLES DUPLICADOS: ${posibleDuplicado.join(', ')} — verificá antes de proponer.` : 'Sin duplicados detectados.'}
+════ DOCUMENTOS YA PROCESADOS EN ESTE CASO ════
+${documentosPreviosCtx}
+Si alguno de los documentos que estás por analizar ahora es, en contenido, el mismo que uno de estos (mismo folio/factura/certificado, misma fecha, aunque el archivo tenga otro nombre o formato), marcalo como duplicado semántico en "documentos_analizados" — no le vuelvas a proponer los mismos cambios.
 
 Respondés ÚNICAMENTE con JSON válido. Sin texto extra. Sin markdown.`
 
@@ -142,7 +173,8 @@ ${validCtx || '(sin datos)'}
 ════ ACTIVOS CARGADOS EN VALUACIÓN (${(assets ?? []).length}) ════
 ${assetsCtx}
 
-════ DOCUMENTOS A ANALIZAR: ${files.map((f: Record<string,string>) => f.name).join(', ')} ════
+════ DOCUMENTOS A ANALIZAR: ${archivosNuevos.map((f: {name:string}) => f.name).join(', ')} ════
+${duplicadosExactos.length ? `(NOTA: ${duplicadosExactos.map((f:{name:string})=>f.name).join(', ')} ya son duplicados exactos confirmados por hash, no se incluyen acá — ya fueron informados aparte)` : ''}
 
 Analizá cada documento y respondé con este JSON COMPLETO:
 {
@@ -178,12 +210,15 @@ Analizá cada documento y respondé con este JSON COMPLETO:
     }
   ],
   "alertas_generales": "hallazgos importantes que no encajan en las categorías anteriores",
-  "items_no_identificados": "contenido del documento que no pudo clasificarse en ningún ítem del tracker"
+  "items_no_identificados": "contenido del documento que no pudo clasificarse en ningún ítem del tracker",
+  "documentos_analizados": [
+    {"nombre": "nombre EXACTO del archivo tal como se te dio", "tipo_documento": "ej: DDJJ IVA, factura, certificado CAA, título de propiedad", "huella": "identificador corto y específico: N° de folio/factura/certificado + fecha + emisor — lo que permitiría reconocer este documento exacto si lo vuelven a subir con otro nombre", "es_duplicado_de": "nombre EXACTO del documento previo si es el mismo contenido, o null si es genuinamente nuevo"}
+  ]
 }`
 
   try {
     const blocks: Anthropic.MessageParam['content'] = []
-    for (const f of files) {
+    for (const f of archivosNuevos) {
       if (f.mediaType === 'application/pdf') {
         blocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: f.base64 }, title: f.name } as unknown as Anthropic.TextBlockParam)
       } else if (f.mediaType.startsWith('image/')) {
@@ -230,6 +265,28 @@ Analizá cada documento y respondé con este JSON COMPLETO:
       if (activosRescatados.length) {
         resultado.activos_propuestos = [...(resultado.activos_propuestos ?? []), ...activosRescatados]
       }
+    }
+
+    // Persistir cada documento nuevo con su hash y huella — así la próxima subida ya tiene memoria real
+    const itemsTocados = (resultado.actualizaciones_items ?? []).map((it: {n_item:number}) => it.n_item)
+    const docsAnalizados = (resultado.documentos_analizados ?? []) as { nombre:string; huella:string; es_duplicado_de:string|null; tipo_documento:string }[]
+    for (const f of archivosNuevos) {
+      const info = docsAnalizados.find(d => d.nombre === f.name)
+      await db.from('dd_case_documents').insert({
+        case_id: caseId, nombre_archivo: f.name, hash_sha256: f.hash,
+        fingerprint: info ? `${info.tipo_documento} — ${info.huella}` : null,
+        tamaño_bytes: Math.round(f.base64.length * 0.75),
+        items_vinculados: itemsTocados, resumen: String(resultado.resumen ?? '').slice(0, 300),
+        org_id: ORG_ID,
+      })
+    }
+    // Duplicados detectados por Claude (mismo contenido, distinto archivo/nombre) — se avisan pero no se pierden
+    const duplicadosSemanticos = docsAnalizados.filter(d => d.es_duplicado_de)
+    if (duplicadosExactos.length || duplicadosSemanticos.length) {
+      resultado.duplicados_detectados = [
+        ...duplicadosExactos.map((f: {name:string}) => `"${f.name}" — idéntico byte a byte a un archivo ya subido`),
+        ...duplicadosSemanticos.map(d => `"${d.nombre}" — mismo contenido que "${d.es_duplicado_de}" (detectado por análisis, no por hash)`),
+      ]
     }
 
     await db.from('dd_audit_log').insert({
