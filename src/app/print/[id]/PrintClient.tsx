@@ -114,7 +114,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
   const recibidos = reqs.filter(r => r.estado === "Recibido").length
   const parciales = reqs.filter(r => r.estado === "Parcial").length
   const pendientes = reqs.filter(r => r.estado === "Pendiente").length
-  const avance = total ? Math.round((recibidos + parciales * 0.5) / total * 100) : 0
+  const avance = Math.round(v.indiceConfiabilidad)  // Índice de Confiabilidad del DD — mismo valor que el dashboard, no el % de papeleo recibido
 
   const activos = risks.filter(r => ACTIVOS.includes(String(r.estado)))
   const expActiva = activos.reduce((s, r) => s + (Number(r.impacto) || 0), 0)

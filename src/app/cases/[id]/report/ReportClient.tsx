@@ -85,7 +85,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
   const recibidos = reqs.filter(r => r.estado === "Recibido").length
   const parciales = reqs.filter(r => r.estado === "Parcial").length
   const pendientes = reqs.filter(r => r.estado === "Pendiente").length
-  const avance = total ? Math.round((recibidos + parciales * 0.5) / total * 100) : 0
+  const avance = Math.round(v.indiceConfiabilidad)  // Índice de Confiabilidad del DD — mismo valor que el dashboard, no el % de papeleo recibido
 
   // Financiero y valuación: TODO viene del motor compartido (src/lib/valuation/compute.ts),
   // el mismo que usa la herramienta interactiva de Valuación. Ver ahí antes de tocar fórmulas acá.
