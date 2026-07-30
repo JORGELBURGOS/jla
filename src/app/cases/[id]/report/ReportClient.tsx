@@ -795,7 +795,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
           </tr></thead>
           <tbody>
             {[
-              {l:"Plan del vendedor (horno + YPF)", m2:v.valorM2, prom:v.promMetodos, c:"#d97706"},
+              {l:"A \u2014 Plan del vendedor", m2:v.valorM2, prom:v.promMetodos, c:"#d97706"},
               {l:"B — Sin horno ni cliente estratégico", m2:v.valorM2B, prom:v.promB, c:"#16a34a"},
               {l:"C — Solo horno acreditado en CAA", m2:v.valorM2C, prom:v.promC, c:"#dc2626"},
             ].map((row,i)=>(
@@ -842,8 +842,8 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
           {[
             {l:"Precio base al contado", v2:fmtUSD(v.ofertaInic), d:`Valor sin plan de crecimiento del vendedor. Máximo negociable si todas las condiciones se cumplen: ${fmtUSD(v.ofertaMax)}.`},
             {l:"Ajuste al closing", v2:"Capital de trabajo neto", d:"El precio se ajustará por la variación del capital de trabajo neto entre firma y closing."},
-            {l:"Escrow de contingencias (18 meses)", v2:`15% — ${fmtUSD(Math.round(v.ofertaInic*0.15))}`, d:"Para cubrir: tardanzas IVA/IIBB, SIPA acumulado y potencial IIBB subdeclarado may-sep 2025."},
-            {l:"Earn-out (2 años)", v2:fmtUSD(v.primaCrecimiento), d:`50% si EBITDA año 1 > ${fmtUSD(Math.round(v.ebitdaBase2*1.5))} y 50% si año 2 > ${fmtUSD(Math.round(v.ebitdaBase2*2.0))}. Condicional a horno en CAA y contrato YPF.`},
+            {l:"Escrow de contingencias (18 meses)", v2:`15% — ${fmtUSD(Math.round(v.ofertaInic*0.15))}`, d:"Para cubrir las contingencias fiscales y laborales identificadas en el mapa de riesgos."},
+            {l:"Earn-out (2 años)", v2:fmtUSD(v.primaCrecimiento), d:`50% si EBITDA año 1 > ${fmtUSD(Math.round(v.ebitdaBase2*1.5))} y 50% si año 2 > ${fmtUSD(Math.round(v.ebitdaBase2*2.0))}. Condicional al cumplimiento de las condiciones precedentes.`},
           ].map((item,i)=>(
             <div key={i} style={{ display:"flex", justifyContent:"space-between", gap:"12px", padding:"10px 12px", background:"#f8fafc", borderRadius:"8px", borderLeft:"3px solid #d97706" }}>
               <div style={{ flex:1 }}>

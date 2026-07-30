@@ -17,6 +17,8 @@ type DbClient = {
 
 type Asset = {
   categoria: string
+  nombre: string | null
+  descripcion: string | null
   cantidad: number | null
   precio_unitario: number | null
   valor_usd: number | null
@@ -84,6 +86,7 @@ export interface ValuationResult {
 
   // Activos (Método 1)
   activosRevalu: number
+  inmuebleDetalle: string   // nombre/descripcion del activo Inmueble, para narrativa (vacio si no hay)
   totalInmueble: number
   totalMaquinaria: number
   totalIntangLive: number
@@ -188,10 +191,10 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
   ] = await Promise.all([
     db.from("dd_cases").select("nombre,precio_pedido").eq("id", caseId).single(),
     db.from("dd_case_assumptions").select("label,valor,nota").eq("case_id", caseId),
-    db.from("dd_case_assets").select("categoria,cantidad,precio_unitario,valor_usd,estado").eq("case_id", caseId),
+    db.from("dd_case_assets").select("categoria,nombre,descripcion,cantidad,precio_unitario,valor_usd,estado").eq("case_id", caseId),
     db.from("dd_case_risks").select("id,riesgo,area,impacto,accion_requerida,estado").eq("case_id", caseId)
       .not("estado", "in", '("DUPLICADO","RECLASIFICADO","CERRADO")').lt("impacto", 0),
-    db.from("dd_case_risk_adjustments").select("id,origen_riesgo_id,porcentaje,estado,descripcion,nota").eq("case_id", caseId),
+    db.from("vw_risk_adjustments_live").select("id,origen_riesgo_id,porcentaje,estado_ajuste,descripcion_analista,nota_porcentaje,riesgo,area,accion_requerida,impacto_actual,monto_calculado").eq("case_id", caseId),
     db.from("dd_case_requirements").select("documento,estado,antes_sena").eq("case_id", caseId),
     db.from("dd_case_balance_sheet").select("ejercicio,ingresos,costos_servicios,gastos_admin,gastos_comercial,depreciacion,resultado_neto,tc_promedio").eq("case_id", caseId),
   ])
@@ -200,7 +203,7 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
   const supsR = (sups ?? []) as { label: string; valor: string; nota: string|null }[]
   const assetsR = (assets ?? []) as Asset[]
   const riesgosR = (riesgosMapa ?? []) as { id:string; riesgo:string; area:string; impacto:number; accion_requerida:string; estado:string }[]
-  const ajustesR = (riesgoAjustes ?? []) as { id:string; origen_riesgo_id:string; porcentaje:number; estado:string; descripcion:string|null; nota:string|null }[]
+  const ajustesR = (riesgoAjustes ?? []) as { id:string; origen_riesgo_id:string; porcentaje:number; estado_ajuste:string; descripcion_analista:string|null; nota_porcentaje:string|null; riesgo:string|null; area:string|null; accion_requerida:string|null; impacto_actual:number; monto_calculado:number }[]
   const reqsR = (reqs ?? []) as { documento:string; estado:string; antes_sena:boolean }[]
   const balanceR = (balanceSheet ?? []) as { ejercicio:string; ingresos:number; costos_servicios:number; gastos_admin:number; gastos_comercial:number; depreciacion:number; resultado_neto:number; tc_promedio:number }[]
 
@@ -246,25 +249,26 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
   const CONOCIDAS = ["Rodados","Inmueble","Maquinaria","Intangible regulatorio","Cartera comercial"]
   const totalOtros = assetsR.filter(a => !CONOCIDAS.includes(a.categoria)).reduce((s, a) => s + getVal(a), 0)
   const activosRevalu = assetsR.reduce((s, a) => s + getVal(a), 0)
+  const inmuebleAsset = assetsR.find(a => a.categoria === "Inmueble")
+  const inmuebleDetalle = (inmuebleAsset?.descripcion || inmuebleAsset?.nombre || "").trim()
 
   // ── Riesgos: total del mapa + cruce en vivo de los ajustados con mitigantes ──
   const riesgosAbs = riesgosR.reduce((s, r) => s + Math.abs(r.impacto), 0)
-  const riesgoAjustesLive: RiesgoAjustadoLive[] = ajustesR
-    .filter(r => r.estado !== 'Reencuadrado') // excluye los reencuadrados a condicion precedente
-    .map(r => {
-    const origen = riesgosR.find(rd => rd.id === r.origen_riesgo_id)
-    const impactoActual = origen ? Math.abs(origen.impacto) : 0
-    return {
-      ...r,
-      descripcion: origen?.riesgo ?? "Riesgo no encontrado en el mapa (¿fue eliminado o cerrado?)",
-      area: origen?.area ?? "—",
-      nota: origen?.accion_requerida ?? "",
-      impactoActual,
-      monto: Math.round(impactoActual * r.porcentaje / 100),
-      descripcion_analista: r.descripcion ?? "",
-      nota_porcentaje: r.nota ?? "",
-    }
-  })
+  // La vista vw_risk_adjustments_live ya aplica el filtro de estados y calcula
+  // el monto. No recalcular aca: si el numero cambia, se cambia en la vista.
+  const riesgoAjustesLive: RiesgoAjustadoLive[] = ajustesR.map(r => ({
+    id: r.id,
+    origen_riesgo_id: r.origen_riesgo_id,
+    porcentaje: Number(r.porcentaje),
+    estado: r.estado_ajuste,
+    descripcion: r.riesgo ?? "Riesgo no encontrado en el mapa (¿fue eliminado o cerrado?)",
+    area: r.area ?? "—",
+    nota: r.accion_requerida ?? "",
+    impactoActual: Number(r.impacto_actual),
+    monto: Number(r.monto_calculado),
+    descripcion_analista: r.descripcion_analista ?? "",
+    nota_porcentaje: r.nota_porcentaje ?? "",
+  }))
   const riesgosAjust = riesgoAjustesLive.reduce((s, r) => s + r.monto, 0)
 
   // ── Método 1: Activos netos + Fondo de comercio ──
@@ -396,6 +400,7 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
   return {
     caseName, precio, ingresos, ebitda, ebitdaNorm, ebitdaBase2,
     activosRevalu, totalInmueble, totalMaquinaria, totalIntangLive, totalCarteraLive, flotaVal, totalOtros,
+    inmuebleDetalle,
     riesgosAbs, riesgoAjustesLive, riesgosAjust,
     activosNetos, fondoComercio, fondoComercioCont, valorM1, valorM1Cont,
     tasaDCF, dcfY1, dcfY2, dcfY3, dcfY4, multVR, vpTerminal, valorM2,
