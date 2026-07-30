@@ -27,7 +27,7 @@ export default function FinancialPage({ params }: { params: { id: string } }) {
   const db = createClient()
   const [sups, setSups] = useState<Sup[]>([])
   const [precio, setPrecio] = useState(0)
-  const [risks, setRisks] = useState<{ impacto: number }[]>([])
+  const [riesgos, setRiesgos] = useState<{ riesgos_abs: number; riesgos_ajust: number } | null>(null)
 
   // Parámetros del modelo (ajustables por el analista)
   const [crecPes, setCrecPes] = useState(-5)
@@ -41,18 +41,27 @@ export default function FinancialPage({ params }: { params: { id: string } }) {
       .then(({ data }) => setSups((data ?? []) as Sup[]))
     db.from("dd_cases").select("precio_pedido").eq("id", caseId).single()
       .then(({ data }) => setPrecio((data as { precio_pedido: number })?.precio_pedido ?? 0))
-    db.from("dd_case_risks").select("impacto").eq("case_id", caseId)
-      .neq("estado","DUPLICADO").neq("estado","RECLASIFICADO")
-      .then(({ data }) => setRisks((data ?? []) as { impacto: number }[]))
+    // Se leen los totales ya calculados por la vista, que aplica el mismo filtro de
+    // estados que el motor de valuacion y pondera cada riesgo por su probabilidad.
+    // Antes esta pantalla sumaba los impactos crudos SIN excluir los riesgos CERRADO,
+    // lo que arrastraba millones de exposicion ya descartada.
+    db.from("vw_case_risk_totals").select("riesgos_abs,riesgos_ajust").eq("case_id", caseId).single()
+      .then(({ data }) => setRiesgos(data as { riesgos_abs: number; riesgos_ajust: number } | null))
   }, [caseId])
 
   // Datos base de supuestos
-  const ingresos0 = getSup(sups, ["ingresos reales"])
-  const ebitda0   = getSup(sups, ["ebitda real"])
+  const ingresos0    = getSup(sups, ["ingresos reales"])
+  const ebitdaCont   = getSup(sups, ["ebitda real"])
+  const ebitdaNorm   = getSup(sups, ["ebitda normalizado"])
+  // Mismo criterio que src/lib/valuation/model.ts: el modelo corre sobre el EBITDA
+  // normalizado cuando existe, porque representa la rentabilidad que hereda el comprador.
+  const usaNormalizado = (ebitdaNorm ?? 0) > 0
+  const ebitda0      = usaNormalizado ? ebitdaNorm : ebitdaCont
   const deuda     = getSup(sups, ["deuda neta"])
   const capex0    = getSup(sups, ["capex"])
   const ctno0     = getSup(sups, ["capital de trabajo"])
-  const riesgoTot = risks.reduce((s, r) => s + (r.impacto ?? 0), 0)
+  const riesgoTot  = riesgos ? -Math.abs(Number(riesgos.riesgos_ajust) || 0) : 0
+  const riesgoBruto = riesgos ? -Math.abs(Number(riesgos.riesgos_abs) || 0) : 0
 
   const margen0 = (ingresos0 && ebitda0 && ingresos0 > 0) ? ebitda0 / ingresos0 : null
   const capexPct = (ingresos0 && capex0 && ingresos0 > 0) ? capex0 / ingresos0 : 0.05
@@ -125,7 +134,7 @@ export default function FinancialPage({ params }: { params: { id: string } }) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3 pt-3 border-t border-gray-200">
               {[
                 { label: "Ingresos base (año 0)", val: fmtUSD(ingresos0!) },
-                { label: "EBITDA base (año 0)", val: fmtUSD(ebitda0!) },
+                { label: usaNormalizado ? "EBITDA base (normalizado)" : "EBITDA base (contable)", val: fmtUSD(ebitda0!) },
                 { label: "Margen EBITDA", val: margen0 ? `${(margen0*100).toFixed(1)}%` : "—" },
                 { label: "CAPEX / Ventas", val: `${(capexPct*100).toFixed(1)}%` },
               ].map(({ label, val }) => (
@@ -232,7 +241,12 @@ export default function FinancialPage({ params }: { params: { id: string } }) {
               <div className="mt-3 pt-3 border-t border-gray-100 text-sm">
                 <span className="text-gray-600">Precio de oferta sugerido (base ajustado por riesgos): </span>
                 <span className="font-black text-[#1a2744] text-base">{fmtUSD(base.equity + riesgoTot)}</span>
-                <span className="text-xs text-gray-400 ml-2">= EV base {fmtUSD(base.equity)} + riesgos cuantificados {fmtUSD(riesgoTot)}</span>
+                <span className="text-xs text-gray-400 ml-2">= EV base {fmtUSD(base.equity)} − ajustes por riesgo {fmtUSD(Math.abs(riesgoTot))}</span>
+                <div className="text-xs text-gray-400 mt-1">
+                  Los ajustes por riesgo son la suma ponderada por probabilidad de los riesgos incorporados a la oferta,
+                  el mismo importe que usa el modelo de valuación. La exposición bruta de los riesgos activos, sin ponderar,
+                  asciende a {fmtUSD(Math.abs(riesgoBruto))}.
+                </div>
               </div>
             )}
           </div>
