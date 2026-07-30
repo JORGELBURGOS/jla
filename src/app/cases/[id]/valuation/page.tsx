@@ -48,6 +48,8 @@ function usd(n: number, signo = false) {
   return `${s}USD ${Math.round(abs)}`
 }
 
+import { deriveModel } from "@/lib/valuation/model"
+
 function getVal(a: Asset) {
   return (a.cantidad != null && a.precio_unitario != null)
     ? Math.round(a.cantidad * a.precio_unitario)
@@ -277,6 +279,8 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const [descLiq,      setDescLiq]     = useState(45)
   const [precioOferta, setPrecioOferta]= useState(2500000)
   const [precioMax,    setPrecioMax]   = useState(3200000)
+  const [coefOfertaInic, setCoefOfertaInic] = useState(77)
+  const [coefOfertaMax,  setCoefOfertaMax]  = useState(98)
   const [riesgosMitig, setRiesgosMitig]= useState(0)
   const [riesgoAjustes, setRiesgoAjustes] = useState<RiskAdj[]>([])
   const [riskSaving, setRiskSaving]     = useState<string|null>(null)
@@ -319,6 +323,8 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
         "Precio máximo de negociación (USD)",
         "EBITDA normalizado — puente completo (USD)",
         "Riesgos ajustados con mitigantes (USD)",
+        "Coeficiente de oferta inicial sobre promedio (%)",
+        "Coeficiente de oferta máxima sobre promedio (%)",
       ])
       .then(({data}) => {
         if (!data) return
@@ -356,6 +362,8 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
         set("Descuento por liquidación forzada (%)",          setDescLiq)
         set("Precio de oferta inicial (USD)",                 setPrecioOferta)
         set("Precio máximo de negociación (USD)",             setPrecioMax)
+        set("Coeficiente de oferta inicial sobre promedio (%)", setCoefOfertaInic)
+        set("Coeficiente de oferta máxima sobre promedio (%)",  setCoefOfertaMax)
         if (sup["Tasa de descuento flujo de fondos (%)"]) setTasaDCF(sup["Tasa de descuento flujo de fondos (%)"]/100)
         if (sup["EBITDA normalizado — puente completo (USD)"]) setEbitdaNorm(sup["EBITDA normalizado — puente completo (USD)"])
         if (sup["Riesgos ajustados con mitigantes (USD)"]) setRiesgosMitig(sup["Riesgos ajustados con mitigantes (USD)"])
@@ -505,24 +513,22 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
     }
   })
   const riesgosAjust   = riesgoAjustesLive.reduce((s,r) => s + r.monto, 0)
-  const activosNetos   = activosRevalu - riesgosAjust
-  const fondoComercio     = ebitdaBase2 * multFondo
-  const fondoComercioCont = ebitda * multFondo
-  const valorM1           = activosNetos + fondoComercio
-  const valorM1Cont       = activosNetos + fondoComercioCont
-  const flujosDCF      = [ebitdaBase2, dcfY1, dcfY2, dcfY3, dcfY4]
-  const vpFlujos       = flujosDCF.reduce((s,f,i) => s + f/Math.pow(1+tasaDCF,i+1), 0)
-  const vpTerminal     = (dcfY4 * multVR) / Math.pow(1+tasaDCF,5)
-  const valorM2        = Math.round(vpFlujos + vpTerminal)
-  const valorM3min     = ebitdaBase2 * multMinComp
-  const valorM3max     = ebitdaBase2 * multMaxComp
-  const valorM3mid     = Math.round((valorM3min + valorM3max) / 2)
-  const promMetodos    = Math.round((valorM1 + valorM2 + valorM3mid) / 3)
-  const valorLiq       = Math.round(activosRevalu * (1 - descLiq/100))
-  const ofertaInic     = precioOferta > 0 ? precioOferta : Math.round(promMetodos * 0.77)
-  const ofertaMax      = precioMax    > 0 ? precioMax    : Math.round(promMetodos * 0.98)
-  const multImpl       = ebitdaBase2  > 0 ? Math.round(ofertaInic/ebitdaBase2) : 0
-  const scaleMax       = Math.max(precio, valorM1, ofertaMax) * 1.05
+
+  // ── Cálculo: delegado a src/lib/valuation/model.ts, la única fuente de fórmulas ──
+  // Esta pantalla NO replica aritmética. Antes tenía su propia copia y podía
+  // divergir del informe y del PDF sin que nadie se enterara.
+  const M = deriveModel({
+    activosRevalu, riesgosAjust,
+    ebitda, ebitdaNorm,
+    multFondo, multMinComp, multMaxComp,
+    tasaDCF, dcfY1, dcfY2, dcfY3, dcfY4, multVR, descLiq,
+    coefOfertaInic, coefOfertaMax,
+    precioOfertaManual: precioOferta, precioMaxManual: precioMax,
+    precioPedido: precio,
+  })
+  const { activosNetos, fondoComercio, fondoComercioCont, valorM1, valorM1Cont,
+          valorM2, vpFlujos, vpTerminal, valorM3min, valorM3max, valorM3mid, promMetodos, valorLiq,
+          ofertaInic, ofertaMax, multImpl, scaleMax } = M
 
 
 
@@ -622,6 +628,54 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
             <span className="text-xs font-semibold text-gray-700">Promedio de los tres métodos</span>
             <span className="text-lg font-black text-[#1a2744]">{usd(promMetodos)}</span>
           </div>
+        </div>
+
+        {/* 2b · TRAZABILIDAD — generada por el modelo, no escrita a mano */}
+        <div className="card p-5 border-l-4 border-l-[#1a2744]">
+          <p className="text-xs font-black uppercase tracking-wide text-[#1a2744] mb-1">
+            Trazabilidad del cálculo
+          </p>
+          <p className="text-xs text-gray-500 mb-4">
+            Cada línea sale de <span className="font-mono">src/lib/valuation/model.ts</span>, la única
+            fuente de fórmulas del sistema. Si un número no cierra, acá se ve por qué.
+          </p>
+          <div className="space-y-2">
+            {M.trazabilidad.map(paso => (
+              <div key={paso.clave} className="rounded-lg border border-gray-200 px-3 py-2">
+                <div className="flex justify-between items-baseline gap-3">
+                  <span className="text-xs font-semibold text-gray-800">{paso.titulo}</span>
+                  <span className="text-sm font-mono font-bold text-[#1a2744] whitespace-nowrap">
+                    {paso.clave === "multImpl" ? `${paso.resultado}×` : usd(paso.resultado)}
+                  </span>
+                </div>
+                <div className="text-[11px] text-gray-600 mt-1">{paso.formula}</div>
+                <div className="text-[11px] font-mono text-gray-500 mt-0.5">{paso.sustitucion}</div>
+                <div className="text-[10px] text-gray-400 mt-0.5">Fuente: {paso.fuente}</div>
+                {paso.alerta && (
+                  <div className="text-[11px] text-amber-800 bg-amber-50 rounded px-2 py-1 mt-1.5">
+                    {paso.alerta}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
+            <div className="rounded-lg bg-gray-50 px-3 py-2">
+              <div className="text-gray-500">Dispersión entre métodos</div>
+              <div className="font-mono font-bold text-gray-800">{usd(M.dispersionMetodos)}</div>
+            </div>
+            <div className="rounded-lg bg-gray-50 px-3 py-2">
+              <div className="text-gray-500">Peso del Método 1 en el promedio</div>
+              <div className="font-mono font-bold text-gray-800">{M.pesoM1EnPromedio}%</div>
+            </div>
+          </div>
+          {(!M.ofertaInicEsDerivada || !M.ofertaMaxEsDerivada) && (
+            <div className="mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[11px] text-red-800">
+              <span className="font-bold">Cadena cortada.</span> Hay precios cargados a mano, así que
+              los activos y los riesgos no llegan a la oferta. Vaciá los supuestos «Precio de oferta
+              inicial (USD)» y «Precio máximo de negociación (USD)» para que el modelo los derive.
+            </div>
+          )}
         </div>
 
         {/* 3 · DETALLE DE METODOLOGÍAS */}

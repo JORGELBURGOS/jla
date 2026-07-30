@@ -61,6 +61,8 @@ export function clasificarAreaRequerimiento(documento: string): string {
   return mejorArea ?? "Operacional"
 }
 
+import { deriveModel, type PasoTrazabilidad } from "./model"
+
 export interface RiesgoAjustadoLive {
   id: string
   origen_riesgo_id: string
@@ -101,6 +103,11 @@ export interface ValuationResult {
 
   // Método 1
   activosNetos: number
+  trazabilidad: PasoTrazabilidad[]
+  ofertaInicEsDerivada: boolean
+  ofertaMaxEsDerivada: boolean
+  dispersionMetodos: number
+  pesoM1EnPromedio: number
   fondoComercio: number
   fondoComercioCont: number
   valorM1: number
@@ -236,6 +243,8 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
   const dcfY4       = sup(supsR, "EBITDA proyectado año 4 (USD)", 560000)
   const multVR      = sup(supsR, "Múltiplo valor residual DCF (×)", 8)
   const descLiq     = sup(supsR, "Descuento por liquidación forzada (%)", 45)
+  const coefOfertaInic = sup(supsR, "Coeficiente de oferta inicial sobre promedio (%)", 77)
+  const coefOfertaMax  = sup(supsR, "Coeficiente de oferta máxima sobre promedio (%)", 98)
   const precioOferta = sup(supsR, "Precio de oferta inicial (USD)", 0)
   const precioMax    = sup(supsR, "Precio máximo de negociación (USD)", 0)
 
@@ -271,31 +280,20 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
   }))
   const riesgosAjust = riesgoAjustesLive.reduce((s, r) => s + r.monto, 0)
 
-  // ── Método 1: Activos netos + Fondo de comercio ──
-  const activosNetos = activosRevalu - riesgosAjust
-  const fondoComercio = ebitdaBase2 * multFondo
-  const fondoComercioCont = ebitda * multFondo
-  const valorM1 = activosNetos + fondoComercio
-  const valorM1Cont = activosNetos + fondoComercioCont
-
-  // ── Método 2: Flujo de fondos descontado ──
-  const flujosDCF = [ebitdaBase2, dcfY1, dcfY2, dcfY3, dcfY4]
-  const vpFlujos = flujosDCF.reduce((s, f, i) => s + f / Math.pow(1 + tasaDCF, i + 1), 0)
-  const vpTerminal = (dcfY4 * multVR) / Math.pow(1 + tasaDCF, 5)
-  const valorM2 = Math.round(vpFlujos + vpTerminal)
-
-  // ── Método 3: Múltiplo comparable ──
-  const valorM3min = ebitdaBase2 * multMinComp
-  const valorM3max = ebitdaBase2 * multMaxComp
-  const valorM3mid = Math.round((valorM3min + valorM3max) / 2)
-
-  // ── Síntesis ──
-  const promMetodos = Math.round((valorM1 + valorM2 + valorM3mid) / 3)
-  const valorLiq = Math.round(activosRevalu * (1 - descLiq / 100))
-  const ofertaInic = precioOferta > 0 ? precioOferta : Math.round(promMetodos * 0.77)
-  const ofertaMax  = precioMax > 0 ? precioMax : Math.round(promMetodos * 0.98)
-  const multImpl = ebitdaBase2 > 0 ? Math.round(ofertaInic / ebitdaBase2) : 0
-  const scaleMax = Math.max(precio, valorM1, ofertaMax) * 1.05
+  // ── Cálculo: delegado íntegramente a src/lib/valuation/model.ts ──
+  // No replicar fórmulas acá. Si algo hay que cambiar, se cambia en el modelo.
+  const M = deriveModel({
+    activosRevalu, riesgosAjust,
+    ebitda, ebitdaNorm,
+    multFondo, multMinComp, multMaxComp,
+    tasaDCF, dcfY1, dcfY2, dcfY3, dcfY4, multVR, descLiq,
+    coefOfertaInic, coefOfertaMax,
+    precioOfertaManual: precioOferta, precioMaxManual: precioMax,
+    precioPedido: precio,
+  })
+  const { activosNetos, fondoComercio, fondoComercioCont, valorM1, valorM1Cont,
+          valorM2, vpFlujos, vpTerminal, valorM3min, valorM3max, valorM3mid, promMetodos, valorLiq,
+          ofertaInic, ofertaMax, multImpl, scaleMax } = M
 
   // ── Escenarios alternativos de DCF ──
   // Conservador: ebitdaNorm como base estabilizada, crecimiento orgánico 10%/año
@@ -403,6 +401,9 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
     inmuebleDetalle,
     riesgosAbs, riesgoAjustesLive, riesgosAjust,
     activosNetos, fondoComercio, fondoComercioCont, valorM1, valorM1Cont,
+    trazabilidad: M.trazabilidad,
+    ofertaInicEsDerivada: M.ofertaInicEsDerivada, ofertaMaxEsDerivada: M.ofertaMaxEsDerivada,
+    dispersionMetodos: M.dispersionMetodos, pesoM1EnPromedio: M.pesoM1EnPromedio,
     tasaDCF, dcfY1, dcfY2, dcfY3, dcfY4, multVR, vpTerminal, valorM2,
     multMinComp, multMaxComp, valorM3min, valorM3max, valorM3mid,
     promMetodos, descLiq, valorLiq, ofertaInic, ofertaMax, multImpl, scaleMax,
