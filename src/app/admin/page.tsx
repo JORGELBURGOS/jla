@@ -29,6 +29,7 @@ interface UserPerm {
   id: string; email: string; is_enabled: boolean
   allowed_cases: string[] | null; hidden_nav: string[]
   can_edit: boolean; notes: string; can_create_cases?: boolean
+  password?: string
 }
 interface Case { id: string; nombre: string }
 

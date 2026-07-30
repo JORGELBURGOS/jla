@@ -13,6 +13,10 @@ type Bal = {
   deuda_financiera_nc: number; provisiones: number
   capital_social: number; reservas: number; resultados_acumulados: number; ajuste_inflacion_pn: number
   ingresos: number; resultado_neto: number
+  tc_promedio: number; costos_servicios: number
+  gastos_admin: number; gastos_comercial: number
+  resultado_financiero: number; resultado_antes_impuesto: number
+  impuesto_ganancias: number; depreciacion: number
 }
 
 // EJS ya no es constante — se construye dinámicamente desde la base de datos

@@ -88,6 +88,7 @@ export default function CaseShell({ children, caseData, caseId }: {
   const tipoCaso = String(caseData.tipo_caso ?? 'dd_ma')
   const navItems = tipoCaso === 'on' ? NAV_ON : NAV_DD
   const [showPrompt, setShowPrompt] = useState(false)
+  const [error, setError] = useState("")
 
   useEffect(() => {
     const saved = localStorage.getItem(EMAIL_KEY) ?? ""

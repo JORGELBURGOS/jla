@@ -156,7 +156,7 @@ export default function NewCasePage() {
           if (tipoCaso === 'ambos') {
             const { data: caseON } = await db.from('dd_cases').insert({
               id: caseIdON,
-              nombre, cuit, precio_pedido: precioNum,
+              nombre, cuit, precio_pedido: parseFloat(precio) || 0,
               industry_id: industryId, sub_sector_id: subSectorId,
               org_id: 'jl-advisory', tipo_caso: 'on',
               linked_case_id: caseId

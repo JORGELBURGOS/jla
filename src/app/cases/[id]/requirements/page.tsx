@@ -65,6 +65,7 @@ function ItemRow({ item, toggling, onToggle, linksMap, caseId, highlight, esON }
   linksMap: LinksMap
   caseId: string
   highlight?: boolean
+  esON?: boolean
 }) {
   const [open, setOpen] = useState(highlight ?? false)
   const ref = useRef<HTMLDivElement>(null)

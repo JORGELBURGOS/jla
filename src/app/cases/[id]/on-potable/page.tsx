@@ -87,7 +87,7 @@ export default function OnPotablePage({ params }: { params: { id: string } }) {
         {
           label: "Garantías",
           estado: !e ? "SIN_DATOS" : e.garantia_tipo === "Sin garantia" ? "AMARILLO" : e.garantia_tipo ? "VERDE" : "SIN_DATOS",
-          valor: e?.garantia_tipo || "Sin definir",
+          valor: String(e?.garantia_tipo ?? "Sin definir"),
           nota: !e?.garantia_tipo ? "Definir el tipo de garantía en el módulo Estructura."
             : e.garantia_tipo === "Sin garantia" ? "Sin garantía: limita el universo de inversores. Solo inversores calificados bajo régimen PyME CNV."
             : e.garantia_tipo === "SGR" ? `Aval SGR (${e.garantia_sgr || "a confirmar"}). Cobertura: ${e.garantia_cobertura_pct || "—"}%. La SGR hará su propio análisis crediticio.`
@@ -120,7 +120,7 @@ export default function OnPotablePage({ params }: { params: { id: string } }) {
         },
         {
           label: "Destino de fondos declarado (Ley 23.576)",
-          estado: !e ? "SIN_DATOS" : ((e.destino_capital_trabajo||0)+(e.destino_activos||0)+(e.destino_refinanciacion||0)) > 0 ? "VERDE" : "ROJO",
+          estado: !e ? "SIN_DATOS" : (Number(e.destino_capital_trabajo||0)+Number(e.destino_activos||0)+Number(e.destino_refinanciacion||0)) > 0 ? "VERDE" : "ROJO",
           valor: e ? `CT: USD ${Number(e.destino_capital_trabajo||0).toLocaleString()} · Activos: USD ${Number(e.destino_activos||0).toLocaleString()} · Refinanc.: USD ${Number(e.destino_refinanciacion||0).toLocaleString()}` : "Sin definir",
           nota: "Obligatorio por Ley 23.576. Los fondos deben aplicarse exclusivamente a activos físicos, capital de trabajo o refinanciación de pasivos."
         },

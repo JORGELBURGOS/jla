@@ -12,11 +12,11 @@ export default async function FiscalPage({ params }: { params: Promise<{ id: str
         <div className="card-title">Ítem 20 — DDJJ y cuenta corriente fiscal</div>
         {item20 ? (
           <div className="space-y-1.5 text-sm">
-            <div className="flex gap-3"><span className="font-medium text-gray-600 w-20">Estado:</span><span className={item20.estado==="Recibido"?"text-green-700 font-bold":item20.estado==="Parcial"?"text-amber-700 font-bold":"text-gray-500"}>{item20.estado as string}</span></div>
-            {item20.cobertura && <div className="flex gap-3"><span className="font-medium text-gray-600 w-20">Cobertura:</span><span className="text-gray-700">{item20.cobertura as string}</span></div>}
-            {item20.faltantes && <div className="flex gap-3"><span className="font-medium text-gray-600 w-20">Faltantes:</span><span className="text-gray-700">{item20.faltantes as string}</span></div>}
-            {item20.alertas && <div className="flex gap-3"><span className="font-medium text-amber-700 w-20">Alertas:</span><span className="text-amber-800">{item20.alertas as string}</span></div>}
-            {item20.notas && <div className="flex gap-3"><span className="font-medium text-gray-600 w-20">Notas:</span><span className="text-gray-500 text-xs">{item20.notas as string}</span></div>}
+            <div className="flex gap-3"><span className="font-medium text-gray-600 w-20">Estado:</span><span className={item20.estado==="Recibido"?"text-green-700 font-bold":item20.estado==="Parcial"?"text-amber-700 font-bold":"text-gray-500"}>{String(item20.estado)}</span></div>
+            {Boolean(item20.cobertura) && <div className="flex gap-3"><span className="font-medium text-gray-600 w-20">Cobertura:</span><span className="text-gray-700">{String(item20.cobertura)}</span></div>}
+            {Boolean(item20.faltantes) && <div className="flex gap-3"><span className="font-medium text-gray-600 w-20">Faltantes:</span><span className="text-gray-700">{String(item20.faltantes)}</span></div>}
+            {Boolean(item20.alertas) && <div className="flex gap-3"><span className="font-medium text-amber-700 w-20">Alertas:</span><span className="text-amber-800">{String(item20.alertas)}</span></div>}
+            {Boolean(item20.notas) && <div className="flex gap-3"><span className="font-medium text-gray-600 w-20">Notas:</span><span className="text-gray-500 text-xs">{String(item20.notas)}</span></div>}
           </div>
         ) : <p className="text-sm text-gray-400">Sin datos cargados</p>}
       </div>

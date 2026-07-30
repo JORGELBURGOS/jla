@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
   // Buscar todos los riesgos dinámicos del caso
   const { data: risks } = await db
     .from('dd_case_risks')
-    .select('id, riesgo, impacto, supuesto_dependiente, estado')
+    .select('id, riesgo, impacto, supuesto_dependiente, estado, notas')
     .eq('case_id', caseId)
     .eq('es_dinamico', true)
 

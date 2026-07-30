@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
 
   // Contexto activos existentes
   const assetsCtx = (assets ?? []).length
-    ? (assets ?? []).map((a: Record<string,unknown>) =>
+    ? ((assets ?? []) as unknown as Record<string,unknown>[]).map((a) =>
         `[${a.categoria}] ${a.nombre}` +
         (a.año ? ` (${a.año})` : '') +
         (a.dominio ? ` Dom:${a.dominio}` : '') +

@@ -44,7 +44,7 @@ export default function OnGarantiasPage({ params }: { params: { id: string } }) 
         <h2 className="text-sm font-bold text-gray-700 mb-3">Tipo de garantía seleccionada</h2>
         <div className="text-sm text-gray-600 bg-gray-50 rounded-xl p-4">
           <strong>Tipo:</strong> {String(estructura?.garantia_tipo || "Sin definir")} <br/>
-          {estructura?.garantia_sgr && <><strong>SGR:</strong> {String(estructura.garantia_sgr)}<br/></>}
+          {Boolean(estructura?.garantia_sgr) && <><strong>SGR:</strong> {String(estructura?.garantia_sgr)}<br/></>}
           <br/>
           <p className="text-xs text-gray-500 mt-2">
             Para modificar la garantía, ir al módulo <strong>Estructura de la ON</strong>.
