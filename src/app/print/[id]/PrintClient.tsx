@@ -70,11 +70,8 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
   // Escenarios B/C: consolidados en compute.ts (única fuente de verdad).
   // Antes se calculaban acá también, en paralelo, con riesgo real de divergencia.
   const flB = v.flB
-  const flC = v.flC
   const valorM2B = v.valorM2B
-  const valorM2C = v.valorM2C
   const promB = v.promB
-  const promC = v.promC
   const dcfY1 = Number((v as any).dcfY1 ?? 0)
   const dcfY2 = Number((v as any).dcfY2 ?? 0)
   const dcfY3 = Number((v as any).dcfY3 ?? 0)
@@ -253,7 +250,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
         {/* ══════ 3. EVOLUCIÓN FINANCIERA ══════ */}
         <div className="page-break" style={{ padding: "30px 50px" }}>
           <H n="3." t="Evolución financiera 2021–2025" />
-          <P>Con la tesis de inversión establecida, corresponde examinar la película financiera completa: cinco ejercicios auditados que muestran un negocio en construcción, con volatilidad de márgenes y una recuperación incompleta. La facturación fue validada de manera independiente cruzando los estados contables con las declaraciones juradas de IVA presentadas ante ARCA, arrojando una diferencia inferior al 0,5% — lo que acredita la fiabilidad del dato de base.</P>
+          <P>Con la tesis de inversión establecida, corresponde examinar la película financiera completa: cinco ejercicios auditados que muestran un negocio en construcción, con volatilidad de márgenes y una recuperación incompleta. La facturación fue validada de manera independiente cruzando los estados contables con las declaraciones juradas de IVA presentadas ante ARCA, con una diferencia inferior al 0,5% que acredita la fiabilidad del dato de base.</P>
           <table style={{ width:"100%", borderCollapse:"collapse", margin:"10px 0 8px" }}>
             <thead><tr>
               <th style={th}>Ejercicio</th>
@@ -277,7 +274,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
               })}
             </tbody>
           </table>
-          <P>El resultado neto fue negativo en tres de los últimos cinco ejercicios — dato que el inversor debe conocer y entender desde el principio. La causa no es operativa: la depreciación acelerada de activos revaluados por RT 6/17 genera un cargo contable no cash de alto impacto, y el impuesto a las ganancias de 2025 resultó anómalo (tasa efectiva de 295% sobre la ganancia contable). El EBITDA es la métrica representativa de la generación de caja operativa; el resultado neto, en este caso, no lo es.</P>
+          <P>Es un dato que el inversor debe conocer y entender desde el principio: el resultado neto fue negativo en tres de los últimos cinco ejercicios. La causa no es operativa: la depreciación acelerada de activos revaluados por RT 6/17 genera un cargo contable no cash de alto impacto, y el impuesto a las ganancias de 2025 resultó anómalo (tasa efectiva de 295% sobre la ganancia contable). El EBITDA es la métrica representativa de la generación de caja operativa; el resultado neto, en este caso, no lo es.</P>
         </div>
 
 
@@ -333,7 +330,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
                             marginBottom:"8px", borderBottom:"1.5px solid #1a2744", paddingBottom:"4px" }}>
                 5.1 Proyecciones y sensibilidad de precio
               </div>
-              <P>El valor del Método 2 (flujo de fondos descontado) es altamente sensible a dos variables cuya confirmación documental permanece pendiente: la habilitación del horno rotativo de 1.500 kg/h en el CAA de Operador, y la materialización de contratos con clientes estratégicos de gran volumen. La siguiente tabla muestra los flujos proyectados bajo cada hipótesis y el precio implícito resultante, con el objetivo de brindar al inversor los elementos necesarios para anclar la discusión de precio en la negociación.</P>
+              <P>El valor del Método 2 (flujo de fondos descontado) es sensible a la variable cuya confirmación documental permanece pendiente: la materialización de contratos con clientes estratégicos de gran volumen. El horno de desorción térmica ya no forma parte de esta incertidumbre, porque está confirmado operativo y habilitado en el CAA vigente (Res. GDE N°49/2026), con su valor ya incorporado al Método 1. La siguiente tabla muestra los flujos proyectados bajo cada hipótesis y el precio implícito resultante, con el objetivo de brindar al inversor los elementos necesarios para anclar la discusión de precio en la negociación.</P>
               <div style={{ fontFamily:"Inter,sans-serif", fontSize:"8.5px", fontWeight:700, color:"#4b5563",
                             margin:"10px 0 4px", textTransform:"uppercase", letterSpacing:"0.08em" }}>
                 Flujos proyectados de EBITDA por escenario (USD)
@@ -349,10 +346,8 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
                   {[
                     {lbl:"A — Plan del vendedor (horno + cliente estratégico)",
                      fl:[ebitdaBase2,dcfY1,dcfY2,dcfY3,dcfY4], bold:true, bg:"#EFF4FF"},
-                    {lbl:"B — Sin horno ni cliente (crecimiento orgánico 10%/año)",
+                    {lbl:"B — Sin cliente estratégico (crecimiento orgánico 10%/año, horno ya incluido)",
                      fl:flB, bold:false, bg:"white"},
-                    {lbl:"C — Horno habilitado, sin cliente estratégico",
-                     fl:flC, bold:false, bg:"#f9fafb"},
                   ].map((row,i)=>(
                     <tr key={i} style={{ background:row.bg, borderBottom:"0.5px solid #e5e7eb" }}>
                       <td style={{ padding:"5px 8px", fontSize:"8px", fontWeight:row.bold?700:400 }}>{row.lbl}</td>
@@ -381,12 +376,9 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
                     {lbl:"A — Plan del vendedor", m2:v.valorM2, prom:v.promMetodos,
                      ofi:v.ofertaInic, ofm:v.ofertaMax,
                      cond:"Horno en CAA + contrato cliente estratégico firmado", bold:true, bg:"#EFF4FF"},
-                    {lbl:"B — Sin horno ni cliente", m2:valorM2B, prom:promB,
+                    {lbl:"B — Sin cliente estratégico confirmado", m2:valorM2B, prom:promB,
                      ofi:Math.round(promB*0.77), ofm:Math.round(promB*0.98),
-                     cond:"Base verificable con data room actual", bold:false, bg:"white"},
-                    {lbl:"C — Solo horno habilitado", m2:valorM2C, prom:promC,
-                     ofi:Math.round(promC*0.77), ofm:Math.round(promC*0.98),
-                     cond:"Horno acreditado en CAA (ítems 33 y 34)", bold:false, bg:"#f9fafb"},
+                     cond:"Base verificable con data room actual — horno ya confirmado en ambos", bold:false, bg:"white"},
                   ].map((row,i)=>(
                     <tr key={i} style={{ background:row.bg, borderBottom:"0.5px solid #e5e7eb" }}>
                       <td style={{ padding:"5px 8px", fontSize:"8px", fontWeight:row.bold?700:400 }}>{row.lbl}</td>
@@ -399,7 +391,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
                   ))}
                 </tbody>
               </table>
-              <P>En la negociación: el vendedor puede argumentar el escenario A para justificar su precio de {fmtUSDc(v.precio)}. El inversor puede responder que, sin documentación del horno ni contrato con cliente estratégico, el soporte del DCF corresponde al escenario B ({fmtUSDc(Math.round(promB*0.77))} como oferta inicial). Cada uno de los dos hitos documentados mueve el precio entre USD 300.000 y USD 460.000, lo que convierte la negociación en una discusión de milestones concretos.</P>
+              <P>En la negociación: el vendedor puede argumentar el escenario A para justificar su precio de {fmtUSDc(v.precio)}. El inversor puede responder que, sin contrato con cliente estratégico confirmado, el soporte del DCF corresponde al escenario B ({fmtUSDc(Math.round(promB*0.77))} como oferta inicial), ya que el horno está confirmado en ambos escenarios y dejó de ser parte de la discusión. Ese único hito pendiente mueve el precio {fmtUSDc(Math.round(v.ofertaInic - promB*0.77))}, lo que convierte la negociación en una discusión de un milestone concreto.</P>
             </div>
         </div>
 
@@ -557,7 +549,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
         {cerrados.filter((r:any)=>Number(r.impacto)<0).length>0&&(
         <div className="page-break" style={{ padding: "30px 50px" }}>
           <H n="10." t="Riesgos resueltos durante el proceso" />
-          <P>Un due diligence no solo identifica problemas: también los resuelve. Los hallazgos que se listan a continuación llegaron al proceso como riesgos potenciales significativos y se cerraron con evidencia documental o de campo. Su resolución redujo sustancialmente la percepción inicial de riesgo — y, con ella, el descuento implícito que el comprador habría exigido sobre el precio.</P>
+          <P>Un due diligence no solo identifica problemas: también los resuelve. Los hallazgos que se listan a continuación llegaron al proceso como riesgos potenciales significativos y se cerraron con evidencia documental o de campo. Su resolución redujo sustancialmente la percepción inicial de riesgo y, con ella, el descuento implícito que el comprador habría exigido sobre el precio.</P>
           <table style={{ width:"100%", borderCollapse:"collapse", margin:"10px 0" }}>
             <thead><tr>
               <th style={th}>Riesgo resuelto</th>
