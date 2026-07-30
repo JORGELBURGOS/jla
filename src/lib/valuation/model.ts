@@ -19,8 +19,9 @@ export type PasoTrazabilidad = {
   formula: string      // fórmula simbólica
   sustitucion: string  // fórmula con los valores de este caso
   resultado: number
-  fuente: string       // de dónde salen los insumos
-  alerta?: string      // advertencia metodológica, si corresponde
+  fuente: string       // de dónde salen los insumos, en lenguaje de negocio
+  nota?: string        // aclaración neutra sobre la naturaleza del método
+  alerta?: string      // advertencia metodológica que el analista debe considerar
 }
 
 export type ModelInputs = {
@@ -91,7 +92,7 @@ export function deriveModel(i: ModelInputs): ModelOutput {
       ? `normalizado ${n(i.ebitdaNorm)} (contable ${n(i.ebitda)} queda de referencia)`
       : `contable ${n(i.ebitda)} — no hay EBITDA normalizado cargado`,
     resultado: ebitdaBase,
-    fuente: "Supuestos: «EBITDA normalizado — puente completo (USD)» y «EBITDA real último ejercicio cerrado (USD)»",
+    fuente: "Supuestos del modelo: EBITDA normalizado y EBITDA contable del último ejercicio auditado.",
   })
 
   // ── 2. Patrimonio neto de riesgos ──────────────────────────────────────────
@@ -102,7 +103,7 @@ export function deriveModel(i: ModelInputs): ModelOutput {
     formula: "activos revaluados − ajustes por riesgo",
     sustitucion: `${n(i.activosRevalu)} − ${n(i.riesgosAjust)}`,
     resultado: activosNetos,
-    fuente: "dd_case_assets (todas las categorías) y vw_risk_adjustments_live",
+    fuente: "Inventario de activos revaluados y mapa de riesgos con sus mitigantes aplicados.",
   })
 
   // ── 3. Método 1 — patrimonial + fondo de comercio ──────────────────────────
@@ -116,8 +117,8 @@ export function deriveModel(i: ModelInputs): ModelOutput {
     formula: "activos netos + (EBITDA base × múltiplo de fondo de comercio)",
     sustitucion: `${n(activosNetos)} + (${n(ebitdaBase)} × ${i.multFondo}) = ${n(activosNetos)} + ${n(fondoComercio)}`,
     resultado: Math.round(valorM1),
-    fuente: "Supuesto «Múltiplo fondo de comercio — Método 1 (×)»",
-    alerta: "Es el único método que consume el inventario de activos. Los métodos 2 y 3 son de renta y no lo miran.",
+    fuente: "Múltiplo de fondo de comercio definido en los supuestos del modelo.",
+    nota: "Es el único de los tres métodos que valúa el patrimonio. Los otros dos valúan la capacidad de generar renta.",
   })
 
   // ── 4. Método 2 — flujo de fondos descontado ───────────────────────────────
@@ -131,8 +132,8 @@ export function deriveModel(i: ModelInputs): ModelOutput {
     formula: "VP(flujos años 0 a 4) + VP(valor terminal), descontados a la tasa del modelo",
     sustitucion: `flujos [${flujos.map(n).join(" · ")}] al ${pct(Math.round(i.tasaDCF * 100))} → VP ${n(vpFlujos)} + terminal ${n(vpTerminal)}`,
     resultado: valorM2,
-    fuente: "Supuestos de EBITDA proyectado años 1 a 4, tasa de descuento y múltiplo de valor residual",
-    alerta: "Descansa en la proyección del vendedor. No se mueve si cambian los activos.",
+    fuente: "EBITDA proyectado a cuatro años, tasa de descuento y múltiplo de valor residual, todos definidos en los supuestos.",
+    nota: "Valúa la renta futura proyectada, por lo que no varía si cambia el inventario de activos.",
   })
 
   // ── 5. Método 3 — múltiplo comparable ──────────────────────────────────────
@@ -145,8 +146,8 @@ export function deriveModel(i: ModelInputs): ModelOutput {
     formula: "punto medio entre EBITDA base × múltiplo mínimo y EBITDA base × múltiplo máximo",
     sustitucion: `(${n(valorM3min)} + ${n(valorM3max)}) ÷ 2 — múltiplos ${i.multMinComp}× a ${i.multMaxComp}×`,
     resultado: valorM3mid,
-    fuente: "Supuestos «Múltiplo mínimo/máximo comparable — Método 3 (×)»",
-    alerta: "Tampoco consume activos.",
+    fuente: "Rango de múltiplos de empresas comparables del sector, definido en los supuestos.",
+    nota: "Valúa por comparación con transacciones del sector, sin considerar el patrimonio propio.",
   })
 
   // ── 6. Síntesis ────────────────────────────────────────────────────────────
@@ -160,9 +161,9 @@ export function deriveModel(i: ModelInputs): ModelOutput {
     formula: "(Método 1 + Método 2 + Método 3) ÷ 3",
     sustitucion: `(${n(valorM1)} + ${n(valorM2)} + ${n(valorM3mid)}) ÷ 3`,
     resultado: promMetodos,
-    fuente: "Derivado de los tres métodos anteriores",
+    fuente: "Se calcula a partir de los tres métodos anteriores.",
     alerta: dispersionMetodos > promMetodos * 0.4
-      ? `Dispersión alta: ${n(dispersionMetodos)} entre el método más alto y el más bajo. Un promedio simple sobre métodos tan separados esconde más de lo que resume.`
+      ? `Los tres métodos arrojan resultados distantes entre sí: ${n(dispersionMetodos)} separan al más alto del más bajo. El promedio simple es una síntesis razonable, pero conviene mirar cada método por separado antes de fijar posición.`
       : undefined,
   })
 
@@ -173,7 +174,7 @@ export function deriveModel(i: ModelInputs): ModelOutput {
     formula: "activos revaluados × (1 − descuento por liquidación)",
     sustitucion: `${n(i.activosRevalu)} × (1 − ${pct(i.descLiq)})`,
     resultado: valorLiq,
-    fuente: "Supuesto «Descuento por liquidación forzada (%)»",
+    fuente: "Descuento por liquidación forzada definido en los supuestos.",
   })
 
   // ── 7. Oferta — derivada salvo override explícito ──────────────────────────
@@ -190,13 +191,13 @@ export function deriveModel(i: ModelInputs): ModelOutput {
     formula: `promedio de métodos × ${pct(i.coefOfertaInic)}`,
     sustitucion: ofertaInicEsDerivada
       ? `${n(promMetodos)} × ${pct(i.coefOfertaInic)}`
-      : `VALOR FIJADO A MANO: ${n(ofertaInic)} (el modelo derivaría ${n(ofertaDerivada)})`,
+      : `${n(ofertaInic)} — importe fijado por el analista`,
     resultado: ofertaInic,
     fuente: ofertaInicEsDerivada
-      ? "Derivado del promedio de métodos y del supuesto «Coeficiente de oferta inicial sobre promedio (%)»"
-      : "Supuesto «Precio de oferta inicial (USD)» cargado manualmente",
-    alerta: ofertaInicEsDerivada ? undefined
-      : "Cadena cortada: mientras este supuesto tenga un valor, nada de lo que se cargue en activos o riesgos mueve la oferta. Vaciarlo para que el modelo la derive.",
+      ? "Se calcula sobre el promedio de métodos, aplicando el coeficiente de oferta definido en los supuestos."
+      : "Valor fijado por el analista en los supuestos, en reemplazo del que calcula el modelo.",
+    nota: ofertaInicEsDerivada ? undefined
+      : `El modelo calcularía ${n(ofertaDerivada)}. Al estar fijado a mano, este importe no se actualiza cuando cambian los activos o los riesgos.`,
   })
 
   t.push({
@@ -205,12 +206,13 @@ export function deriveModel(i: ModelInputs): ModelOutput {
     formula: `promedio de métodos × ${pct(i.coefOfertaMax)}`,
     sustitucion: ofertaMaxEsDerivada
       ? `${n(promMetodos)} × ${pct(i.coefOfertaMax)}`
-      : `VALOR FIJADO A MANO: ${n(ofertaMax)} (el modelo derivaría ${n(maxDerivado)})`,
+      : `${n(ofertaMax)} — importe fijado por el analista`,
     resultado: ofertaMax,
     fuente: ofertaMaxEsDerivada
-      ? "Derivado del promedio de métodos y del supuesto «Coeficiente de oferta máxima sobre promedio (%)»"
-      : "Supuesto «Precio máximo de negociación (USD)» cargado manualmente",
-    alerta: ofertaMaxEsDerivada ? undefined : "Cadena cortada: ver nota de la oferta inicial.",
+      ? "Se calcula sobre el promedio de métodos, aplicando el coeficiente de techo definido en los supuestos."
+      : "Valor fijado por el analista en los supuestos, en reemplazo del que calcula el modelo.",
+    nota: ofertaMaxEsDerivada ? undefined
+      : `El modelo calcularía ${n(maxDerivado)}. Al estar fijado a mano, este importe no se actualiza con el resto del modelo.`,
   })
 
   const multImpl = ebitdaBase > 0 ? Math.round(ofertaInic / ebitdaBase) : 0
@@ -220,7 +222,7 @@ export function deriveModel(i: ModelInputs): ModelOutput {
     formula: "oferta inicial ÷ EBITDA base",
     sustitucion: `${n(ofertaInic)} ÷ ${n(ebitdaBase)}`,
     resultado: multImpl,
-    fuente: "Derivado. Sirve para contrastar contra el múltiplo que pide el vendedor.",
+    fuente: "Se calcula sobre la oferta y el EBITDA base. Sirve para contrastar contra el múltiplo implícito en el precio del vendedor.",
   })
 
   const scaleMax = Math.max(i.precioPedido, valorM1, ofertaMax) * 1.05

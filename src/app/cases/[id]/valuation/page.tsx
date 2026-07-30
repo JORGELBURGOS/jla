@@ -277,8 +277,8 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
   const [vIntang,      setVIntang]     = useState(250000)
   const [vCartera,     setVCartera]    = useState(350000)
   const [descLiq,      setDescLiq]     = useState(45)
-  const [precioOferta, setPrecioOferta]= useState(2500000)
-  const [precioMax,    setPrecioMax]   = useState(3200000)
+  const [precioOferta, setPrecioOferta]= useState(0)   // 0 = lo deriva el modelo
+  const [precioMax,    setPrecioMax]   = useState(0)   // 0 = lo deriva el modelo
   const [coefOfertaInic, setCoefOfertaInic] = useState(77)
   const [coefOfertaMax,  setCoefOfertaMax]  = useState(98)
   const [riesgosMitig, setRiesgosMitig]= useState(0)
@@ -341,7 +341,11 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
           if (key && s.nota) notasM[key] = s.nota
         })
         setNotasMetodos(notasM)
-        const set = (label:string, fn:(v:number)=>void) => { if (sup[label]) fn(sup[label]) }
+        // Un 0 en la base es un valor valido (= "derivalo vos"), no un "no cargado".
+        const set = (label:string, fn:(v:number)=>void) => {
+          const v = sup[label]
+          if (v !== undefined && v !== null && !Number.isNaN(v)) fn(v)
+        }
         set("Ingresos reales último ejercicio cerrado (USD)", setIngresos)
         set("Múltiplo base de valuación (×)",                 setMultBase)
         if (sup["Múltiplo base de valuación (×)"]) setMultiplo(sup["Múltiplo base de valuación (×)"])
@@ -636,8 +640,8 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
             Trazabilidad del cálculo
           </p>
           <p className="text-xs text-gray-500 mb-4">
-            Cada línea sale de <span className="font-mono">src/lib/valuation/model.ts</span>, la única
-            fuente de fórmulas del sistema. Si un número no cierra, acá se ve por qué.
+            El detalle de cómo se obtiene cada valor del modelo: la fórmula aplicada, los importes
+            que intervienen y de dónde sale cada uno.
           </p>
           <div className="space-y-2">
             {M.trazabilidad.map(paso => (
@@ -651,6 +655,11 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                 <div className="text-[11px] text-gray-600 mt-1">{paso.formula}</div>
                 <div className="text-[11px] font-mono text-gray-500 mt-0.5">{paso.sustitucion}</div>
                 <div className="text-[10px] text-gray-400 mt-0.5">Fuente: {paso.fuente}</div>
+                {paso.nota && (
+                  <div className="text-[11px] text-gray-600 bg-gray-50 rounded px-2 py-1 mt-1.5">
+                    {paso.nota}
+                  </div>
+                )}
                 {paso.alerta && (
                   <div className="text-[11px] text-amber-800 bg-amber-50 rounded px-2 py-1 mt-1.5">
                     {paso.alerta}
@@ -670,10 +679,9 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
             </div>
           </div>
           {(!M.ofertaInicEsDerivada || !M.ofertaMaxEsDerivada) && (
-            <div className="mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[11px] text-red-800">
-              <span className="font-bold">Cadena cortada.</span> Hay precios cargados a mano, así que
-              los activos y los riesgos no llegan a la oferta. Vaciá los supuestos «Precio de oferta
-              inicial (USD)» y «Precio máximo de negociación (USD)» para que el modelo los derive.
+            <div className="mt-3 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-[11px] text-gray-600">
+              Los precios de oferta están fijados manualmente en los supuestos. Para que se
+              recalculen junto con el resto del modelo, dejarlos en cero.
             </div>
           )}
         </div>
