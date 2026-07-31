@@ -278,8 +278,17 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
   const CONOCIDAS = ["Rodados","Inmueble","Maquinaria","Intangible regulatorio","Cartera comercial"]
   const totalOtros = assetsR.filter(a => !CONOCIDAS.includes(a.categoria)).reduce((s, a) => s + getVal(a), 0)
   const activosRevalu = assetsR.reduce((s, a) => s + getVal(a), 0)
-  const inmuebleAsset = assetsR.find(a => a.categoria === "Inmueble")
-  const inmuebleDetalle = (inmuebleAsset?.descripcion || inmuebleAsset?.nombre || "").trim()
+  // La categoria Inmueble agrupa terreno, edificio y obras complementarias. Rotularla
+  // con la descripcion de un solo activo atribuia el total a una de sus partes.
+  const inmuebles = assetsR.filter(a => a.categoria === "Inmueble" && getVal(a) > 0)
+  const inmuebleDetalle = inmuebles.length === 0 ? ""
+    : inmuebles.length === 1 ? (inmuebles[0].descripcion || inmuebles[0].nombre || "").trim()
+    : inmuebles
+        .slice()
+        .sort((a, b) => getVal(b) - getVal(a))
+        .map(a => (a.nombre || "").trim())
+        .filter(Boolean)
+        .join(", ")
 
   // ── Riesgos: total del mapa + cruce en vivo de los ajustados con mitigantes ──
   const riesgosAbs = riesgosR.reduce((s, r) => s + Math.abs(r.impacto), 0)

@@ -84,6 +84,13 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
   const dcfY3 = Number((v as any).dcfY3 ?? 0)
   const dcfY4 = Number((v as any).dcfY4 ?? 0)
   const tasaDCF     = Number((v as any).tasaDCF     ?? 0.25)
+  const supNum = (frag: string) => {
+    const f = sups.find(x => String((x as any).label ?? "").toLowerCase().includes(frag))
+    const n = f ? Number(String(f.valor).replace(/[^0-9.,-]/g, "").replace(/\.(?=\d{3})/g, "").replace(",", ".")) : NaN
+    return isNaN(n) ? 0 : n
+  }
+  const tcProm   = supNum("tipo de cambio promedio del ejercicio")
+  const tcCierre = supNum("tipo de cambio de cierre del ejercicio")
   const multVR      = Number((v as any).multVR      ?? 8)
   const multMinComp = Number((v as any).multMinComp ?? 12)
   const multMaxComp = Number((v as any).multMaxComp ?? 15)
@@ -111,10 +118,21 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
   const nCond = activos.filter(r => r.estado === "CONDICIONAL").length
   const nActivos = nConf + nIden + nCond
 
+  // Numeracion de secciones en un solo lugar. Antes los textos citaban numeros
+  // sueltos que dejaron de coincidir cuando se reordenaron las secciones.
+  const SEC = {
+    resumen: 1, tesis: 2, evolucion: 3, situacion: 4, valuacion: 5, oferta: 6,
+    riesgos: 7, validacion: 8, condiciones: 9, resueltos: 10, alcance: 11,
+    supuestos: 12, limitaciones: 13,
+  } as const
+
   const validRows = valid.filter(r => r.seccion !== "resumen")
   const nVal = validRows.filter(r => r.estado === "Validado").length
   const nParc = validRows.filter(r => r.estado === "Parcialmente validado").length
   const nCuest = validRows.filter(r => r.estado === "Cuestionado").length
+  // Cuarta categoria: existe en los datos y no se declaraba, por lo que las tres
+  // cifras publicadas no sumaban el total de elementos analizados.
+  const nSin = validRows.length - nVal - nParc - nCuest
   const cuestionados = validRows.filter(r => r.estado === "Cuestionado")
 
   const margen = v.ingresos > 0 ? (v.ebitda / v.ingresos) * 100 : 0
@@ -241,7 +259,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
           <P>Antes de profundizar en los números, conviene responder la pregunta que naturalmente surge al ver el EBITDA histórico del negocio: ¿por qué debería valer más de lo que genera hoy? La respuesta descansa sobre tres pilares que el proceso de due diligence ha confirmado con evidencia documental.</P>
           {[
             {n:"1.", titulo:"Respaldo patrimonial independiente del negocio",
-             body:`Los activos revaluados ascienden a ${fmtUSDc(activosRevalu)}${totalInmueble > 0 ? `, de los cuales ${fmtUSDc(totalInmueble)} corresponden al inmueble${(v as any).inmuebleDetalle ? ` (${(v as any).inmuebleDetalle})` : ""}, un activo con valor propio` : ""}. Los activos netos (deducidos los ajustes por riesgos identificados de ${fmtUSDc(v.riesgosAjust)}) alcanzan ${fmtUSDc(v.activosNetos)}, respaldando una parte sustancial del precio de oferta inicial de ${fmtUSDc(v.ofertaInic)}.`},
+             body:`Los activos revaluados ascienden a ${fmtUSDc(activosRevalu)}${totalInmueble > 0 ? `, de los cuales ${fmtUSDc(totalInmueble)} corresponden a inmueble e instalaciones${(v as any).inmuebleDetalle ? ` —${(v as any).inmuebleDetalle}—` : ""}, activos con valor propio` : ""}. Los activos netos (deducidos los ajustes por riesgos identificados de ${fmtUSDc(v.riesgosAjust)}) alcanzan ${fmtUSDc(v.activosNetos)}, respaldando una parte sustancial del precio de oferta inicial de ${fmtUSDc(v.ofertaInic)}.`},
             {n:"2.", titulo:"Barrera de entrada regulatoria en sector de cumplimiento obligatorio",
              body:`El negocio opera bajo un CAA de Operador (DPA Mendoza) y una DIA vigentes — habilitaciones que representan una barrera de entrada de tres a cinco años de gestión. La demanda no depende del ciclo económico: los generadores de residuos peligrosos tienen obligación legal de contratar un operador habilitado (Ley 24.051). Este marco protege los ingresos y limita la competencia de nuevos entrantes.`},
             {n:"3.", titulo:"Ingresos validados por fuente independiente del Estado (ARCA)",
@@ -324,7 +342,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
             imputadas como gastos operativos; su normalización eleva el EBITDA de referencia a {fmtUSDc(v.ebitdaNorm)}
             (margen normalizado del {margenNorm.toLocaleString("es-AR", { maximumFractionDigits: 1 })}%), cifra adoptada como base de los métodos de
             valuación. La sostenibilidad de dicha normalización constituye un supuesto del modelo y se encuentra
-            documentada en la Sección 9.</>}
+            documentada en la Sección {SEC.supuestos}.</>}
           </P>
           <P>
             Los estados contables se presentan en moneda constante conforme al régimen de ajuste por inflación vigente,
@@ -341,9 +359,9 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
           <P>
             La valuación se construyó por tres métodos complementarios: (i) activos netos revaluados con adición de un
             fondo de comercio; (ii) flujo de fondos descontado sobre las proyecciones del plan de negocios, a una tasa
-            del {tasaDCF.toLocaleString("es-AR")}%; y (iii) múltiplos comparables de mercado de entre {multMinComp.toLocaleString("es-AR")}×
+            del {(tasaDCF * 100).toFixed(0)}%; y (iii) múltiplos comparables de mercado de entre {multMinComp.toLocaleString("es-AR")}×
             y {multMaxComp.toLocaleString("es-AR")}× EBITDA. Las proyecciones del método (ii) corresponden al escenario del
-            vendedor y su validación se encuentra condicionada según se expone en la Sección 7.
+            vendedor y su validación se encuentra condicionada según se expone en la Sección {SEC.validacion}.
           </P>
           <table style={{ width: "100%", borderCollapse: "collapse", margin: "10px 0 16px" }}>
             <thead><tr><th style={th}>Método</th><th style={{...th, textAlign:"right"}}>Valor resultante</th></tr></thead>
@@ -610,10 +628,10 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
           <H n="8." t="Validación del plan de negocios" />
           <P>
             El plan de negocios del vendedor fue contrastado ítem por ítem con la evidencia del data room:
-            de {validRows.length} elementos analizados, {nVal} resultaron validados, {nParc} parcialmente validados
-            y {nCuest} cuestionados. Los elementos cuestionados afectan de manera directa la sostenibilidad de las
+            de {validRows.length} elementos analizados, {nVal} resultaron validados, {nParc} parcialmente validados,
+            {nCuest} cuestionados{nSin > 0 ? <> y {nSin} {nSin === 1 ? "permanece" : "permanecen"} sin validar</> : null}. Los elementos cuestionados afectan de manera directa la sostenibilidad de las
             proyecciones utilizadas en el método de flujo de fondos, por lo que su resolución integra las condiciones
-            precedentes de la Sección 8.
+            precedentes de la Sección {SEC.condiciones}.
           </P>
           {cuestionados.slice(0, 6).map((c, i) => (
             <div key={i} style={{ borderLeft: "3px solid #dc2626", padding: "8px 12px", marginBottom: "8px", background: "#fef2f2" }}>
@@ -696,7 +714,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
             A la fecha del presente informe, el índice de requerimientos comprende {total} ítems, de los cuales {recibidos} fueron
             recibidos en forma completa, {parciales} en forma parcial y {pendientes} permanecen pendientes de entrega, lo que
             representa un grado de avance del {avance}%. Las conclusiones podrán verse modificadas por la documentación
-            pendiente, en particular la identificada como condición precedente en la Sección 8.
+            pendiente, en particular la identificada como condición precedente en la Sección {SEC.condiciones}.
           </P>
         </div>
 
@@ -706,7 +724,11 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
           <H n="12." t="Supuestos del modelo" />
           <P>
             Los importes se expresan en dólares estadounidenses. Los valores del ejercicio en curso originalmente
-            denominados en pesos fueron convertidos al tipo de cambio de referencia de ARS 1.500 por dólar.
+            denominados en pesos fueron convertidos aplicando el criterio de flujos y stocks: las partidas
+            devengadas a lo largo del ejercicio —ingresos, costos, EBITDA y resultado— al tipo de cambio
+            promedio del período{tcProm ? <> (ARS {miles(tcProm)} por dólar en el último ejercicio)</> : null}, y las
+            partidas medidas a una fecha —activos, pasivos, deuda neta y capital de trabajo— al tipo de cambio
+            de cierre{tcCierre ? <> (ARS {tcCierre.toLocaleString("es-AR")} por dólar)</> : null}.
           </P>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "28px" }}>
             <div>
