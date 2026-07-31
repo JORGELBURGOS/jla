@@ -250,31 +250,48 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
         {/* ══════ 3. EVOLUCIÓN FINANCIERA ══════ */}
         <div className="page-break" style={{ padding: "30px 50px" }}>
           <H n="3." t="Evolución financiera 2021–2025" />
-          <P>Con la tesis de inversión establecida, corresponde examinar la película financiera completa: cinco ejercicios auditados que muestran un negocio en construcción, con volatilidad de márgenes y una recuperación incompleta. La facturación fue validada de manera independiente cruzando los estados contables con las declaraciones juradas de IVA presentadas ante ARCA, con una diferencia inferior al 0,5% que acredita la fiabilidad del dato de base.</P>
+          <P>Con la tesis de inversión establecida, corresponde examinar la película financiera completa: cinco ejercicios auditados que muestran un negocio en construcción, con volatilidad de márgenes y una recuperación incompleta. La facturación del último ejercicio fue validada de manera independiente contra el Libro de IVA Digital presentado ante ARCA (F.2051, período mayo-diciembre 2025 anualizado), con una diferencia inferior al 0,5% que acredita la fiabilidad del dato de base. Los ejercicios anteriores no cuentan con validación externa equivalente.</P>
           <table style={{ width:"100%", borderCollapse:"collapse", margin:"10px 0 8px" }}>
             <thead><tr>
               <th style={th}>Ejercicio</th>
               <th style={{...th, textAlign:"right"}}>Ingresos</th>
               <th style={{...th, textAlign:"right"}}>EBITDA</th>
               <th style={{...th, textAlign:"right"}}>Margen</th>
+              <th style={{...th, textAlign:"right"}}>Deprec.</th>
+              <th style={{...th, textAlign:"right"}}>EBIT</th>
+              <th style={{...th, textAlign:"right"}}>Rdo. financiero</th>
+              <th style={{...th, textAlign:"right"}}>Impuesto</th>
               <th style={{...th, textAlign:"right"}}>Resultado neto</th>
             </tr></thead>
             <tbody>
-              {v.evolucionFinanciera.map((b,i:number) => {
-                const ing = b.ingresos, ebit = b.ebitda, rn = b.resultadoNeto, marg = b.margen
-                return (
-                  <tr key={i} style={{ background:i%2===0?"#f9fafb":"white" }}>
-                    <td style={td}>{String(b.ejercicio)}</td>
-                    <td style={tdNum}>{fmtUSDc(ing)}</td>
-                    <td style={{...tdNum, color:ebit<0?"#dc2626":"#16a34a", fontWeight:700}}>{fmtUSDc(ebit)}</td>
-                    <td style={{...tdNum, color:ebit<0?"#dc2626":"#16a34a"}}>{marg}%</td>
-                    <td style={{...tdNum, color:rn<0?"#dc2626":"#374151"}}>{fmtUSDc(rn)}</td>
-                  </tr>
-                )
-              })}
+              {v.evolucionFinanciera.map((b,i:number) => (
+                <tr key={i} style={{ background:i%2===0?"#f9fafb":"white" }}>
+                  <td style={td}>{String(b.ejercicio)}</td>
+                  <td style={tdNum}>{fmtUSDc(b.ingresos)}</td>
+                  <td style={{...tdNum, color:b.ebitda<0?"#dc2626":"#16a34a", fontWeight:700}}>{fmtUSDc(b.ebitda)}</td>
+                  <td style={{...tdNum, color:b.ebitda<0?"#dc2626":"#16a34a"}}>{b.margen}%</td>
+                  <td style={tdNum}>{fmtUSDc(b.depreciacion)}</td>
+                  <td style={{...tdNum, color:b.ebit<0?"#dc2626":"#374151"}}>{fmtUSDc(b.ebit)}</td>
+                  <td style={{...tdNum, color:"#dc2626", fontWeight:700}}>{fmtUSDc(b.resultadoFinanciero)}</td>
+                  <td style={tdNum}>{b.impuesto ? fmtUSDc(-Math.abs(b.impuesto)) : "—"}</td>
+                  <td style={{...tdNum, color:b.resultadoNeto<0?"#dc2626":"#374151"}}>{fmtUSDc(b.resultadoNeto)}</td>
+                </tr>
+              ))}
+              <tr style={{ background:"#f1f5f9", borderTop:"1.5px solid #1a2744" }}>
+                <td style={{...td, fontWeight:700}}>Acumulado 5 ejercicios</td>
+                <td style={tdNum}>—</td>
+                <td style={{...tdNum, fontWeight:800, color:"#16a34a"}}>{fmtUSDc(v.evolucionAcum.ebitda)}</td>
+                <td style={tdNum}>—</td>
+                <td style={tdNum}>—</td>
+                <td style={tdNum}>—</td>
+                <td style={{...tdNum, fontWeight:800, color:"#dc2626"}}>{fmtUSDc(v.evolucionAcum.resultadoFinanciero)}</td>
+                <td style={tdNum}>—</td>
+                <td style={tdNum}>—</td>
+              </tr>
             </tbody>
           </table>
-          <P>Es un dato que el inversor debe conocer y entender desde el principio: el resultado neto fue negativo en tres de los últimos cinco ejercicios. La causa no es operativa: la depreciación acelerada de activos revaluados por RT 6/17 genera un cargo contable no cash de alto impacto, y el impuesto a las ganancias de 2025 resultó anómalo (tasa efectiva de 295% sobre la ganancia contable). El EBITDA es la métrica representativa de la generación de caja operativa; el resultado neto, en este caso, no lo es.</P>
+          <P>Es un dato que el inversor debe conocer y entender desde el principio: el resultado neto fue negativo en tres de los últimos cinco ejercicios. La causa no es operativa. En 2021 y 2024 el resultado financiero —intereses y diferencias de cambio— absorbió íntegramente el EBIT; en 2025 el resultado antes de impuestos fue positivo y se revirtió por un impuesto a las ganancias con tasa efectiva del 295% sobre la ganancia contable. La depreciación, reexpresada por RT 6/17, agrega un cargo no cash creciente que explica la caída del EBIT en el último ejercicio.</P>
+          <P>El EBITDA es la métrica representativa de la generación de caja operativa; el resultado neto, en este caso, no lo es. El resultado financiero, en cambio, sí es erogación de caja, y su acumulado de cinco ejercicios asciende a {fmtUSDc(Math.abs(v.evolucionAcum.resultadoFinanciero))} contra un EBITDA acumulado de {fmtUSDc(v.evolucionAcum.ebitda)}: el costo financiero consumió el {v.evolucionAcum.ratio}% de toda la caja operativa generada en el período. El comprador debería verificar su composición y determinar qué parte desaparece al cancelar la deuda en el cierre.</P>
         </div>
 
 
@@ -432,7 +449,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
               <tr style={{ background:"#f8fafc", borderTop:"1.5px solid #1a2744" }}>
                 <td style={{...td, fontWeight:700, fontSize:"11px"}}>Valor central (promedio)</td>
                 <td style={{...tdNum, fontWeight:800, fontSize:"13px", color:"#1a2744"}}>{fmtUSDc(v.promMetodos)}</td>
-                <td style={{...td, fontSize:"9px", color:"#6b7280"}}>Promedio simple de los tres métodos.</td>
+                <td style={{...td, fontSize:"9px", color:"#6b7280"}}>Promedio simple de los tres métodos. Es una referencia, no un objetivo de precio.</td>
               </tr>
             </tbody>
           </table>

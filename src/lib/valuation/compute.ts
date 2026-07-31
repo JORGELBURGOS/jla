@@ -156,7 +156,13 @@ export interface ValuationResult {
 
   // Evolución financiera 2021-2025 — consolidada acá, antes vivía calculada dos veces
   // por separado (pantalla y PDF) con una divergencia real en la fórmula del EBITDA.
-  evolucionFinanciera: { ejercicio: string; ingresos: number; ebitda: number; margen: number; resultadoNeto: number }[]
+  evolucionFinanciera: {
+    ejercicio: string; ingresos: number; ebitda: number; margen: number
+    depreciacion: number; ebit: number; resultadoFinanciero: number; impuesto: number; resultadoNeto: number
+  }[]
+  // Acumulados del quinquenio — el resultado financiero acumulado es el hallazgo
+  // central de la evolucion: mide cuanto del EBITDA generado se llevo el costo financiero.
+  evolucionAcum: { ebitda: number; resultadoFinanciero: number; ratio: number }
 
   // ── Índice de Confiabilidad del DD — qué tan lista está la info para el inversor ──
   // NO es el % de avance del tracker (eso mide papeleo). Esto mide certeza real:
@@ -203,7 +209,7 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
       .not("estado", "in", '("DUPLICADO","RECLASIFICADO","CERRADO")').lt("impacto", 0),
     db.from("vw_risk_adjustments_live").select("id,origen_riesgo_id,porcentaje,estado_ajuste,descripcion_analista,nota_porcentaje,riesgo,area,accion_requerida,impacto_actual,monto_calculado").eq("case_id", caseId),
     db.from("dd_case_requirements").select("documento,estado,antes_sena").eq("case_id", caseId),
-    db.from("dd_case_balance_sheet").select("ejercicio,ingresos,costos_servicios,gastos_admin,gastos_comercial,depreciacion,resultado_neto,tc_promedio").eq("case_id", caseId),
+    db.from("dd_case_balance_sheet").select("ejercicio,ingresos,costos_servicios,gastos_admin,gastos_comercial,depreciacion,resultado_financiero,impuesto_ganancias,resultado_neto,tc_promedio").eq("case_id", caseId),
   ])
 
   const casoR = (caso ?? {}) as { nombre?: string; precio_pedido?: number }
@@ -212,18 +218,32 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
   const riesgosR = (riesgosMapa ?? []) as { id:string; riesgo:string; area:string; impacto:number; accion_requerida:string; estado:string }[]
   const ajustesR = (riesgoAjustes ?? []) as { id:string; origen_riesgo_id:string; porcentaje:number; estado_ajuste:string; descripcion_analista:string|null; nota_porcentaje:string|null; riesgo:string|null; area:string|null; accion_requerida:string|null; impacto_actual:number; monto_calculado:number }[]
   const reqsR = (reqs ?? []) as { documento:string; estado:string; antes_sena:boolean }[]
-  const balanceR = (balanceSheet ?? []) as { ejercicio:string; ingresos:number; costos_servicios:number; gastos_admin:number; gastos_comercial:number; depreciacion:number; resultado_neto:number; tc_promedio:number }[]
+  const balanceR = (balanceSheet ?? []) as { ejercicio:string; ingresos:number; costos_servicios:number; gastos_admin:number; gastos_comercial:number; depreciacion:number; resultado_financiero:number; impuesto_ganancias:number; resultado_neto:number; tc_promedio:number }[]
 
   const evolucionFinanciera = [...balanceR].sort((a,b) => a.ejercicio.localeCompare(b.ejercicio)).map(b => {
     const tc = b.tc_promedio || 1
     const ingresosUSD = Math.round(b.ingresos / tc)
-    const ebitdaUSD = Math.round((b.ingresos - b.costos_servicios - b.gastos_admin - b.gastos_comercial + b.depreciacion) / tc)
+    const ebitUSD   = Math.round((b.ingresos - b.costos_servicios - b.gastos_admin - b.gastos_comercial) / tc)
+    const deprecUSD = Math.round((b.depreciacion ?? 0) / tc)
+    const ebitdaUSD = ebitUSD + deprecUSD
+    const finUSD    = Math.round((b.resultado_financiero ?? 0) / tc)
+    const impUSD    = Math.round((b.impuesto_ganancias ?? 0) / tc)
     const resultadoNetoUSD = Math.round(b.resultado_neto / tc)
     return {
-      ejercicio: b.ejercicio, ingresos: ingresosUSD, ebitda: ebitdaUSD, resultadoNeto: resultadoNetoUSD,
+      ejercicio: b.ejercicio, ingresos: ingresosUSD, ebitda: ebitdaUSD,
+      depreciacion: deprecUSD, ebit: ebitUSD, resultadoFinanciero: finUSD, impuesto: impUSD,
+      resultadoNeto: resultadoNetoUSD,
       margen: ingresosUSD > 0 ? Math.round(ebitdaUSD / ingresosUSD * 100) : 0,
     }
   })
+
+  const acumEbitda = evolucionFinanciera.reduce((s, b) => s + b.ebitda, 0)
+  const acumFin    = evolucionFinanciera.reduce((s, b) => s + b.resultadoFinanciero, 0)
+  const evolucionAcum = {
+    ebitda: acumEbitda,
+    resultadoFinanciero: acumFin,
+    ratio: acumEbitda > 0 ? Math.round(Math.abs(acumFin) / acumEbitda * 100) : 0,
+  }
 
   const caseName = casoR.nombre ?? ""
   const precio   = Number(casoR.precio_pedido ?? 0)
@@ -408,7 +428,7 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
     multMinComp, multMaxComp, valorM3min, valorM3max, valorM3mid,
     promMetodos, descLiq, valorLiq, ofertaInic, ofertaMax, multImpl, scaleMax,
     valorM2conservador, valorM2pesimista, promConservador, promPesimista, primaCrecimiento,
-    flB, flC, valorM2B, valorM2C, promB, promC, evolucionFinanciera,
+    flB, flC, valorM2B, valorM2C, promB, promC, evolucionFinanciera, evolucionAcum,
     icddTracker, icddRiesgo, icddActivos, icddOferta, indiceConfiabilidad,
   }
 }
