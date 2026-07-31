@@ -648,24 +648,36 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
         <div className="page-break" style={{ padding: "30px 50px" }}>
           <H n="10." t="Riesgos resueltos durante el proceso" />
           <P>Un due diligence no solo identifica problemas: también los resuelve. Los hallazgos que se listan a continuación llegaron al proceso como riesgos potenciales significativos y se cerraron con evidencia documental o de campo. Su resolución redujo sustancialmente la percepción inicial de riesgo y, con ella, el descuento implícito que el comprador habría exigido sobre el precio.</P>
-          <table style={{ width:"100%", borderCollapse:"collapse", margin:"10px 0" }}>
-            <thead><tr>
-              <th style={th}>Riesgo resuelto</th>
-              <th style={{...th, textAlign:"right"}}>Exposición eliminada</th>
-            </tr></thead>
-            <tbody>
-              {cerrados.filter((r:any)=>Number(r.impacto)<0).map((r:any,i:number)=>(
-                <tr key={i} style={{ borderTop:"0.5px solid #e5e7eb" }}>
-                  <td style={{...td, color:"#16a34a", fontWeight:600}}>{String(r.riesgo)}</td>
-                  <td style={{...tdNum, color:"#16a34a"}}>{fmtUSDc(Math.abs(Number(r.impacto)))}</td>
-                </tr>
-              ))}
-              <tr style={{ background:"#f0fdf4", borderTop:"1.5px solid #16a34a" }}>
-                <td style={{...td, fontWeight:700, color:"#16a34a"}}>Total eliminado</td>
-                <td style={{...tdNum, fontWeight:700, color:"#16a34a"}}>{fmtUSDc(cerrados.filter((r:any)=>Number(r.impacto)<0).reduce((s:number,r:any)=>s+Math.abs(Number(r.impacto)),0))}</td>
-              </tr>
-            </tbody>
-          </table>
+          {/* Texto corrido a ancho completo. El monto eliminado cierra cada parrafo entre
+              parentesis, para no partir la caja en dos columnas y ganar ancho de lectura. */}
+          <div style={{ marginTop:"12px" }}>
+            {cerrados.filter((r:any)=>Number(r.impacto)<0)
+              .sort((a:any,b:any)=>Number(a.impacto)-Number(b.impacto))
+              .map((r:any,i:number)=>(
+              <p key={i} style={{ fontFamily:"Georgia,serif", fontSize:"9.5px", lineHeight:1.6, color:"#374151",
+                                  margin:"0 0 7px", textAlign:"justify", paddingLeft:"12px",
+                                  borderLeft:"2px solid #d1d5db", breakInside:"avoid" }}>
+                {String(r.riesgo)}
+                <span style={{ fontFamily:"Inter,sans-serif", fontSize:"8.5px", color:"#6b7280",
+                               whiteSpace:"nowrap", fontVariantNumeric:"tabular-nums" }}>
+                  {" "}(exposición eliminada: {fmtNum(Math.abs(Number(r.impacto)))})
+                </span>
+              </p>
+            ))}
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline",
+                          marginTop:"10px", borderTop:"1.5px solid #1a2744", paddingTop:"8px" }}>
+              <span style={{ fontFamily:"Inter,sans-serif", fontSize:"10px", fontWeight:700, color:"#1a2744" }}>
+                Total de exposición eliminada
+                <span style={{ fontWeight:400, color:"#9ca3af", marginLeft:"6px" }}>
+                  {cerrados.filter((r:any)=>Number(r.impacto)<0).length} hallazgos cerrados con evidencia
+                </span>
+              </span>
+              <span style={{ fontFamily:"Inter,sans-serif", fontSize:"13px", fontWeight:800, color:"#1a2744",
+                             fontVariantNumeric:"tabular-nums" }}>
+                {fmtNum(cerrados.filter((r:any)=>Number(r.impacto)<0).reduce((s:number,r:any)=>s+Math.abs(Number(r.impacto)),0))}
+              </span>
+            </div>
+          </div>
         </div>
         )}
 
