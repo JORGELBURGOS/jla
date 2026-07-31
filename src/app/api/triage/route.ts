@@ -202,10 +202,13 @@ Analizá cada documento y respondé con este JSON COMPLETO:
     {"hoja": "Validación Plan de Negocios", "clave": "clave EXACTA", "campo": "Dato real|Estado", "valor": "valor", "justificacion": "evidencia"}
   ],
   "activos_propuestos": [
+    // CATEGORIA: usar EXACTAMENTE uno de los cinco valores del enum, en singular y con esa
+    // grafia. La base agrupa por coincidencia exacta: "Inmuebles" o "Intangibles" en plural
+    // hacen que el activo desaparezca del subtotal por categoria aunque siga sumando al total.
     {
       "accion": "nuevo|actualizar",
       "nombre": "nombre del activo",
-      "categoria": "Rodados|Inmuebles|Maquinaria|Intangibles|Capital de Trabajo|Otros",
+      "categoria": "Rodados|Inmueble|Maquinaria|Intangible regulatorio|Cartera comercial",
       "descripcion": "descripcion tecnica del activo",
       "año": 2020,
       "dominio": "ABC123 (solo para vehiculos)",

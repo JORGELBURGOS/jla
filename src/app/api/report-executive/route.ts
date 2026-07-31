@@ -123,6 +123,17 @@ Respondé ÚNICAMENTE con este JSON (sin markdown, sin texto extra):
       condiciones_cierre: resultado.condiciones_cierre,
       org_id: 'jl-advisory',
       generated_at: new Date().toISOString(),
+      // Huella de las cifras al momento de generar. El resumen se guarda como prosa
+      // con los numeros escritos adentro: sin esto, cuando cambia un supuesto o un
+      // riesgo el texto queda viejo y nadie se entera. La vista
+      // vw_resumen_desactualizado compara esta huella contra el modelo actual.
+      snapshot_cifras: {
+        activos: Math.round(v.activosRevalu),
+        riesgos_ajust: Math.round(v.riesgosAjust),
+        riesgos_abs: Math.round(v.riesgosAbs),
+        ingresos: Math.round(v.ingresos),
+        ebitda_norm: Math.round(v.ebitdaNorm),
+      },
     })
 
     return NextResponse.json({ ok: true, resultado })
