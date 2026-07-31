@@ -495,64 +495,99 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
             resultando un ajuste neto de {fmtUSDc(Math.abs(v.riesgosAjust))} —{" "}
             equivalente al {Math.round(Math.abs(v.riesgosAjust) / (riesgosAbs||1) * 100)}% de la exposición bruta activa.
           </P>
-          {/* Barra de escala: permite comparar el peso relativo de cada riesgo de un vistazo */}
+          {/* Agrupado por campo. Cuando el area viene compuesta ("Ambiental / Regulatorio")
+              se toma el primer termino, que es el que el analista escribio como dominante. */}
           <div style={{ marginTop:"14px" }}>
             {(() => {
-              const lista = [...v.riesgoAjustesLive].sort((x,y)=>Math.abs(y.monto)-Math.abs(x.monto))
-              const maxAjuste = Math.max(...lista.map(x=>Math.abs(x.monto)), 1)
-              return lista.map((r,i) => {
-                const ancho = Math.max(2, Math.round(Math.abs(r.monto)/maxAjuste*100))
-                return (
-                  <div key={i} style={{ marginBottom:"11px", paddingBottom:"11px", borderBottom: i===lista.length-1?"none":"0.5px solid #f3f4f6", breakInside:"avoid" }}>
+              const campoDe = (area?: string) => {
+                const base = (area || "General").split("/")[0].trim()
+                return base.charAt(0).toUpperCase() + base.slice(1).toLowerCase()
+              }
+              const grupos = new Map<string, typeof v.riesgoAjustesLive>()
+              for (const r of v.riesgoAjustesLive) {
+                const k = campoDe(r.area)
+                if (!grupos.has(k)) grupos.set(k, [])
+                grupos.get(k)!.push(r)
+              }
+              const orden = [...grupos.entries()]
+                .map(([campo, rs]) => ({
+                  campo,
+                  rs: [...rs].sort((x,y)=>Math.abs(y.monto)-Math.abs(x.monto)),
+                  subtotal: rs.reduce((acc,x)=>acc+Math.abs(x.monto),0),
+                }))
+                .sort((x,y)=>y.subtotal-x.subtotal)
+              const totalAj = Math.abs(v.riesgosAjust) || 1
+              const maxAjuste = Math.max(...v.riesgoAjustesLive.map(x=>Math.abs(x.monto)), 1)
 
-                    {/* Encabezado: orden, area y los tres numeros en una sola linea */}
-                    <div style={{ display:"flex", alignItems:"baseline", gap:"7px", marginBottom:"4px" }}>
-                      <span style={{ fontFamily:"Inter,sans-serif", fontSize:"8px", fontWeight:800, color:"#9ca3af", minWidth:"14px" }}>
-                        {String(i+1).padStart(2,"0")}
-                      </span>
-                      <span style={{ fontFamily:"Inter,sans-serif", fontSize:"7.5px", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em",
-                                     color:"#6b7280", background:"#f3f4f6", padding:"1.5px 6px", borderRadius:"3px", whiteSpace:"nowrap" }}>
-                        {r.area || "General"}
-                      </span>
-                      <span style={{ flex:1 }} />
-                      <span style={{ fontFamily:"Inter,sans-serif", fontSize:"9px", color:"#9ca3af", whiteSpace:"nowrap", fontVariantNumeric:"tabular-nums" }}>
-                        {fmtNum(r.impactoActual)} × {r.porcentaje.toFixed(0)}%
-                      </span>
-                      <span style={{ fontFamily:"Inter,sans-serif", fontSize:"11px", fontWeight:800, color:"#dc2626", whiteSpace:"nowrap", fontVariantNumeric:"tabular-nums", minWidth:"62px", textAlign:"right" }}>
-                        −{fmtNum(Math.abs(r.monto))}
-                      </span>
-                    </div>
+              return orden.map((g, gi) => (
+                <div key={g.campo} style={{ marginTop: gi===0?0:"16px", breakInside:"avoid" }}>
 
-                    {/* Barra de peso relativo */}
-                    <div style={{ height:"3px", background:"#f3f4f6", borderRadius:"2px", marginBottom:"5px", overflow:"hidden" }}>
-                      <div style={{ width:`${ancho}%`, height:"100%", background:"#dc2626", opacity:0.75 }} />
-                    </div>
+                  {/* Encabezado del campo con su peso en el ajuste total */}
+                  <div style={{ display:"flex", alignItems:"baseline", gap:"8px", background:"#1a2744",
+                                padding:"5px 10px", borderRadius:"3px", marginBottom:"8px" }}>
+                    <span style={{ fontFamily:"Inter,sans-serif", fontSize:"9px", fontWeight:800, letterSpacing:"0.1em",
+                                   textTransform:"uppercase", color:"white" }}>{g.campo}</span>
+                    <span style={{ fontFamily:"Inter,sans-serif", fontSize:"8px", color:"#94a3b8" }}>
+                      {g.rs.length} {g.rs.length===1?"hallazgo":"hallazgos"}
+                    </span>
+                    <span style={{ flex:1 }} />
+                    <span style={{ fontFamily:"Inter,sans-serif", fontSize:"8px", color:"#94a3b8" }}>
+                      {Math.round(g.subtotal/totalAj*100)}% del ajuste
+                    </span>
+                    <span style={{ fontFamily:"Inter,sans-serif", fontSize:"11px", fontWeight:800, color:"white",
+                                   fontVariantNumeric:"tabular-nums" }}>−{fmtNum(g.subtotal)}</span>
+                  </div>
 
-                    {/* Descripcion del hallazgo, en peso normal para que se pueda leer */}
-                    <p style={{ fontFamily:"Georgia,serif", fontSize:"9.5px", lineHeight:1.6, color:"#1f2937", margin:"0 0 5px", textAlign:"justify" }}>
-                      {r.descripcion}
-                    </p>
+                  {g.rs.map((r,i) => {
+                    const ancho = Math.max(2, Math.round(Math.abs(r.monto)/maxAjuste*100))
+                    return (
+                      <div key={i} style={{ marginBottom:"10px", paddingBottom:"10px",
+                                            borderBottom: i===g.rs.length-1?"none":"0.5px solid #f3f4f6",
+                                            breakInside:"avoid" }}>
+                        {/* Aritmetica del ajuste, alineada a la derecha */}
+                        <div style={{ display:"flex", alignItems:"baseline", gap:"8px", marginBottom:"4px" }}>
+                          <span style={{ flex:1 }} />
+                          <span style={{ fontFamily:"Inter,sans-serif", fontSize:"9px", color:"#9ca3af",
+                                         whiteSpace:"nowrap", fontVariantNumeric:"tabular-nums" }}>
+                            {fmtNum(r.impactoActual)} × {r.porcentaje.toFixed(0)}%
+                          </span>
+                          <span style={{ fontFamily:"Inter,sans-serif", fontSize:"11px", fontWeight:800, color:"#dc2626",
+                                         whiteSpace:"nowrap", fontVariantNumeric:"tabular-nums", minWidth:"62px",
+                                         textAlign:"right" }}>−{fmtNum(Math.abs(r.monto))}</span>
+                        </div>
 
-                    {/* Fundamentos, en bloque indentado */}
-                    {(r.descripcion_analista || r.nota_porcentaje) && (
-                      <div style={{ paddingLeft:"10px", borderLeft:"2px solid #e5e7eb" }}>
-                        {r.descripcion_analista && (
-                          <p style={{ fontFamily:"Georgia,serif", fontSize:"8.5px", lineHeight:1.55, color:"#6b7280", margin:"0 0 2px", textAlign:"justify" }}>
-                            <span style={{ fontFamily:"Inter,sans-serif", fontSize:"7.5px", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", color:"#9ca3af" }}>Por qué se eligió · </span>
-                            {r.descripcion_analista}
-                          </p>
-                        )}
-                        {r.nota_porcentaje && (
-                          <p style={{ fontFamily:"Georgia,serif", fontSize:"8.5px", lineHeight:1.55, color:"#9ca3af", margin:0, textAlign:"justify" }}>
-                            <span style={{ fontFamily:"Inter,sans-serif", fontSize:"7.5px", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", color:"#9ca3af" }}>Por qué {r.porcentaje.toFixed(0)}% · </span>
-                            {r.nota_porcentaje}
-                          </p>
+                        <div style={{ height:"3px", background:"#f3f4f6", borderRadius:"2px", marginBottom:"5px", overflow:"hidden" }}>
+                          <div style={{ width:`${ancho}%`, height:"100%", background:"#dc2626", opacity:0.75 }} />
+                        </div>
+
+                        <p style={{ fontFamily:"Georgia,serif", fontSize:"9.5px", lineHeight:1.6, color:"#1f2937",
+                                    margin:"0 0 5px", textAlign:"justify" }}>{r.descripcion}</p>
+
+                        {(r.descripcion_analista || r.nota_porcentaje) && (
+                          <div style={{ paddingLeft:"10px", borderLeft:"2px solid #e5e7eb" }}>
+                            {r.descripcion_analista && (
+                              <p style={{ fontFamily:"Georgia,serif", fontSize:"8.5px", lineHeight:1.55, color:"#6b7280",
+                                          margin:"0 0 2px", textAlign:"justify" }}>
+                                <span style={{ fontFamily:"Inter,sans-serif", fontSize:"7.5px", fontWeight:700,
+                                               textTransform:"uppercase", letterSpacing:"0.05em", color:"#9ca3af" }}>Por qué se eligió · </span>
+                                {r.descripcion_analista}
+                              </p>
+                            )}
+                            {r.nota_porcentaje && (
+                              <p style={{ fontFamily:"Georgia,serif", fontSize:"8.5px", lineHeight:1.55, color:"#9ca3af",
+                                          margin:0, textAlign:"justify" }}>
+                                <span style={{ fontFamily:"Inter,sans-serif", fontSize:"7.5px", fontWeight:700,
+                                               textTransform:"uppercase", letterSpacing:"0.05em", color:"#9ca3af" }}>Por qué {r.porcentaje.toFixed(0)}% · </span>
+                                {r.nota_porcentaje}
+                              </p>
+                            )}
+                          </div>
                         )}
                       </div>
-                    )}
-                  </div>
-                )
-              })
+                    )
+                  })}
+                </div>
+              ))
             })()}
             {/* Total */}
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginTop:"12px", borderTop:"2px solid #1a2744", paddingTop:"9px" }}>
