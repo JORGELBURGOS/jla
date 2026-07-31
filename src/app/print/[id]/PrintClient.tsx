@@ -327,7 +327,37 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
               </tr>
             </tbody>
           </table>
-          <P>Es un dato que el inversor debe conocer y entender desde el principio: el resultado neto fue negativo en tres de los últimos cinco ejercicios. La causa no es operativa. En 2021 y 2024 el resultado financiero —intereses y diferencias de cambio— absorbió íntegramente el EBIT; en 2025 el resultado antes de impuestos fue positivo y se revirtió por un impuesto a las ganancias con tasa efectiva del 295% sobre la ganancia contable. La depreciación, reexpresada por RT 6/17, agrega un cargo no cash creciente que explica la caída del EBIT en el último ejercicio.</P>
+          {(() => {
+            // Derivado de la serie. Si un ejercicio cambia de signo o de causa, el
+            // texto cambia con el: no hay años ni conteos escritos a mano.
+            const anio = (e: string) => (e.match(/(\d{4})/)?.[1] ?? e)
+            const negativos = v.evolucionFinanciera.filter(b => b.resultadoNeto < 0)
+            const porOperacion = negativos.filter(b => b.ebit < 0)
+            const porFinanciero = negativos.filter(b => b.ebit >= 0 && (b.ebit + b.resultadoFinanciero) < 0)
+            const porImpuesto   = negativos.filter(b => b.ebit >= 0 && (b.ebit + b.resultadoFinanciero) >= 0)
+            const lista = (xs: typeof negativos) =>
+              xs.map(b => anio(b.ejercicio)).reduce((acc, y, i, arr) =>
+                i === 0 ? y : i === arr.length - 1 ? `${acc} y ${y}` : `${acc}, ${y}`, "")
+            if (negativos.length === 0) {
+              return <P>El resultado neto fue positivo en los {v.evolucionFinanciera.length} ejercicios analizados.</P>
+            }
+            return (
+              <P>
+                Es un dato que el inversor debe conocer desde el principio: el resultado neto fue negativo
+                en {lista(negativos)} — {negativos.length === 1 ? "uno" : negativos.length === 2 ? "dos" : negativos.length === 3 ? "tres" : negativos.length}{" "}
+                de los {v.evolucionFinanciera.length} ejercicios analizados. Las causas difieren en cada caso.
+                {porOperacion.length > 0 && <> En {lista(porOperacion)} la pérdida fue operativa: el EBIT
+                  ya era negativo{porOperacion.length === 1 ? <> en {fmtUSDc(Math.abs(porOperacion[0].ebit))}</> : null} y
+                  el resultado financiero profundizó el quebranto.</>}
+                {porFinanciero.length > 0 && <> En {lista(porFinanciero)} la operación fue rentable
+                  —EBIT positivo— y el resultado financiero, intereses y diferencias de cambio, la revirtió
+                  por completo.</>}
+                {porImpuesto.length > 0 && <> En {lista(porImpuesto)} el resultado antes de impuestos fue
+                  positivo y se dio vuelta por el cargo del impuesto a las ganancias.</>}
+                {" "}La depreciación, reexpresada por RT 6/17, agrega un cargo no cash creciente que presiona el EBIT.
+              </P>
+            )
+          })()}
           <P>El EBITDA es la métrica representativa de la generación de caja operativa; el resultado neto, en este caso, no lo es. El resultado financiero, en cambio, sí es erogación de caja, y su acumulado de cinco ejercicios asciende a {fmtUSDc(Math.abs(v.evolucionAcum.resultadoFinanciero))} contra un EBITDA acumulado de {fmtUSDc(v.evolucionAcum.ebitda)}: el costo financiero consumió el {v.evolucionAcum.ratio}% de toda la caja operativa generada en el período. El comprador debería verificar su composición y determinar qué parte desaparece al cancelar la deuda en el cierre.</P>
         </div>
 
@@ -389,10 +419,14 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
                             margin:"10px 0 4px", textTransform:"uppercase", letterSpacing:"0.08em" }}>
                 Flujos proyectados de EBITDA por escenario (USD)
               </div>
-              <table style={{ width:"100%", borderCollapse:"collapse", marginBottom:"10px" }}>
+              <table style={{ width:"100%", borderCollapse:"collapse", marginBottom:"10px", tableLayout:"fixed" }}>
+                <colgroup>
+                  <col style={{width:"38%"}} /><col style={{width:"13%"}} /><col style={{width:"12%"}} />
+                  <col style={{width:"12%"}} /><col style={{width:"12%"}} /><col style={{width:"13%"}} />
+                </colgroup>
                 <thead><tr style={{ background:"#1a2744" }}>
                   {["Escenario","Base (norm.)","Año 1","Año 2","Año 3","Año 4"].map((h,i)=>(
-                    <th key={i} style={{ padding:"5px 8px", fontSize:"8px", color:"white",
+                    <th key={i} style={{ padding:"5px 6px", fontSize:"7.5px", color:"white", whiteSpace:"nowrap",
                       fontWeight:700, textAlign:i===0?"left":"right" }}>{h}</th>
                   ))}
                 </tr></thead>
@@ -404,11 +438,12 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
                      fl:flB, bold:false, bg:"white"},
                   ].map((row,i)=>(
                     <tr key={i} style={{ background:row.bg, borderBottom:"0.5px solid #e5e7eb" }}>
-                      <td style={{ padding:"5px 8px", fontSize:"8px", fontWeight:row.bold?700:400 }}>{row.lbl}</td>
+                      <td style={{ padding:"5px 6px", fontSize:"8px", fontWeight:row.bold?700:400, lineHeight:1.25 }}>{row.lbl}</td>
                       {row.fl.map((f:number,j:number)=>(
-                        <td key={j} style={{ padding:"5px 8px", textAlign:"right",
+                        <td key={j} style={{ padding:"5px 6px", textAlign:"right",
                                              fontSize:"8.5px", fontFamily:"Inter,sans-serif",
-                                             fontWeight:row.bold?700:400 }}>{fmtUSDc(f)}</td>
+                                             fontVariantNumeric:"tabular-nums", whiteSpace:"nowrap",
+                                             fontWeight:row.bold?700:400 }}>{fmtNum(f)}</td>
                       ))}
                     </tr>
                   ))}
@@ -418,11 +453,15 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
                             margin:"0 0 4px", textTransform:"uppercase", letterSpacing:"0.08em" }}>
                 Valor y oferta implícita por escenario
               </div>
-              <table style={{ width:"100%", borderCollapse:"collapse", marginBottom:"10px" }}>
+              <table style={{ width:"100%", borderCollapse:"collapse", marginBottom:"10px", tableLayout:"fixed" }}>
+                <colgroup>
+                  <col style={{width:"23%"}} /><col style={{width:"11%"}} /><col style={{width:"12%"}} />
+                  <col style={{width:"11%"}} /><col style={{width:"12%"}} /><col style={{width:"31%"}} />
+                </colgroup>
                 <thead><tr style={{ background:"#1a2744" }}>
                   {["Escenario","M2 (DCF)","Prom. métodos","Oferta inicial","Precio máximo","Condición"].map((h,i)=>(
-                    <th key={i} style={{ padding:"5px 8px", fontSize:"8px", color:"white", fontWeight:700,
-                      textAlign:i===0||i===5?"left":"right" }}>{h}</th>
+                    <th key={i} style={{ padding:"5px 6px", fontSize:"7.5px", color:"white", fontWeight:700,
+                      whiteSpace:"nowrap", textAlign:i===0||i===5?"left":"right" }}>{h}</th>
                   ))}
                 </tr></thead>
                 <tbody>
@@ -435,12 +474,12 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
                      cond:"Base verificable con data room actual — horno ya confirmado en ambos", bold:false, bg:"white"},
                   ].map((row,i)=>(
                     <tr key={i} style={{ background:row.bg, borderBottom:"0.5px solid #e5e7eb" }}>
-                      <td style={{ padding:"5px 8px", fontSize:"8px", fontWeight:row.bold?700:400 }}>{row.lbl}</td>
-                      <td style={{ padding:"5px 8px", textAlign:"right", fontSize:"8.5px", fontFamily:"Inter,sans-serif", fontWeight:700 }}>{fmtUSDc(row.m2)}</td>
-                      <td style={{ padding:"5px 8px", textAlign:"right", fontSize:"8.5px", fontFamily:"Inter,sans-serif", fontWeight:700, color:"#1a2744" }}>{fmtUSDc(row.prom)}</td>
-                      <td style={{ padding:"5px 8px", textAlign:"right", fontSize:"8.5px", fontFamily:"Inter,sans-serif", fontWeight:700, color:row.bold?"#1a2744":"#6b7280" }}>{fmtUSDc(row.ofi)}</td>
-                      <td style={{ padding:"5px 8px", textAlign:"right", fontSize:"8.5px", fontFamily:"Inter,sans-serif", fontWeight:700, color:row.bold?"#1a2744":"#6b7280" }}>{fmtUSDc(row.ofm)}</td>
-                      <td style={{ padding:"5px 8px", fontSize:"8px", color:"#4b5563" }}>{row.cond}</td>
+                      <td style={{ padding:"5px 6px", fontSize:"8px", fontWeight:row.bold?700:400, lineHeight:1.25 }}>{row.lbl}</td>
+                      <td style={{ padding:"5px 6px", textAlign:"right", fontSize:"8.5px", fontFamily:"Inter,sans-serif", fontVariantNumeric:"tabular-nums", whiteSpace:"nowrap", fontWeight:700 }}>{fmtNum(row.m2)}</td>
+                      <td style={{ padding:"5px 6px", textAlign:"right", fontSize:"8.5px", fontFamily:"Inter,sans-serif", fontVariantNumeric:"tabular-nums", whiteSpace:"nowrap", fontWeight:700, color:"#1a2744" }}>{fmtNum(row.prom)}</td>
+                      <td style={{ padding:"5px 6px", textAlign:"right", fontSize:"8.5px", fontFamily:"Inter,sans-serif", fontVariantNumeric:"tabular-nums", whiteSpace:"nowrap", fontWeight:700, color:row.bold?"#1a2744":"#6b7280" }}>{fmtNum(row.ofi)}</td>
+                      <td style={{ padding:"5px 6px", textAlign:"right", fontSize:"8.5px", fontFamily:"Inter,sans-serif", fontVariantNumeric:"tabular-nums", whiteSpace:"nowrap", fontWeight:700, color:row.bold?"#1a2744":"#6b7280" }}>{fmtNum(row.ofm)}</td>
+                      <td style={{ padding:"5px 6px", fontSize:"7.5px", color:"#4b5563", lineHeight:1.25 }}>{row.cond}</td>
                     </tr>
                   ))}
                 </tbody>
