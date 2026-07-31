@@ -492,51 +492,78 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
             {nIden} identificados y {nCond} condicionales), con una exposición bruta de{" "}
             {fmtUSDc(Math.abs(expActiva))}. De esa exposición, el analista llevó a valuación{" "}
             {v.riesgoAjustesLive.length} riesgos con criterio explícito de selección y ponderación,{" "}
-            resultando un ajuste neto de {fmtUSDc(v.riesgosAjust)} —{" "}
+            resultando un ajuste neto de {fmtUSDc(Math.abs(v.riesgosAjust))} —{" "}
             equivalente al {Math.round(Math.abs(v.riesgosAjust) / (riesgosAbs||1) * 100)}% de la exposición bruta activa.
           </P>
-          <div style={{ marginTop:"12px" }}>
-            {[...v.riesgoAjustesLive].sort((a,b)=>b.monto-a.monto).map((r,i) => (
-              <div key={i} style={{ marginBottom:"14px", borderTop: i===0?"none":"1px solid #f3f4f6", paddingTop: i===0?0:"14px" }}>
-                {/* Nombre del riesgo */}
-                <div style={{ fontFamily:"Inter,sans-serif", fontSize:"10px", fontWeight:700, color:"#1f2937", marginBottom:"5px" }}>
-                  {r.descripcion}
-                </div>
-                {/* Fila de números */}
-                <div style={{ display:"flex", gap:"0", marginBottom:"6px" }}>
-                  <div style={{ flex:1, background:"#f9fafb", border:"0.5px solid #e5e7eb", borderRight:"none", padding:"5px 10px" }}>
-                    <div style={{ fontFamily:"Inter,sans-serif", fontSize:"8px", color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.08em" }}>Exposición</div>
-                    <div style={{ fontFamily:"Inter,sans-serif", fontSize:"11px", fontWeight:700, color:"#374151" }}>{fmtUSDc(r.impactoActual)}</div>
+          {/* Barra de escala: permite comparar el peso relativo de cada riesgo de un vistazo */}
+          <div style={{ marginTop:"14px" }}>
+            {(() => {
+              const lista = [...v.riesgoAjustesLive].sort((x,y)=>Math.abs(y.monto)-Math.abs(x.monto))
+              const maxAjuste = Math.max(...lista.map(x=>Math.abs(x.monto)), 1)
+              return lista.map((r,i) => {
+                const ancho = Math.max(2, Math.round(Math.abs(r.monto)/maxAjuste*100))
+                return (
+                  <div key={i} style={{ marginBottom:"11px", paddingBottom:"11px", borderBottom: i===lista.length-1?"none":"0.5px solid #f3f4f6", breakInside:"avoid" }}>
+
+                    {/* Encabezado: orden, area y los tres numeros en una sola linea */}
+                    <div style={{ display:"flex", alignItems:"baseline", gap:"7px", marginBottom:"4px" }}>
+                      <span style={{ fontFamily:"Inter,sans-serif", fontSize:"8px", fontWeight:800, color:"#9ca3af", minWidth:"14px" }}>
+                        {String(i+1).padStart(2,"0")}
+                      </span>
+                      <span style={{ fontFamily:"Inter,sans-serif", fontSize:"7.5px", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em",
+                                     color:"#6b7280", background:"#f3f4f6", padding:"1.5px 6px", borderRadius:"3px", whiteSpace:"nowrap" }}>
+                        {r.area || "General"}
+                      </span>
+                      <span style={{ flex:1 }} />
+                      <span style={{ fontFamily:"Inter,sans-serif", fontSize:"9px", color:"#9ca3af", whiteSpace:"nowrap", fontVariantNumeric:"tabular-nums" }}>
+                        {fmtNum(r.impactoActual)} × {r.porcentaje.toFixed(0)}%
+                      </span>
+                      <span style={{ fontFamily:"Inter,sans-serif", fontSize:"11px", fontWeight:800, color:"#dc2626", whiteSpace:"nowrap", fontVariantNumeric:"tabular-nums", minWidth:"62px", textAlign:"right" }}>
+                        −{fmtNum(Math.abs(r.monto))}
+                      </span>
+                    </div>
+
+                    {/* Barra de peso relativo */}
+                    <div style={{ height:"3px", background:"#f3f4f6", borderRadius:"2px", marginBottom:"5px", overflow:"hidden" }}>
+                      <div style={{ width:`${ancho}%`, height:"100%", background:"#dc2626", opacity:0.75 }} />
+                    </div>
+
+                    {/* Descripcion del hallazgo, en peso normal para que se pueda leer */}
+                    <p style={{ fontFamily:"Georgia,serif", fontSize:"9.5px", lineHeight:1.6, color:"#1f2937", margin:"0 0 5px", textAlign:"justify" }}>
+                      {r.descripcion}
+                    </p>
+
+                    {/* Fundamentos, en bloque indentado */}
+                    {(r.descripcion_analista || r.nota_porcentaje) && (
+                      <div style={{ paddingLeft:"10px", borderLeft:"2px solid #e5e7eb" }}>
+                        {r.descripcion_analista && (
+                          <p style={{ fontFamily:"Georgia,serif", fontSize:"8.5px", lineHeight:1.55, color:"#6b7280", margin:"0 0 2px", textAlign:"justify" }}>
+                            <span style={{ fontFamily:"Inter,sans-serif", fontSize:"7.5px", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", color:"#9ca3af" }}>Por qué se eligió · </span>
+                            {r.descripcion_analista}
+                          </p>
+                        )}
+                        {r.nota_porcentaje && (
+                          <p style={{ fontFamily:"Georgia,serif", fontSize:"8.5px", lineHeight:1.55, color:"#9ca3af", margin:0, textAlign:"justify" }}>
+                            <span style={{ fontFamily:"Inter,sans-serif", fontSize:"7.5px", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", color:"#9ca3af" }}>Por qué {r.porcentaje.toFixed(0)}% · </span>
+                            {r.nota_porcentaje}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <div style={{ flex:"0 0 60px", background:"#f9fafb", border:"0.5px solid #e5e7eb", borderRight:"none", padding:"5px 10px", textAlign:"center" }}>
-                    <div style={{ fontFamily:"Inter,sans-serif", fontSize:"8px", color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.08em" }}>%</div>
-                    <div style={{ fontFamily:"Inter,sans-serif", fontSize:"11px", fontWeight:700, color:"#374151" }}>{r.porcentaje.toFixed(0)}%</div>
-                  </div>
-                  <div style={{ flex:1, background:"#fef2f2", border:"0.5px solid #fecaca", padding:"5px 10px", textAlign:"right" }}>
-                    <div style={{ fontFamily:"Inter,sans-serif", fontSize:"8px", color:"#fca5a5", textTransform:"uppercase", letterSpacing:"0.08em" }}>Ajuste</div>
-                    <div style={{ fontFamily:"Inter,sans-serif", fontSize:"11px", fontWeight:800, color:"#dc2626" }}>{fmtUSDc(r.monto)}</div>
-                  </div>
-                </div>
-                {/* Motivos */}
-                {r.descripcion_analista && (
-                  <p style={{ fontFamily:"Georgia,serif", fontSize:"9.5px", lineHeight:1.65, color:"#4b5563", margin:"0 0 3px", paddingLeft:"8px", borderLeft:"2px solid #e5e7eb" }}>
-                    <span style={{ fontWeight:700, color:"#374151" }}>Por qué fue elegido: </span>{r.descripcion_analista}
-                  </p>
-                )}
-                {r.nota_porcentaje && (
-                  <p style={{ fontFamily:"Georgia,serif", fontSize:"9.5px", lineHeight:1.65, color:"#6b7280", margin:0, paddingLeft:"8px", borderLeft:"2px solid #f3f4f6" }}>
-                    <span style={{ fontWeight:700, color:"#4b5563" }}>Por qué este %: </span>{r.nota_porcentaje}
-                  </p>
-                )}
-              </div>
-            ))}
+                )
+              })
+            })()}
             {/* Total */}
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:"14px", borderTop:"2px solid #1a2744", paddingTop:"10px" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginTop:"12px", borderTop:"2px solid #1a2744", paddingTop:"9px" }}>
               <span style={{ fontFamily:"Inter,sans-serif", fontSize:"10px", fontWeight:700, color:"#1a2744" }}>
-                Total ajuste por riesgos identificados
+                Total ajuste por riesgos llevados a valuación
+                <span style={{ fontWeight:400, color:"#9ca3af", marginLeft:"6px" }}>
+                  {v.riesgoAjustesLive.length} de {nActivos} hallazgos activos
+                </span>
               </span>
-              <span style={{ fontFamily:"Inter,sans-serif", fontSize:"14px", fontWeight:800, color:"#dc2626" }}>
-                {fmtUSDc(v.riesgosAjust)}
+              <span style={{ fontFamily:"Inter,sans-serif", fontSize:"14px", fontWeight:800, color:"#dc2626", fontVariantNumeric:"tabular-nums" }}>
+                −{fmtNum(Math.abs(v.riesgosAjust))}
               </span>
             </div>
           </div>
