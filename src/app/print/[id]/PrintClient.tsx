@@ -28,6 +28,13 @@ function fmtUSDc(n: number) { // compacto para tablas
   if (a >= 1_000_000) return `${s}USD ${(a/1_000_000).toLocaleString("es-AR", { maximumFractionDigits: 2 })}M`
   return `${s}USD ${miles(n)}`
 }
+// Para tablas densas: solo el numero, sin el prefijo USD. La unidad va en el
+// encabezado. Repetir "USD" en cada celda consume el ancho que necesitan las columnas.
+function fmtNum(n: number) {
+  const a = Math.abs(n), s = n < 0 ? "\u2212" : ""
+  if (a >= 1_000_000) return `${s}${(a/1_000_000).toLocaleString("es-AR", { maximumFractionDigits: 2 })}M`
+  return `${s}${miles(Math.abs(n))}`
+}
 function fmtSupuesto(label: string, valor: unknown): string {
   const raw = String(valor ?? "").split("|")[0].trim()
   if (!raw) return "Pendiente"
@@ -133,6 +140,10 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
   const th: React.CSSProperties = { textAlign: "left", padding: "6px 8px", fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.06em", color: "#6b7280", borderBottom: "1.5px solid #1a2744", fontFamily: "Inter, Arial, sans-serif" }
   const td: React.CSSProperties = { padding: "6px 8px", fontSize: "10px", borderBottom: "0.5px solid #e5e7eb", color: "#1f2937", fontFamily: "Inter, Arial, sans-serif" }
   const tdNum: React.CSSProperties = { ...td, textAlign: "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }
+  // Variantes compactas para la tabla de evolucion financiera, que tiene 9 columnas
+  const thC: React.CSSProperties = { ...th, padding: "5px 4px", fontSize: "7.5px", letterSpacing: "0.02em", lineHeight: 1.15 }
+  const tdC: React.CSSProperties = { ...td, padding: "4px 4px", fontSize: "8.5px" }
+  const tdCNum: React.CSSProperties = { ...tdC, textAlign: "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }
 
   return (
     <div style={{ background: "white" }}>
@@ -251,42 +262,50 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
         <div className="page-break" style={{ padding: "30px 50px" }}>
           <H n="3." t="Evolución financiera 2021–2025" />
           <P>Con la tesis de inversión establecida, corresponde examinar la película financiera completa: cinco ejercicios auditados que muestran un negocio en construcción, con volatilidad de márgenes y una recuperación incompleta. La facturación del último ejercicio fue validada de manera independiente contra el Libro de IVA Digital presentado ante ARCA (F.2051, período mayo-diciembre 2025 anualizado), con una diferencia inferior al 0,5% que acredita la fiabilidad del dato de base. Los ejercicios anteriores no cuentan con validación externa equivalente.</P>
-          <table style={{ width:"100%", borderCollapse:"collapse", margin:"10px 0 8px" }}>
+          <div style={{ fontSize:"8px", color:"#9ca3af", margin:"10px 0 2px", fontFamily:"Inter, Arial, sans-serif" }}>
+            Cifras en dólares, convertidas al tipo de cambio promedio de cada ejercicio.
+          </div>
+          <table style={{ width:"100%", borderCollapse:"collapse", margin:"0 0 8px", tableLayout:"fixed" }}>
+            <colgroup>
+              <col style={{width:"15%"}} /><col style={{width:"11%"}} /><col style={{width:"11%"}} />
+              <col style={{width:"7%"}} /><col style={{width:"10%"}} /><col style={{width:"10%"}} />
+              <col style={{width:"12%"}} /><col style={{width:"10%"}} /><col style={{width:"14%"}} />
+            </colgroup>
             <thead><tr>
-              <th style={th}>Ejercicio</th>
-              <th style={{...th, textAlign:"right"}}>Ingresos</th>
-              <th style={{...th, textAlign:"right"}}>EBITDA</th>
-              <th style={{...th, textAlign:"right"}}>Margen</th>
-              <th style={{...th, textAlign:"right"}}>Deprec.</th>
-              <th style={{...th, textAlign:"right"}}>EBIT</th>
-              <th style={{...th, textAlign:"right"}}>Rdo. financiero</th>
-              <th style={{...th, textAlign:"right"}}>Impuesto</th>
-              <th style={{...th, textAlign:"right"}}>Resultado neto</th>
+              <th style={thC}>Ejercicio</th>
+              <th style={{...thC, textAlign:"right"}}>Ingresos</th>
+              <th style={{...thC, textAlign:"right"}}>EBITDA</th>
+              <th style={{...thC, textAlign:"right"}}>Marg.</th>
+              <th style={{...thC, textAlign:"right"}}>Deprec.</th>
+              <th style={{...thC, textAlign:"right"}}>EBIT</th>
+              <th style={{...thC, textAlign:"right"}}>Rdo.<br/>financiero</th>
+              <th style={{...thC, textAlign:"right"}}>Impuesto</th>
+              <th style={{...thC, textAlign:"right"}}>Resultado<br/>neto</th>
             </tr></thead>
             <tbody>
               {v.evolucionFinanciera.map((b,i:number) => (
                 <tr key={i} style={{ background:i%2===0?"#f9fafb":"white" }}>
-                  <td style={td}>{String(b.ejercicio)}</td>
-                  <td style={tdNum}>{fmtUSDc(b.ingresos)}</td>
-                  <td style={{...tdNum, color:b.ebitda<0?"#dc2626":"#16a34a", fontWeight:700}}>{fmtUSDc(b.ebitda)}</td>
-                  <td style={{...tdNum, color:b.ebitda<0?"#dc2626":"#16a34a"}}>{b.margen}%</td>
-                  <td style={tdNum}>{fmtUSDc(b.depreciacion)}</td>
-                  <td style={{...tdNum, color:b.ebit<0?"#dc2626":"#374151"}}>{fmtUSDc(b.ebit)}</td>
-                  <td style={{...tdNum, color:"#dc2626", fontWeight:700}}>{fmtUSDc(b.resultadoFinanciero)}</td>
-                  <td style={tdNum}>{b.impuesto ? fmtUSDc(-Math.abs(b.impuesto)) : "—"}</td>
-                  <td style={{...tdNum, color:b.resultadoNeto<0?"#dc2626":"#374151"}}>{fmtUSDc(b.resultadoNeto)}</td>
+                  <td style={tdC}>{String(b.ejercicio)}</td>
+                  <td style={tdCNum}>{fmtNum(b.ingresos)}</td>
+                  <td style={{...tdCNum, color:b.ebitda<0?"#dc2626":"#16a34a", fontWeight:700}}>{fmtNum(b.ebitda)}</td>
+                  <td style={{...tdCNum, color:b.ebitda<0?"#dc2626":"#16a34a"}}>{b.margen}%</td>
+                  <td style={tdCNum}>{fmtNum(b.depreciacion)}</td>
+                  <td style={{...tdCNum, color:b.ebit<0?"#dc2626":"#374151"}}>{fmtNum(b.ebit)}</td>
+                  <td style={{...tdCNum, color:"#dc2626", fontWeight:700}}>{fmtNum(b.resultadoFinanciero)}</td>
+                  <td style={tdCNum}>{b.impuesto ? fmtNum(-Math.abs(b.impuesto)) : "—"}</td>
+                  <td style={{...tdCNum, color:b.resultadoNeto<0?"#dc2626":"#374151", fontWeight:600}}>{fmtNum(b.resultadoNeto)}</td>
                 </tr>
               ))}
               <tr style={{ background:"#f1f5f9", borderTop:"1.5px solid #1a2744" }}>
-                <td style={{...td, fontWeight:700}}>Acumulado 5 ejercicios</td>
-                <td style={tdNum}>—</td>
-                <td style={{...tdNum, fontWeight:800, color:"#16a34a"}}>{fmtUSDc(v.evolucionAcum.ebitda)}</td>
-                <td style={tdNum}>—</td>
-                <td style={tdNum}>—</td>
-                <td style={tdNum}>—</td>
-                <td style={{...tdNum, fontWeight:800, color:"#dc2626"}}>{fmtUSDc(v.evolucionAcum.resultadoFinanciero)}</td>
-                <td style={tdNum}>—</td>
-                <td style={tdNum}>—</td>
+                <td style={{...tdC, fontWeight:700}}>Acumulado</td>
+                <td style={tdCNum}>—</td>
+                <td style={{...tdCNum, fontWeight:800, color:"#16a34a"}}>{fmtNum(v.evolucionAcum.ebitda)}</td>
+                <td style={tdCNum}>—</td>
+                <td style={tdCNum}>—</td>
+                <td style={tdCNum}>—</td>
+                <td style={{...tdCNum, fontWeight:800, color:"#dc2626"}}>{fmtNum(v.evolucionAcum.resultadoFinanciero)}</td>
+                <td style={tdCNum}>—</td>
+                <td style={tdCNum}>—</td>
               </tr>
             </tbody>
           </table>
