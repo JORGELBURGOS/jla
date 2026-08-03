@@ -24,8 +24,8 @@ function fmtUSD(n: number) {
   return `${s}USD ${Math.round(a).toLocaleString("es-AR")}`
 }
 
-// Formatea los valores de la Seccion 7: todo en USD con miles con punto;
-// montos 2026 en ARS convertidos a TC 1.500; %, multiplos y TC con su unidad.
+// Formatea los valores de supuestos. Los montos en ARS se muestran en su moneda:
+// la conversion a dolares la hace el motor con el TC que corresponda a cada partida.
 function fmtSupuesto(label: string, valor: unknown): string {
   const raw = String(valor ?? "").split("|")[0].trim()
   if (!raw) return "Pendiente"
@@ -33,7 +33,6 @@ function fmtSupuesto(label: string, valor: unknown): string {
   if (isNaN(n)) return raw
   const miles = (x: number) => Math.abs(Math.round(x)).toLocaleString("es-AR")
   const sign = n < 0 ? "-" : ""
-  if (label.includes("(ARS)") && label.includes("2026")) return `${sign}USD ${miles(n / 1500)}`
   if (label.includes("(ARS)")) return `${sign}ARS ${miles(n)}`
   if (label.includes("ARS por USD")) return `ARS ${n.toLocaleString("es-AR")}`
   if (label.includes("(USD)")) return `${sign}USD ${miles(n)}`
@@ -41,6 +40,12 @@ function fmtSupuesto(label: string, valor: unknown): string {
   if (label.includes("(\u00d7)")) return `${n.toLocaleString("es-AR")}\u00d7`
   return n.toLocaleString("es-AR")
 }
+
+const miles = (n: number) => (n < 0 ? "\u2212" : "") + Math.abs(Math.round(n)).toLocaleString("es-AR")
+const num = (color?: string, weight?: number): React.CSSProperties => ({
+  padding: "5px 8px", textAlign: "right", whiteSpace: "nowrap",
+  fontVariantNumeric: "tabular-nums", color, fontWeight: weight,
+})
 
 function getSup(sups: Record<string,unknown>[], keys: string[]): number | null {
   const f = sups.find(s => keys.some(k => String(s.label).toLowerCase().includes(k.toLowerCase())))
@@ -178,6 +183,15 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
             @page :first { margin-top: 0; }
           }
           
+          html { scroll-behavior: smooth; }
+          .section-header { scroll-margin-top: 16px; }
+          .nav-indice { position: sticky; top: 0; z-index: 20; background: rgba(255,255,255,0.96);
+            backdrop-filter: blur(8px); border-bottom: 1px solid #e5e7eb;
+            padding: 8px 50px; display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+          .nav-indice a { font-size: 10px; color: #6b7280; text-decoration: none;
+            padding: 4px 9px; border-radius: 5px; white-space: nowrap; transition: all .15s; }
+          .nav-indice a:hover { background: #1a2744; color: white; }
+          @media print { .nav-indice { display: none !important; } }
           .section-header {
             background: #1a2744; color: white;
             padding: 8px 16px; font-size: 11px; font-weight: 700;
@@ -248,9 +262,20 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
           </div>
         </div>
 
+        {/* Índice navegable — solo pantalla, se oculta al imprimir */}
+        <nav className="nav-indice">
+          <span style={{ fontSize:"9px", fontWeight:800, color:"#1a2744", textTransform:"uppercase",
+                         letterSpacing:"0.08em", marginRight:"4px" }}>Ir a</span>
+          {[["1","Resumen"],["2","Valuación"],["3","Riesgos"],["4","Estado DD"],["5","Ambiental"],
+            ["6","Plan del vendedor"],["7","Supuestos"],["8","Recomendación"],["9","Evolución"],
+            ["10","Tesis"],["11","Escenarios"],["12","Resueltos"],["13","Estructura"]].map(([n,t])=>(
+            <a key={n} href={`#sec-${n}`}>{n}. {t}</a>
+          ))}
+        </nav>
+
         {/* ══════════ S1: RESUMEN EJECUTIVO ══════════ */}
         <div className="page-break" style={{ padding:"40px 50px" }}>
-          <div className="section-header">Sección 1 — Resumen Ejecutivo</div>
+          <div id="sec-1" className="section-header">Sección 1 — Resumen Ejecutivo</div>
 
           {narrativa ? (
             <>
@@ -320,7 +345,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
 
         {/* ══════════ S2: ANÁLISIS FINANCIERO Y VALUACIÓN ══════════ */}
         <div className="page-break" style={{ padding:"40px 50px" }}>
-          <div className="section-header">Sección 2 — Análisis Financiero y Valuación</div>
+          <div id="sec-2" className="section-header">Sección 2 — Análisis Financiero y Valuación</div>
 
           {/* 1. Puente EBITDA */}
           <div style={{ border:"1px solid #e5e7eb", borderRadius:"8px", padding:"16px", marginBottom:"20px" }}>
@@ -377,42 +402,152 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
             <div style={{ fontSize:"9px", color:"#6b7280", marginBottom:"12px" }}>
               Total riesgos activos en el mapa de due diligence: <strong>{fmtUSD(v.riesgosAbs)}</strong> · Ajustados con mitigantes reales: <strong>{fmtUSD(v.riesgosAjust)}</strong>
             </div>
-            <table className="tabla" style={{ width:"100%" }}>
-              <thead><tr><th>Riesgo</th><th>Área</th><th style={{textAlign:"right"}}>En el mapa</th><th style={{textAlign:"right"}}>%</th><th style={{textAlign:"right"}}>Ajustado</th></tr></thead>
-              <tbody>
-                {[...v.riesgoAjustesLive].sort((a,b)=>b.monto-a.monto).map(r => (
-                  <React.Fragment key={r.id}>
-                    <tr style={{ borderTop: "1.5px solid #f3f4f6" }}>
-                      <td style={{ fontSize:"9px", fontWeight:600, paddingTop:"6px" }}>{r.descripcion}</td>
-                      <td style={{ fontSize:"9px", color:"#6b7280" }}>{r.area}</td>
-                      <td style={{ textAlign:"right", fontSize:"9px" }}>{fmtUSD(r.impactoActual)}</td>
-                      <td style={{ textAlign:"right", fontSize:"9px" }}>{r.porcentaje.toFixed(0)}%</td>
-                      <td style={{ textAlign:"right", fontSize:"9px", fontWeight:700, color:"#dc2626" }}>{fmtUSD(r.monto)}</td>
-                    </tr>
-                    {r.descripcion_analista && (
-                      <tr><td colSpan={5} style={{ fontSize:"8px", color:"#4b5563", paddingBottom:"2px", paddingLeft:"6px", borderLeft:"2px solid #e5e7eb" }}>
-                        <span style={{ fontWeight:600, color:"#374151" }}>Por qué fue elegido: </span>{r.descripcion_analista}
-                      </td></tr>
-                    )}
-                    {r.nota_porcentaje && (
-                      <tr><td colSpan={5} style={{ fontSize:"8px", color:"#6b7280", paddingBottom:"6px", paddingLeft:"6px", borderLeft:"2px solid #e5e7eb" }}>
-                        <span style={{ fontWeight:600, color:"#4b5563" }}>Por qué este %: </span>{r.nota_porcentaje}
-                      </td></tr>
-                    )}
-                    {!r.descripcion_analista && !r.nota_porcentaje && r.nota && (
-                      <tr><td colSpan={5} style={{ fontSize:"8px", color:"#6b7280", paddingBottom:"6px", paddingLeft:"6px", borderLeft:"2px solid #e5e7eb", whiteSpace:"pre-wrap" }}>
-                        <span style={{ fontWeight:600, color:"#4b5563" }}>Justificación: </span>{r.nota}
-                      </td></tr>
-                    )}
-                  </React.Fragment>
-                ))}
-                <tr style={{ background:"#fef2f2" }}>
-                  <td colSpan={4} style={{ fontWeight:800 }}>Total riesgos ajustados</td>
-                  <td style={{ textAlign:"right", fontWeight:800, color:"#dc2626" }}>{fmtUSD(v.riesgosAjust)}</td>
-                </tr>
-              </tbody>
-            </table>
+            {(() => {
+              // Mismo criterio que el PDF: agrupado por campo, con barra de peso relativo.
+              // Cuando el area viene compuesta se toma el primer termino, que es el dominante.
+              const campoDe = (area?: string) => {
+                const base = (area || "General").split("/")[0].trim()
+                return base.charAt(0).toUpperCase() + base.slice(1).toLowerCase()
+              }
+              const grupos = new Map<string, typeof v.riesgoAjustesLive>()
+              for (const r of v.riesgoAjustesLive) {
+                const k = campoDe(r.area)
+                if (!grupos.has(k)) grupos.set(k, [])
+                grupos.get(k)!.push(r)
+              }
+              const orden = [...grupos.entries()]
+                .map(([campo, rs]) => ({ campo, rs: [...rs].sort((x,y)=>Math.abs(y.monto)-Math.abs(x.monto)),
+                                         subtotal: rs.reduce((acc,x)=>acc+Math.abs(x.monto),0) }))
+                .sort((x,y)=>y.subtotal-x.subtotal)
+              const totalAj  = Math.abs(v.riesgosAjust) || 1
+              const maxAjuste = Math.max(...v.riesgoAjustesLive.map(x=>Math.abs(x.monto)), 1)
+
+              return orden.map((g, gi) => (
+                <div key={g.campo} style={{ marginTop: gi===0 ? 0 : "18px" }}>
+                  <div style={{ display:"flex", alignItems:"baseline", gap:"8px", background:"#1a2744",
+                                padding:"6px 10px", borderRadius:"6px", marginBottom:"10px" }}>
+                    <span style={{ fontSize:"10px", fontWeight:800, letterSpacing:"0.08em",
+                                   textTransform:"uppercase", color:"white" }}>{g.campo}</span>
+                    <span style={{ fontSize:"9px", color:"#94a3b8" }}>
+                      {g.rs.length} {g.rs.length===1 ? "hallazgo" : "hallazgos"}
+                    </span>
+                    <span style={{ flex:1 }} />
+                    <span style={{ fontSize:"9px", color:"#94a3b8" }}>{Math.round(g.subtotal/totalAj*100)}% del ajuste</span>
+                    <span style={{ fontSize:"12px", fontWeight:800, color:"white",
+                                   fontVariantNumeric:"tabular-nums" }}>−{miles(g.subtotal)}</span>
+                  </div>
+
+                  {g.rs.map(r => {
+                    const ancho = Math.max(2, Math.round(Math.abs(r.monto)/maxAjuste*100))
+                    return (
+                      <div key={r.id} style={{ marginBottom:"12px", paddingBottom:"12px",
+                                               borderBottom:"1px solid #f3f4f6" }}>
+                        <div style={{ display:"flex", alignItems:"baseline", gap:"8px", marginBottom:"5px" }}>
+                          <span style={{ flex:1 }} />
+                          <span style={{ fontSize:"10px", color:"#9ca3af", whiteSpace:"nowrap",
+                                         fontVariantNumeric:"tabular-nums" }}>
+                            {miles(r.impactoActual)} × {r.porcentaje.toFixed(0)}%
+                          </span>
+                          <span style={{ fontSize:"13px", fontWeight:800, color:"#dc2626", whiteSpace:"nowrap",
+                                         fontVariantNumeric:"tabular-nums", minWidth:"74px", textAlign:"right" }}>
+                            −{miles(Math.abs(r.monto))}
+                          </span>
+                        </div>
+                        <div style={{ height:"4px", background:"#f3f4f6", borderRadius:"2px",
+                                      marginBottom:"7px", overflow:"hidden" }}>
+                          <div style={{ width:`${ancho}%`, height:"100%", background:"#dc2626", opacity:0.75 }} />
+                        </div>
+                        <p style={{ fontSize:"10.5px", lineHeight:1.6, color:"#1f2937", margin:"0 0 6px" }}>
+                          {r.descripcion}
+                        </p>
+                        {(r.descripcion_analista || r.nota_porcentaje || r.nota) && (
+                          <div style={{ paddingLeft:"10px", borderLeft:"2px solid #e5e7eb" }}>
+                            {r.descripcion_analista && (
+                              <p style={{ fontSize:"9.5px", lineHeight:1.55, color:"#6b7280", margin:"0 0 3px" }}>
+                                <span style={{ fontWeight:700, color:"#9ca3af", textTransform:"uppercase",
+                                               fontSize:"8px", letterSpacing:"0.05em" }}>Por qué se eligió · </span>
+                                {r.descripcion_analista}
+                              </p>
+                            )}
+                            {r.nota_porcentaje && (
+                              <p style={{ fontSize:"9.5px", lineHeight:1.55, color:"#9ca3af", margin:0 }}>
+                                <span style={{ fontWeight:700, color:"#9ca3af", textTransform:"uppercase",
+                                               fontSize:"8px", letterSpacing:"0.05em" }}>Por qué {r.porcentaje.toFixed(0)}% · </span>
+                                {r.nota_porcentaje}
+                              </p>
+                            )}
+                            {!r.descripcion_analista && !r.nota_porcentaje && r.nota && (
+                              <p style={{ fontSize:"9.5px", lineHeight:1.55, color:"#9ca3af", margin:0, whiteSpace:"pre-wrap" }}>
+                                <span style={{ fontWeight:700, color:"#9ca3af", textTransform:"uppercase",
+                                               fontSize:"8px", letterSpacing:"0.05em" }}>Justificación · </span>
+                                {r.nota}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              ))
+            })()}
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline",
+                          marginTop:"14px", borderTop:"2px solid #1a2744", paddingTop:"10px" }}>
+              <span style={{ fontSize:"11px", fontWeight:700, color:"#1a2744" }}>
+                Total ajuste por riesgos llevados a valuación
+                <span style={{ fontWeight:400, color:"#9ca3af", marginLeft:"6px" }}>
+                  {v.riesgoAjustesLive.length} de {risks.filter(r=>!["DUPLICADO","RECLASIFICADO","CERRADO"].includes(String(r.estado))).length} hallazgos activos
+                </span>
+              </span>
+              <span style={{ fontSize:"15px", fontWeight:800, color:"#dc2626",
+                             fontVariantNumeric:"tabular-nums" }}>−{miles(Math.abs(v.riesgosAjust))}</span>
+            </div>
           </div>
+
+          {/* 3b. Trazabilidad del cálculo — sale del modelo, no se escribe a mano */}
+          <details style={{ border:"1px solid #e5e7eb", borderRadius:"8px", padding:"12px 16px", marginBottom:"20px" }}>
+            <summary style={{ cursor:"pointer", fontWeight:700, fontSize:"11px", color:"#1a2744", listStyle:"none" }}>
+              Trazabilidad del cálculo
+              <span style={{ fontWeight:400, color:"#9ca3af", marginLeft:"8px", fontSize:"10px" }}>
+                cómo se obtiene cada valor · clic para ver
+              </span>
+            </summary>
+            <div style={{ marginTop:"12px" }}>
+              {((v as any).trazabilidad ?? []).map((paso: any) => (
+                <div key={paso.clave} style={{ marginBottom:"10px", paddingBottom:"10px", borderBottom:"1px solid #f3f4f6" }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:"12px" }}>
+                    <span style={{ fontSize:"10.5px", fontWeight:700, color:"#374151" }}>{paso.titulo}</span>
+                    <span style={{ fontSize:"11px", fontWeight:800, color:"#1a2744", whiteSpace:"nowrap",
+                                   fontVariantNumeric:"tabular-nums" }}>
+                      {paso.clave === "multImpl" ? `${paso.resultado}\u00d7` : fmtUSD(paso.resultado)}
+                    </span>
+                  </div>
+                  <div style={{ fontSize:"9.5px", color:"#6b7280", marginTop:"2px" }}>{paso.formula}</div>
+                  <div style={{ fontSize:"9.5px", color:"#9ca3af", fontFamily:"ui-monospace, monospace" }}>{paso.sustitucion}</div>
+                  <div style={{ fontSize:"9px", color:"#c3c9d4", marginTop:"1px" }}>Fuente: {paso.fuente}</div>
+                  {paso.nota && (
+                    <div style={{ fontSize:"9.5px", color:"#6b7280", background:"#f9fafb",
+                                  padding:"4px 8px", borderRadius:"4px", marginTop:"5px" }}>{paso.nota}</div>
+                  )}
+                  {paso.alerta && (
+                    <div style={{ fontSize:"9.5px", color:"#92400e", background:"#fffbeb",
+                                  padding:"4px 8px", borderRadius:"4px", marginTop:"5px" }}>{paso.alerta}</div>
+                  )}
+                </div>
+              ))}
+              <div style={{ display:"flex", gap:"10px", marginTop:"10px" }}>
+                <div style={{ flex:1, background:"#f8fafc", borderRadius:"6px", padding:"8px 10px" }}>
+                  <div style={{ fontSize:"9px", color:"#6b7280" }}>Dispersión entre métodos</div>
+                  <div style={{ fontSize:"11px", fontWeight:800, color:"#374151",
+                                fontVariantNumeric:"tabular-nums" }}>{fmtUSD((v as any).dispersionMetodos ?? 0)}</div>
+                </div>
+                <div style={{ flex:1, background:"#f8fafc", borderRadius:"6px", padding:"8px 10px" }}>
+                  <div style={{ fontSize:"9px", color:"#6b7280" }}>Peso del Método 1 en el promedio</div>
+                  <div style={{ fontSize:"11px", fontWeight:800, color:"#374151" }}>{(v as any).pesoM1EnPromedio ?? 0}%</div>
+                </div>
+              </div>
+            </div>
+          </details>
 
           {/* 4. Conclusión — oferta recomendada */}
           <div style={{ background:"#1a2744", borderRadius:"8px", padding:"20px", color:"white" }}>
@@ -446,7 +581,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
 
         {/* ══════════ S3: MAPA DE RIESGOS ══════════ */}
         <div className="page-break" style={{ padding:"40px 50px" }}>
-          <div className="section-header">Sección 3 — Mapa de Riesgos</div>
+          <div id="sec-3" className="section-header">Sección 3 — Mapa de Riesgos</div>
 
           {/* Resumen cuantificado */}
           <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"12px", marginBottom:"20px" }}>
@@ -499,7 +634,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
 
         {/* ══════════ S4: ESTADO DEL DD ══════════ */}
         <div className="page-break" style={{ padding:"40px 50px" }}>
-          <div className="section-header">Sección 4 — Estado del Due Diligence</div>
+          <div id="sec-4" className="section-header">Sección 4 — Estado del Due Diligence</div>
 
           {/* KPIs tracker */}
           <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"12px", marginBottom:"20px" }}>
@@ -543,7 +678,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
 
         {/* ══════════ S5: SÍNTESIS AMBIENTAL ══════════ */}
         <div className="page-break" style={{ padding:"40px 50px" }}>
-          <div className="section-header">Sección 5 — Síntesis Ambiental y Habilitaciones</div>
+          <div id="sec-5" className="section-header">Sección 5 — Síntesis Ambiental y Habilitaciones</div>
 
           {/* Certificados */}
           <div style={{ marginBottom:"20px" }}>
@@ -593,7 +728,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
 
         {/* ══════════ S6: VALIDACIÓN DEL PLAN ══════════ */}
         <div className="page-break" style={{ padding:"40px 50px" }}>
-          <div className="section-header">Sección 6 — Validación del Plan del Vendedor</div>
+          <div id="sec-6" className="section-header">Sección 6 — Validación del Plan del Vendedor</div>
 
           <table className="tabla" style={{ width:"100%", marginBottom:"16px" }}>
             <thead>
@@ -631,8 +766,8 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
 
         {/* ══════════ S7: SUPUESTOS DEL MODELO ══════════ */}
         <div className="page-break" style={{ padding:"40px 50px" }}>
-          <div className="section-header">Sección 7 — Supuestos del Modelo</div>
-          <div style={{ fontSize:"9px", color:"#9ca3af", marginBottom:"12px" }}>Importes expresados en dólares estadounidenses. Los valores del ejercicio en curso originalmente denominados en pesos fueron convertidos al tipo de cambio de referencia de ARS 1.500 por dólar.</div>
+          <div id="sec-7" className="section-header">Sección 7 — Supuestos del Modelo</div>
+          <div style={{ fontSize:"9px", color:"#9ca3af", marginBottom:"12px" }}>Importes en dólares. Criterio de conversión: las partidas devengadas a lo largo del ejercicio —ingresos, costos, EBITDA y resultado— al tipo de cambio promedio del período; las medidas a una fecha —activos, pasivos, deuda neta y capital de trabajo— al tipo de cambio de cierre. Ambos figuran entre los supuestos.</div>
 
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"24px" }}>
             {/* Financieros */}
@@ -665,7 +800,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
 
         {/* ══════════ S8: RECOMENDACIÓN FINAL Y HOJA DE RUTA ══════════ */}
         <div className="page-break" style={{ padding:"40px 50px" }}>
-          <div className="section-header">Sección 8 — Recomendación Final y Hoja de Ruta</div>
+          <div id="sec-8" className="section-header">Sección 8 — Recomendación Final y Hoja de Ruta</div>
 
           {narrativa ? (
             <>
@@ -736,38 +871,60 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
 
       {/* ─── SECCIÓN 11: EVOLUCIÓN FINANCIERA ─── */}
       <div style={{ margin:"0 0 24px" }}>
-        <div className="section-header">Sección 11 — Evolución Financiera 2021–2025</div>
+        <div id="sec-9" className="section-header">Sección 9 — Evolución Financiera 2021–2025</div>
         <div style={{ fontSize:"9px", color:"#9ca3af", marginBottom:"12px" }}>Ingresos y EBITDA validados cruzando EECC auditados con declaraciones juradas de IVA ante ARCA (diferencia &lt; 0,5%). Datos calculados dinámicamente del balance.</div>
         {v.evolucionFinanciera.length > 0 ? (
-          <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"10px" }}>
+          <>
+          <div style={{ overflowX:"auto" }}>
+          <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"10px", minWidth:"760px" }}>
             <thead><tr style={{ background:"#1a2744", color:"white" }}>
-              <th style={{ padding:"6px 8px", textAlign:"left" }}>Ejercicio</th>
-              <th style={{ padding:"6px 8px", textAlign:"right" }}>Ingresos</th>
-              <th style={{ padding:"6px 8px", textAlign:"right" }}>EBITDA</th>
-              <th style={{ padding:"6px 8px", textAlign:"right" }}>Margen</th>
-              <th style={{ padding:"6px 8px", textAlign:"right" }}>Result. neto</th>
+              {["Ejercicio","Ingresos","EBITDA","Marg.","Deprec.","EBIT","Rdo. financiero","Impuesto","Resultado neto"].map((h,i)=>(
+                <th key={i} style={{ padding:"6px 8px", textAlign:i===0?"left":"right", whiteSpace:"nowrap", fontSize:"9px" }}>{h}</th>
+              ))}
             </tr></thead>
             <tbody>
-              {v.evolucionFinanciera.map((b,i:number)=>{
-                const ing = b.ingresos, ebit = b.ebitda, rn = b.resultadoNeto, marg = b.margen
-                return (
-                  <tr key={i} style={{ background:i%2===0?"#f9fafb":"white", borderBottom:"0.5px solid #e5e7eb" }}>
-                    <td style={{ padding:"5px 8px", fontWeight:600 }}>{String(b.ejercicio)}</td>
-                    <td style={{ padding:"5px 8px", textAlign:"right" }}>{fmtUSD(ing)}</td>
-                    <td style={{ padding:"5px 8px", textAlign:"right", fontWeight:700, color:ebit<0?"#dc2626":"#16a34a" }}>{fmtUSD(ebit)}</td>
-                    <td style={{ padding:"5px 8px", textAlign:"right", color:ebit<0?"#dc2626":"#16a34a" }}>{marg}%</td>
-                    <td style={{ padding:"5px 8px", textAlign:"right", color:rn<0?"#dc2626":"#374151" }}>{fmtUSD(rn)}</td>
-                  </tr>
-                )
-              })}
+              {v.evolucionFinanciera.map((b,i:number)=>(
+                <tr key={i} style={{ background:i%2===0?"#f9fafb":"white", borderBottom:"0.5px solid #e5e7eb" }}>
+                  <td style={{ padding:"5px 8px", fontWeight:600, whiteSpace:"nowrap" }}>{String(b.ejercicio)}</td>
+                  <td style={num()}>{miles(b.ingresos)}</td>
+                  <td style={num(b.ebitda<0?"#dc2626":"#16a34a", 700)}>{miles(b.ebitda)}</td>
+                  <td style={num(b.ebitda<0?"#dc2626":"#16a34a")}>{b.margen}%</td>
+                  <td style={num()}>{miles(b.depreciacion)}</td>
+                  <td style={num(b.ebit<0?"#dc2626":"#374151")}>{miles(b.ebit)}</td>
+                  <td style={num("#dc2626", 700)}>{miles(b.resultadoFinanciero)}</td>
+                  <td style={num()}>{b.impuesto ? miles(-Math.abs(b.impuesto)) : "—"}</td>
+                  <td style={num(b.resultadoNeto<0?"#dc2626":"#374151", 600)}>{miles(b.resultadoNeto)}</td>
+                </tr>
+              ))}
+              <tr style={{ background:"#f1f5f9", borderTop:"1.5px solid #1a2744" }}>
+                <td style={{ padding:"6px 8px", fontWeight:700 }}>Acumulado</td>
+                <td style={num()}>—</td>
+                <td style={num("#16a34a", 800)}>{miles(v.evolucionAcum.ebitda)}</td>
+                <td style={num()}>—</td><td style={num()}>—</td><td style={num()}>—</td>
+                <td style={num("#dc2626", 800)}>{miles(v.evolucionAcum.resultadoFinanciero)}</td>
+                <td style={num()}>—</td><td style={num()}>—</td>
+              </tr>
             </tbody>
           </table>
+          </div>
+          {/* El hallazgo central de la serie, calculado: cuanto del EBITDA se llevo el costo financiero */}
+          {v.evolucionAcum.ratio > 0 && (
+            <div style={{ marginTop:"10px", padding:"10px 12px", background:"#fef2f2", borderLeft:"3px solid #dc2626", borderRadius:"6px" }}>
+              <span style={{ fontSize:"10px", color:"#7f1d1d" }}>
+                El resultado financiero acumulado de {v.evolucionFinanciera.length} ejercicios asciende
+                a {fmtUSD(Math.abs(v.evolucionAcum.resultadoFinanciero))} contra un EBITDA acumulado
+                de {fmtUSD(v.evolucionAcum.ebitda)}: <strong>el costo financiero consumió el {v.evolucionAcum.ratio}%
+                de toda la caja operativa generada en el período</strong>. A diferencia de la depreciación, es erogación real de caja.
+              </span>
+            </div>
+          )}
+          </>
         ) : <div style={{ color:"#9ca3af", fontSize:"10px" }}>Sin datos de balance cargados.</div>}
       </div>
 
       {/* ─── SECCIÓN 12: TESIS DE INVERSIÓN ─── */}
       <div style={{ margin:"0 0 24px" }}>
-        <div className="section-header">Sección 12 — Tesis de Inversión</div>
+        <div id="sec-10" className="section-header">Sección 10 — Tesis de Inversión</div>
         <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
           {[
             {n:"1.",t:"Respaldo patrimonial", body:`Activos revaluados ${fmtUSD(v.activosRevalu)} (inmueble ${fmtUSD(v.totalInmueble)}). Activos netos deducidos ajustes: ${fmtUSD(v.activosNetos)}.`},
@@ -784,7 +941,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
 
       {/* ─── SECCIÓN 13: ESCENARIOS ─── */}
       <div style={{ margin:"0 0 24px" }}>
-        <div className="section-header">Sección 13 — Escenarios de Valuación</div>
+        <div id="sec-11" className="section-header">Sección 11 — Escenarios de Valuación</div>
         <div style={{ fontSize:"9px", color:"#9ca3af", marginBottom:"8px" }}>Tasa {(v.tasaDCF*100).toFixed(0)}% · Múltiplo terminal {v.multVR}× · Prima de crecimiento earn-out target: {fmtUSD(v.primaCrecimiento)}</div>
         <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"10px" }}>
           <thead><tr style={{ background:"#1a2744", color:"white" }}>
@@ -813,7 +970,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
       {/* ─── SECCIÓN 14: RIESGOS RESUELTOS ─── */}
       {cerrados.filter((r:any)=>Number(r.impacto)<0).length>0&&(
       <div style={{ margin:"0 0 24px" }}>
-        <div className="section-header">Sección 14 — Riesgos Resueltos en el DD</div>
+        <div id="sec-12" className="section-header">Sección 12 — Riesgos Resueltos en el DD</div>
         <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"10px" }}>
           <thead><tr style={{ background:"#16a34a", color:"white" }}>
             <th style={{ padding:"5px 8px", textAlign:"left" }}>Riesgo resuelto</th>
@@ -837,7 +994,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
 
       {/* ─── SECCIÓN 15: ESTRUCTURA DEL DEAL ─── */}
       <div style={{ margin:"0 0 24px" }}>
-        <div className="section-header">Sección 15 — Estructura de la Transacción Recomendada</div>
+        <div id="sec-13" className="section-header">Sección 13 — Estructura de la Transacción Recomendada</div>
         <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
           {[
             {l:"Precio base al contado", v2:fmtUSD(v.ofertaInic), d:`Valor sin plan de crecimiento del vendedor. Máximo negociable si todas las condiciones se cumplen: ${fmtUSD(v.ofertaMax)}.`},
