@@ -89,6 +89,9 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
   const recibidos = reqs.filter(r => r.estado === "Recibido").length
   const parciales = reqs.filter(r => r.estado === "Parcial").length
   const pendientes = reqs.filter(r => r.estado === "Pendiente").length
+  // Cobertura documental del tracker. Es distinta del indice de confiabilidad que
+  // se muestra en la portada: aquella pondera la solidez del analisis, esta mide papeleo.
+  const coberturaDoc = reqs.length ? Math.round((recibidos + parciales * 0.5) / reqs.length * 100) : 0
   const avance = Math.round(v.indiceConfiabilidad)  // Índice de Confiabilidad del DD — mismo valor que el dashboard, no el % de papeleo recibido
 
   // Financiero y valuación: TODO viene del motor compartido (src/lib/valuation/compute.ts),
@@ -184,8 +187,20 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
           }
           
           html { scroll-behavior: smooth; }
-          .section-header { scroll-margin-top: 16px; }
-          .nav-indice { position: sticky; top: 0; z-index: 20; background: rgba(255,255,255,0.96);
+          .section-header { scroll-margin-top: 56px; }
+          /* En papel cada seccion abre pagina; en pantalla quedaban pegadas una debajo
+             de otra sin respiro. Se separan visualmente sin afectar la impresion. */
+          @media screen {
+            .page-break { border-top: 8px solid #f1f5f9; }
+            .report-container { background: #fafbfc; }
+            .page-break, .report-container > div[style*="padding"] { background: white; }
+          }
+          .kpi-box { transition: box-shadow .15s; }
+          @media screen { .kpi-box:hover { box-shadow: 0 2px 8px rgba(26,39,68,.08); } }
+          .barra-progreso { position: sticky; top: 0; z-index: 30; height: 3px; background: #e5e7eb; }
+          .barra-progreso > div { height: 100%; width: 0; background: #f59e0b; transition: width .1s linear; }
+          @media print { .barra-progreso { display: none !important; } }
+          .nav-indice { position: sticky; top: 3px; z-index: 20; background: rgba(255,255,255,0.96);
             backdrop-filter: blur(8px); border-bottom: 1px solid #e5e7eb;
             padding: 8px 50px; display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
           .nav-indice a { font-size: 10px; color: #6b7280; text-decoration: none;
@@ -237,7 +252,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
             <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"16px", maxWidth:"500px" }}>
               {[
                 { label:"Precio pedido", value: fmtUSD(precio), color:"#f59e0b" },
-                { label:"Avance DD", value: `${avance}%`, color:"#34d399" },
+                { label:"Confiabilidad del análisis", value: `${avance}%`, color:"#34d399" },
                 { label:"Riesgo total", value: fmtUSD(Math.abs(riesgoTotal)), color:"#f87171" },
               ].map(({ label, value, color }) => (
                 <div key={label} style={{ borderTop:`3px solid ${color}`, paddingTop:"12px" }}>
@@ -261,6 +276,21 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
             </div>
           </div>
         </div>
+
+        {/* Progreso de lectura — el informe es largo y no se sabe cuanto falta */}
+        <div className="barra-progreso"><div id="prog-fill" /></div>
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function(){
+            var f = document.getElementById('prog-fill'); if(!f) return;
+            function upd(){
+              var h = document.documentElement;
+              var max = h.scrollHeight - h.clientHeight;
+              f.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
+            }
+            window.addEventListener('scroll', upd, {passive:true});
+            window.addEventListener('resize', upd); upd();
+          })();
+        `}} />
 
         {/* Índice navegable — solo pantalla, se oculta al imprimir */}
         <nav className="nav-indice">
@@ -330,14 +360,19 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
           {/* KPIs rápidos */}
           <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"12px", marginTop:"24px" }}>
             {[
-              { label:"Precio pedido", value: fmtUSD(precio) },
-              { label:"EBITDA normalizado", value: ebitda ? fmtUSD(ebitda) : "Pendiente EECC" },
-              { label:"Promedio 3 métodos de valuación", value: fmtUSD(v.promMetodos) },
-              { label:"Oferta recomendada", value: fmtUSD(v.ofertaInic) },
-            ].map(({ label, value }) => (
-              <div key={label} className="kpi-box">
+              { label:"Precio pedido", value: fmtUSD(precio),
+                pie: ebitda ? `${Math.round(precio/ebitda)}× EBITDA normalizado` : null, tono:"#dc2626" },
+              { label:"EBITDA normalizado", value: ebitda ? fmtUSD(ebitda) : "Pendiente EECC",
+                pie: ebitda && v.ingresos ? `margen ${Math.round(ebitda/v.ingresos*100)}% sobre ${fmtUSD(v.ingresos)}` : null, tono:"#1a2744" },
+              { label:"Promedio 3 métodos", value: fmtUSD(v.promMetodos),
+                pie: `dispersión ${fmtUSD((v as any).dispersionMetodos ?? 0)} entre el más alto y el más bajo`, tono:"#1a2744" },
+              { label:"Oferta recomendada", value: fmtUSD(v.ofertaInic),
+                pie: ebitda ? `${Math.round(v.ofertaInic/ebitda)}× EBITDA · ${Math.round((1 - v.ofertaInic/precio)*100)}% bajo el precio pedido` : null, tono:"#16a34a" },
+            ].map(({ label, value, pie, tono }) => (
+              <div key={label} className="kpi-box" style={{ borderTop:`3px solid ${tono}` }}>
                 <div style={{ fontSize:"9px", color:"#6b7280", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:"6px" }}>{label}</div>
-                <div style={{ fontSize:"15px", fontWeight:800, color:"#1a2744" }}>{value}</div>
+                <div style={{ fontSize:"17px", fontWeight:800, color:tono }}>{value}</div>
+                {pie && <div style={{ fontSize:"8.5px", color:"#9ca3af", marginTop:"4px", lineHeight:1.35 }}>{pie}</div>}
               </div>
             ))}
           </div>
@@ -598,6 +633,37 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
             ))}
           </div>
 
+          {/* De la exposición bruta al ajuste: la pregunta que sigue naturalmente */}
+          <div style={{ background:"#f8fafc", border:"1px solid #e5e7eb", borderRadius:"8px",
+                        padding:"14px 16px", marginBottom:"20px" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:"10px", flexWrap:"wrap" }}>
+              <div>
+                <div style={{ fontSize:"8.5px", color:"#6b7280", textTransform:"uppercase",
+                              fontWeight:600, letterSpacing:"0.06em" }}>Exposición bruta activa</div>
+                <div style={{ fontSize:"18px", fontWeight:800, color:"#1a2744",
+                              fontVariantNumeric:"tabular-nums" }}>{fmtUSD(Math.abs(riesgoTotal))}</div>
+              </div>
+              <div style={{ fontSize:"18px", color:"#d1d5db", padding:"0 4px" }}>→</div>
+              <div>
+                <div style={{ fontSize:"8.5px", color:"#6b7280", textTransform:"uppercase",
+                              fontWeight:600, letterSpacing:"0.06em" }}>Llevado a precio</div>
+                <div style={{ fontSize:"18px", fontWeight:800, color:"#dc2626",
+                              fontVariantNumeric:"tabular-nums" }}>{fmtUSD(Math.abs(v.riesgosAjust))}</div>
+              </div>
+              <div style={{ flex:1, minWidth:"180px" }}>
+                <div style={{ height:"8px", background:"#e5e7eb", borderRadius:"4px", overflow:"hidden" }}>
+                  <div style={{ width:`${Math.min(100, Math.abs(v.riesgosAjust)/Math.max(Math.abs(riesgoTotal),1)*100)}%`,
+                                height:"100%", background:"#dc2626", opacity:.8 }} />
+                </div>
+                <div style={{ fontSize:"8.5px", color:"#9ca3af", marginTop:"5px", lineHeight:1.4 }}>
+                  El {Math.round(Math.abs(v.riesgosAjust)/Math.max(Math.abs(riesgoTotal),1)*100)}% de la exposición
+                  bruta se traslada al precio. El resto se cubre con condiciones precedentes, se considera mitigado
+                  o no alcanza probabilidad suficiente. Ver el detalle y su fundamento en la Sección 2.
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Tabla de riesgos */}
           <table className="tabla" style={{ width:"100%" }}>
             <thead>
@@ -642,13 +708,28 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
               { label:"Recibidos", n:recibidos, color:"#16a34a" },
               { label:"Parciales", n:parciales, color:"#d97706" },
               { label:"Pendientes", n:pendientes, color:"#dc2626" },
-              { label:"Avance", n:`${avance}%`, color:"#1a2744" },
-            ].map(({ label, n, color }) => (
+              { label:"Cobertura documental", n:`${coberturaDoc}%`, color:"#1a2744",
+                pie:"recibidos + mitad de los parciales" },
+            ].map(({ label, n, color, pie }: any) => (
               <div key={label} className="kpi-box">
                 <div style={{ fontSize:"24px", fontWeight:800, color }}>{n}</div>
                 <div style={{ fontSize:"9px", color:"#6b7280", textTransform:"uppercase", fontWeight:600 }}>{label}</div>
+                {pie && <div style={{ fontSize:"8px", color:"#c3c9d4", marginTop:"3px" }}>{pie}</div>}
               </div>
             ))}
+          </div>
+
+          {/* Barra apilada: la composicion del tracker de un vistazo */}
+          <div style={{ marginBottom:"20px" }}>
+            <div style={{ display:"flex", height:"10px", borderRadius:"5px", overflow:"hidden", background:"#f3f4f6" }}>
+              {[[recibidos,"#16a34a"],[parciales,"#d97706"],[pendientes,"#dc2626"]].map(([n,c]:any,i)=>(
+                n > 0 ? <div key={i} style={{ width:`${n/reqs.length*100}%`, background:c }} /> : null
+              ))}
+            </div>
+            <div style={{ display:"flex", justifyContent:"space-between", marginTop:"5px", fontSize:"8.5px", color:"#9ca3af" }}>
+              <span>{reqs.length} requerimientos en el índice</span>
+              <span>{pendientes} sin ninguna entrega</span>
+            </div>
           </div>
 
           {/* Por sección */}
