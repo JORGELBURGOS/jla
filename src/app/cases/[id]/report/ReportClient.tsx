@@ -286,11 +286,11 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
                 <span style={{ fontSize:11, letterSpacing:".16em", fontWeight:700, color:sem.fg, textTransform:"uppercase" }}>{sem.label}</span>
                 {lastGenerated && <span style={{ fontSize:12, color:STONE }}>análisis del {fFecha(lastGenerated)}</span>}
               </div>
-              <p style={{ fontSize:21, lineHeight:1.45, color:sem.fg, margin:0, maxWidth:"62ch", fontWeight:500 }}>
+              <p style={{ fontSize:21, lineHeight:1.45, color:sem.fg, margin:0, fontWeight:500 }}>
                 {narrativa.recomendacion}
               </p>
               {narrativa.precio_sugerido && (
-                <p style={{ fontSize:14.5, lineHeight:1.65, color:INK, margin:"12px 0 0", maxWidth:"70ch" }}>
+                <p style={{ fontSize:14.5, lineHeight:1.65, color:INK, margin:"12px 0 0" }}>
                   {narrativa.precio_sugerido}
                 </p>
               )}
@@ -327,7 +327,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
                 </React.Fragment>
               ))}
             </div>
-            <p style={{ fontSize:14, lineHeight:1.65, color:STONE, margin:"14px 0 0", maxWidth:"72ch" }}>
+            <p style={{ fontSize:14, lineHeight:1.65, color:STONE, margin:"14px 0 0" }}>
               La brecha de <strong style={{ color:INK, fontVariantNumeric:"tabular-nums" }}>{fUSD(brecha)}</strong> es
               la distancia entre {fX(multPedido)} y {fX(v.multImpl)} el EBITDA normalizado
               de <span style={{ color:INK, fontVariantNumeric:"tabular-nums" }}>{fUSD(v.ebitdaNorm)}</span>.
@@ -359,7 +359,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
               {par > 0 && <div style={{ flex:par, background:"#e0a63a" }} title={`${par} parciales`} />}
               {pen > 0 && <div style={{ flex:pen, background:"#d1553f" }} title={`${pen} pendientes`} />}
             </div>
-            <p style={{ fontSize:14, lineHeight:1.65, color:STONE, margin:0, maxWidth:"72ch" }}>
+            <p style={{ fontSize:14, lineHeight:1.65, color:STONE, margin:0 }}>
               El EBITDA normalizado se apoya en {sups.length} supuestos documentados.
               Del expediente de {totalReqs} requerimientos, <strong style={{ color:INK }}>{rec} están completos</strong>,
               {" "}{par} llegaron en forma parcial y {pen} siguen pendientes. Todo precio que se ofrezca hoy
@@ -390,9 +390,9 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
                   </button>
                   {abierto && (
                     <div style={{ padding:"4px 2px 14px", borderBottom:`1px solid ${LINE}` }}>
-                      <p style={{ fontSize:13.5, lineHeight:1.65, color:STONE, margin:0, maxWidth:"74ch" }}>{String(r.riesgo ?? "")}</p>
+                      <p style={{ fontSize:13.5, lineHeight:1.65, color:STONE, margin:0 }}>{String(r.riesgo ?? "")}</p>
                       {Boolean(r.accion_requerida) && (
-                        <p style={{ fontSize:13, lineHeight:1.6, color:INK, margin:"8px 0 0", maxWidth:"74ch" }}>
+                        <p style={{ fontSize:13, lineHeight:1.6, color:INK, margin:"8px 0 0" }}>
                           <span style={{ fontSize:10.5, letterSpacing:".12em", color:FAINT, fontWeight:600, textTransform:"uppercase", marginRight:8 }}>Acción</span>
                           {String(r.accion_requerida)}
                         </p>
@@ -414,7 +414,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
           {cerrados.length > 0 && (
             <div className="rp-card" style={{ marginTop:14, padding:"20px 22px", background:"#fbfaf6" }}>
               <Rotulo>Lo que el proceso ya resolvió</Rotulo>
-              <p style={{ fontSize:14.5, lineHeight:1.65, color:INK, margin:"0 0 12px", maxWidth:"72ch" }}>
+              <p style={{ fontSize:14.5, lineHeight:1.65, color:INK, margin:"0 0 12px" }}>
                 Durante el due diligence se cerraron <strong>{cerrados.length} riesgos</strong> que, de haberse
                 confirmado, representaban <strong style={{ fontVariantNumeric:"tabular-nums" }}>{fUSD(Math.abs(expCerrados))}</strong>
                 {ratioCerrados !== null && ratioCerrados > 1 && <> — {ratioCerrados.toLocaleString("es-AR",{maximumFractionDigits:1})} veces la exposición que sigue viva</>}.
@@ -469,7 +469,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
                 Barras: ingresos en miles de USD · línea: margen EBITDA
               </p>
               {acum && pesoFinanciero !== null && (
-                <p style={{ fontSize:14, lineHeight:1.65, color:STONE, margin:"12px 0 0", maxWidth:"72ch" }}>
+                <p style={{ fontSize:14, lineHeight:1.65, color:STONE, margin:"12px 0 0" }}>
                   El hallazgo central del período: el resultado financiero acumulado
                   ({fUSD(acum.resultadoFinanciero)}) equivale al <strong style={{ color:INK }}>{fPct(pesoFinanciero, 0)}</strong> del
                   EBITDA generado ({fUSD(acum.ebitda)}). Esa proporción mide cuánto de la caja operativa se llevó el costo financiero.
@@ -494,7 +494,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
                 </div>
               ))}
             </div>
-            <p style={{ fontSize:14, lineHeight:1.65, color:STONE, margin:"14px 0 4px", maxWidth:"74ch" }}>
+            <p style={{ fontSize:14, lineHeight:1.65, color:STONE, margin:"14px 0 4px" }}>
               El promedio de los tres métodos da <span style={{ color:INK, fontVariantNumeric:"tabular-nums" }}>{fUSD(v.promMetodos)}</span>;
               aplicado el descuento de liquidez del {fPct(v.descLiq * 100, 0)}, el valor de referencia queda
               en <span style={{ color:INK, fontVariantNumeric:"tabular-nums" }}>{fUSD(v.valorLiq)}</span>, del que
@@ -539,7 +539,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
               ))}
             </div>
             {v.primaCrecimiento > 0 && (
-              <p style={{ fontSize:14, lineHeight:1.65, color:STONE, margin:"14px 0 0", maxWidth:"74ch" }}>
+              <p style={{ fontSize:14, lineHeight:1.65, color:STONE, margin:"14px 0 0" }}>
                 La diferencia entre el escenario base y el conservador
                 — <strong style={{ color:INK, fontVariantNumeric:"tabular-nums" }}>{fUSD(v.primaCrecimiento)}</strong> — es
                 la porción del precio que depende de que el plan del vendedor se cumpla. Es la candidata natural
@@ -573,7 +573,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
                     </div>
                   </div>
                   {Boolean(c.observaciones) && (
-                    <p style={{ fontSize:13, lineHeight:1.6, color:STONE, margin:"9px 0 0", maxWidth:"76ch" }}>{String(c.observaciones)}</p>
+                    <p style={{ fontSize:13, lineHeight:1.6, color:STONE, margin:"9px 0 0" }}>{String(c.observaciones)}</p>
                   )}
                 </div>
               ))}
@@ -584,7 +584,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
           {env.length > 0 && (
             <div className="rp-card" style={{ marginTop:14, padding:"20px 22px" }}>
               <Rotulo>Habilitaciones y ambiente</Rotulo>
-              <p style={{ fontSize:14, lineHeight:1.65, color:STONE, margin:0, maxWidth:"74ch" }}>
+              <p style={{ fontSize:14, lineHeight:1.65, color:STONE, margin:0 }}>
                 Se relevaron {env.length} registros habilitantes; <strong style={{ color:INK }}>{vigentes.length} están vigentes</strong>
                 {noVigentes.length > 0 && <> y {noVigentes.length} en otro estado</>}.
                 {vencimientos.length > 0 && <> El vencimiento más próximo es
@@ -612,7 +612,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
                   <Rotulo>Condiciones para avanzar</Rotulo>
                   <ol style={{ margin:"0 0 6px", paddingLeft:22 }}>
                     {narrativa.condiciones_cierre.map((c, i) => (
-                      <li key={i} style={{ fontSize:14, lineHeight:1.7, color:INK, marginBottom:6, maxWidth:"74ch" }}>{c}</li>
+                      <li key={i} style={{ fontSize:14, lineHeight:1.7, color:INK, marginBottom:6 }}>{c}</li>
                     ))}
                   </ol>
                 </>
@@ -624,7 +624,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
                   </summary>
                   <ul style={{ margin:"6px 0 0", paddingLeft:20 }}>
                     {narrativa.hallazgos_criticos.map((h, i) => (
-                      <li key={i} style={{ fontSize:13.5, lineHeight:1.65, color:STONE, marginBottom:5, maxWidth:"74ch" }}>{h}</li>
+                      <li key={i} style={{ fontSize:13.5, lineHeight:1.65, color:STONE, marginBottom:5 }}>{h}</li>
                     ))}
                   </ul>
                 </details>
@@ -637,7 +637,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
             <div className="rp-card" style={{ marginTop:14, padding:"20px 22px" }}>
               <Rotulo>Resumen ejecutivo</Rotulo>
               {narrativa.resumen_ejecutivo.split(/\n{2,}|\n/).filter(p => p.trim()).map((p, i) => (
-                <p key={i} style={{ fontSize:14.5, lineHeight:1.75, color:INK, margin:"0 0 12px", maxWidth:"76ch" }}>{p}</p>
+                <p key={i} style={{ fontSize:14.5, lineHeight:1.75, color:INK, margin:"0 0 12px" }}>{p}</p>
               ))}
             </div>
           )}
@@ -647,7 +647,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
         {showAnexo && (
           <section className="rp-anexo" style={{ marginTop:44 }}>
             <Estrato n="C" t="El anexo — inventario completo del caso" />
-            <p style={{ fontSize:13.5, color:STONE, margin:"0 0 18px", maxWidth:"76ch", lineHeight:1.6 }}>
+            <p style={{ fontSize:13.5, color:STONE, margin:"0 0 18px", lineHeight:1.6 }}>
               Todo lo que el proceso relevó, sin filtro de materialidad. Es la base auditable de los
               números del informe: cada cifra de arriba puede rastrearse hasta una fila de acá.
             </p>
