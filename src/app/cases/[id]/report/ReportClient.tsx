@@ -195,6 +195,15 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
             .report-container { background: #fafbfc; }
             .page-break, .report-container > div[style*="padding"] { background: white; }
           }
+          /* Acordeon: solo pantalla. Al imprimir todo queda desplegado. */
+          @media screen {
+            .section-header { cursor: pointer; user-select: none; position: relative; }
+            .section-header::after { content: "\\2212"; position: absolute; right: 16px; top: 50%;
+              transform: translateY(-50%); font-size: 15px; opacity: .55; font-weight: 400; }
+            .section-header.plegado::after { content: "+"; }
+            .sec-cuerpo { overflow: hidden; }
+            .sec-cuerpo.plegado { display: none; }
+          }
           .kpi-box { transition: box-shadow .15s; }
           @media screen { .kpi-box:hover { box-shadow: 0 2px 8px rgba(26,39,68,.08); } }
           .barra-progreso { position: sticky; top: 0; z-index: 30; height: 3px; background: #e5e7eb; }
@@ -277,6 +286,87 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
           </div>
         </div>
 
+        {/* ══════════ DECISIÓN Y PUENTE DE PRECIO ══════════
+            Va inmediatamente despues de la portada: la recomendacion y la aritmetica
+            que la sostiene, antes de cualquier desarrollo. El lector que solo necesita
+            decidir no tiene que atravesar el informe entero. */}
+        <div className="no-print" style={{ padding:"32px 50px 8px" }}>
+
+          {narrativa && (
+            <div style={{ display:"flex", alignItems:"center", gap:"12px", marginBottom:"22px" }}>
+              <span style={{ width:"12px", height:"12px", borderRadius:"50%",
+                             background:SEMAFORO_COLOR[narrativa.semaforo], flexShrink:0 }} />
+              <span style={{ fontSize:"17px", fontWeight:800, color:"#1a2744" }}>{narrativa.recomendacion}</span>
+            </div>
+          )}
+
+          {/* Puente: precio pedido → valor central → riesgos → oferta.
+              Los cuatro numeros viven hoy en secciones distintas y el lector
+              tiene que armar la relacion de memoria. */}
+          <div style={{ border:"1px solid #e5e7eb", borderRadius:"10px", padding:"18px 20px", marginBottom:"20px" }}>
+            <div style={{ fontSize:"9px", color:"#9ca3af", textTransform:"uppercase",
+                          letterSpacing:"0.08em", fontWeight:600, marginBottom:"16px" }}>
+              Del precio pedido a la oferta recomendada
+            </div>
+            {(() => {
+              const tope = Math.max(precio, v.promMetodos, v.ofertaInic, 1)
+              const alto = (x:number) => Math.max(10, Math.round(Math.abs(x)/tope*78))
+              const pasos = [
+                { v:precio,                    lbl:"Pedido",        sub: ebitda ? `${Math.round(precio/ebitda)}× EBITDA` : "",       col:"#dc2626", bg:"#fef2f2", sep:"→" },
+                { v:v.promMetodos,             lbl:"Valor central", sub:"promedio 3 métodos",                                        col:"#6b7280", bg:"#f8fafc", sep:"→" },
+                { v:-Math.abs(v.riesgosAjust), lbl:"Riesgos",       sub:`${v.riesgoAjustesLive.length} de ${risks.filter(r=>ACTIVOS_EST.includes(String(r.estado))).length}`, col:"#b91c1c", bg:"#fee2e2", sep:"=" },
+                { v:v.ofertaInic,              lbl:"Oferta",        sub: ebitda ? `${Math.round(v.ofertaInic/ebitda)}× EBITDA` : "", col:"#16a34a", bg:"#f0fdf4", sep:null },
+              ]
+              return (
+                <div style={{ display:"flex", alignItems:"flex-end", gap:"6px" }}>
+                  {pasos.map((p,i)=>(
+                    <React.Fragment key={i}>
+                      <div style={{ flex:1, textAlign:"center" }}>
+                        <div style={{ fontSize:"13px", fontWeight:800, color:p.col, marginBottom:"5px",
+                                      fontVariantNumeric:"tabular-nums" }}>{fmtUSD(p.v)}</div>
+                        <div style={{ height:`${alto(p.v)}px`, background:p.bg, borderTop:`3px solid ${p.col}` }} />
+                        <div style={{ fontSize:"9.5px", color:"#6b7280", marginTop:"6px", lineHeight:1.35 }}>
+                          {p.lbl}<br/><span style={{ color:"#c3c9d4" }}>{p.sub}</span>
+                        </div>
+                      </div>
+                      {p.sep && <div style={{ color:"#d1d5db", fontSize:"14px", paddingBottom:"34px" }}>{p.sep}</div>}
+                    </React.Fragment>
+                  ))}
+                </div>
+              )
+            })()}
+            <div style={{ marginTop:"16px", paddingTop:"13px", borderTop:"1px solid #f3f4f6",
+                          fontSize:"11px", color:"#6b7280", lineHeight:1.6 }}>
+              La brecha con el precio pedido asciende a <strong style={{ color:"#1a2744" }}>{fmtUSD(precio - v.ofertaInic)}</strong>.
+              Techo de negociación <strong style={{ color:"#1a2744" }}>{fmtUSD(v.ofertaMax)}</strong>.
+            </div>
+          </div>
+
+          {/* Condiciones precedentes: es la parte accionable y vivia en la seccion 9 */}
+          {narrativa && narrativa.condiciones_cierre.length > 0 && (
+            <div style={{ marginBottom:"8px" }}>
+              <div style={{ fontSize:"9px", color:"#9ca3af", textTransform:"uppercase",
+                            letterSpacing:"0.08em", fontWeight:600, marginBottom:"10px" }}>
+                Qué debe resolverse antes de firmar
+              </div>
+              <div style={{ display:"flex", flexDirection:"column", gap:"7px" }}>
+                {narrativa.condiciones_cierre.map((c,i)=>(
+                  <div key={i} style={{ display:"flex", gap:"11px", alignItems:"flex-start",
+                                        padding:"10px 13px", background:"#fffbeb",
+                                        borderLeft:"3px solid #d97706", borderRadius:"0" }}>
+                    <span style={{ fontSize:"10px", fontWeight:800, color:"#92400e", flexShrink:0,
+                                   marginTop:"2px" }}>{String(i+1).padStart(2,"0")}</span>
+                    <span style={{ fontSize:"11px", color:"#78350f", lineHeight:1.6 }}>{c}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize:"9.5px", color:"#9ca3af", marginTop:"9px" }}>
+                El desarrollo de cada punto y su fundamento están en las secciones siguientes.
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Progreso de lectura — el informe es largo y no se sabe cuanto falta */}
         <div className="barra-progreso"><div id="prog-fill" /></div>
         <script dangerouslySetInnerHTML={{ __html: `
@@ -292,10 +382,60 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
           })();
         `}} />
 
+        {/* Acordeón — se arma sobre el DOM ya renderizado, sin tocar la estructura de
+            las secciones. Si el script no corre, el informe se ve completo como siempre. */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function(){
+            function armar(){
+              var hs = document.querySelectorAll('.section-header');
+              if (!hs.length) { return setTimeout(armar, 300); }
+              hs.forEach(function(h){
+                if (h.dataset.plegable) return;
+                h.dataset.plegable = '1';
+                var cuerpo = document.createElement('div');
+                cuerpo.className = 'sec-cuerpo';
+                var n = h.nextSibling;
+                while (n) { var sig = n.nextSibling; cuerpo.appendChild(n); n = sig; }
+                h.parentNode.appendChild(cuerpo);
+                h.addEventListener('click', function(){
+                  h.classList.toggle('plegado');
+                  cuerpo.classList.toggle('plegado');
+                });
+              });
+              var btn = document.getElementById('btn-plegar');
+              if (btn) btn.addEventListener('click', function(){
+                var plegar = btn.textContent.indexOf('Contraer') === 0;
+                document.querySelectorAll('.section-header').forEach(function(h){
+                  h.classList.toggle('plegado', plegar);
+                  var c = h.parentNode.querySelector('.sec-cuerpo');
+                  if (c) c.classList.toggle('plegado', plegar);
+                });
+                btn.textContent = plegar ? 'Desplegar todo' : 'Contraer todo';
+              });
+              window.addEventListener('beforeprint', function(){
+                document.querySelectorAll('.plegado').forEach(function(e){ e.classList.remove('plegado'); });
+              });
+              document.querySelectorAll('.nav-indice a').forEach(function(a){
+                a.addEventListener('click', function(){
+                  var h = document.querySelector(a.getAttribute('href'));
+                  if (!h) return;
+                  h.classList.remove('plegado');
+                  var c = h.parentNode.querySelector('.sec-cuerpo');
+                  if (c) c.classList.remove('plegado');
+                });
+              });
+            }
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', armar);
+            else armar();
+          })();
+        `}} />
+
         {/* Índice navegable — solo pantalla, se oculta al imprimir */}
         <nav className="nav-indice">
           <span style={{ fontSize:"9px", fontWeight:800, color:"#1a2744", textTransform:"uppercase",
                          letterSpacing:"0.08em", marginRight:"4px" }}>Ir a</span>
+          <button id="btn-plegar" type="button" style={{ fontSize:"10px", padding:"3px 10px",
+                    marginRight:"4px", borderRadius:"5px", cursor:"pointer" }}>Contraer todo</button>
           {[["1","Resumen"],["2","Valuación"],["3","Riesgos"],["4","Estado DD"],["5","Ambiental"],
             ["6","Plan del vendedor"],["7","Supuestos"],["8","Recomendación"],["9","Evolución"],
             ["10","Tesis"],["11","Escenarios"],["12","Resueltos"],["13","Estructura"]].map(([n,t])=>(
