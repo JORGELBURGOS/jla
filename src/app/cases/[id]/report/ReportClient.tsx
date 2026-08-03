@@ -1,6 +1,23 @@
 "use client"
+// ══════════════════════════════════════════════════════════════════════
+//  INFORME EN PANTALLA — rediseño desde cero
+//
+//  Tres estratos, no trece secciones:
+//    A · LA DECISIÓN   — veredicto, puente de precio, confiabilidad,
+//                        lo que mueve el precio, lo que el DD resolvió.
+//    B · EL FUNDAMENTO — el negocio en números, la derivación auditable
+//                        de la oferta, escenarios, plan vs. realidad,
+//                        habilitaciones, condiciones para avanzar.
+//    C · EL ANEXO      — el inventario completo (riesgos, expediente,
+//                        supuestos, ambiental, validación), plegado.
+//
+//  Principio rector: materialidad. Arriba vive solo lo que cambia la
+//  decisión; el resto existe, es auditable, y vive en el anexo.
+//  Nada de este archivo depende del caso: cada cifra, cada lista y cada
+//  oración interpolada se deriva de props. El PDF (/print) no se toca.
+// ══════════════════════════════════════════════════════════════════════
 import React from "react"
-import { useState, useRef } from "react"
+import { useState } from "react"
 import { Loader } from "lucide-react"
 import type { ValuationResult } from "@/lib/valuation/compute"
 
@@ -17,22 +34,53 @@ interface Props {
   cerrados: Record<string,unknown>[]
 }
 
-// ── Helpers ────────────────────────────────────────────────────────
-function fmtUSD(n: number) {
-  const a = Math.abs(n), s = n < 0 ? "-" : ""
-  if (a >= 1_000_000) return `${s}USD ${(a/1_000_000).toFixed(2)}M`
+// ── Paleta del documento ────────────────────────────────────────────
+// Papel cálido + tinta. El color solo aparece donde significa algo:
+// el semáforo del veredicto, el puente de precio y las cifras de riesgo.
+const INK    = "#16181d"
+const STONE  = "#5b6472"
+const FAINT  = "#8a90a0"
+const PAPER  = "#f7f6f2"
+const CARD   = "#fffffe"
+const LINE   = "#e7e4dc"
+const NAVY   = "#1a2744"
+const SEM = {
+  ROJO:     { fg:"#b42318", bg:"#fdf1f0", line:"#f2c8c4", label:"Semáforo rojo" },
+  AMARILLO: { fg:"#9a5b06", bg:"#fdf7e9", line:"#f0dcb0", label:"Semáforo amarillo" },
+  VERDE:    { fg:"#0b6e4f", bg:"#eef8f2", line:"#c3e5d3", label:"Semáforo verde" },
+} as const
+const ROJO = SEM.ROJO.fg, AMBAR = SEM.AMARILLO.fg, VERDE = SEM.VERDE.fg
+
+// ── Formato ─────────────────────────────────────────────────────────
+const fUSD = (n: number) => {
+  const a = Math.abs(n), s = n < 0 ? "−" : ""
+  if (a >= 1_000_000) return `${s}USD ${(a/1_000_000).toLocaleString("es-AR",{minimumFractionDigits:2, maximumFractionDigits:2})}M`
   return `${s}USD ${Math.round(a).toLocaleString("es-AR")}`
 }
+const fMiles = (n: number) => (n < 0 ? "−" : "") + Math.abs(Math.round(n)).toLocaleString("es-AR")
+const fX = (n: number) => isFinite(n) && n > 0 ? `${n.toLocaleString("es-AR",{maximumFractionDigits:1})}×` : "—"
+const fPct = (n: number, d = 1) => `${n.toLocaleString("es-AR",{maximumFractionDigits:d})}%`
+const pDate = (x: unknown): Date | null => { const d = new Date(String(x ?? "")); return isNaN(+d) ? null : d }
+const fFecha = (d: Date) => d.toLocaleDateString("es-AR",{ day:"2-digit", month:"short", year:"numeric" })
 
-// Formatea los valores de supuestos. Los montos en ARS se muestran en su moneda:
-// la conversion a dolares la hace el motor con el TC que corresponda a cada partida.
+// Primer tramo legible de un texto largo: corta en el primer punto,
+// dos puntos o raya si aparece a una distancia razonable.
+function tramo(s: string, max = 118): string {
+  const t = s.trim()
+  const m = t.search(/[.:]\s|\s—\s/)
+  let out = m > 28 && m < max ? t.slice(0, m) : t
+  if (out.length > max) out = out.slice(0, max).replace(/\s+\S*$/, "") + "…"
+  return out
+}
+
+// Valores de supuestos en su moneda de origen (la conversión la hace el motor).
 function fmtSupuesto(label: string, valor: unknown): string {
   const raw = String(valor ?? "").split("|")[0].trim()
   if (!raw) return "Pendiente"
   const n = Number(raw)
   if (isNaN(n)) return raw
   const miles = (x: number) => Math.abs(Math.round(x)).toLocaleString("es-AR")
-  const sign = n < 0 ? "-" : ""
+  const sign = n < 0 ? "−" : ""
   if (label.includes("(ARS)")) return `${sign}ARS ${miles(n)}`
   if (label.includes("ARS por USD")) return `ARS ${n.toLocaleString("es-AR")}`
   if (label.includes("(USD)")) return `${sign}USD ${miles(n)}`
@@ -41,30 +89,23 @@ function fmtSupuesto(label: string, valor: unknown): string {
   return n.toLocaleString("es-AR")
 }
 
-const miles = (n: number) => (n < 0 ? "\u2212" : "") + Math.abs(Math.round(n)).toLocaleString("es-AR")
-const num = (color?: string, weight?: number): React.CSSProperties => ({
-  padding: "5px 8px", textAlign: "right", whiteSpace: "nowrap",
-  fontVariantNumeric: "tabular-nums", color, fontWeight: weight,
-})
-
-function getSup(sups: Record<string,unknown>[], keys: string[]): number | null {
-  const f = sups.find(s => keys.some(k => String(s.label).toLowerCase().includes(k.toLowerCase())))
-  if (!f?.valor) return null
-  const n = parseFloat(String(f.valor).replace(/[^0-9.-]/g,""))
-  return isNaN(n) ? null : n
+// ── Piezas tipográficas ─────────────────────────────────────────────
+function Estrato({ n, t }: { n: string; t: string }) {
+  return (
+    <div style={{ display:"flex", alignItems:"baseline", gap:12, margin:"0 0 6px" }}>
+      <span style={{ fontSize:12, letterSpacing:".16em", color:FAINT, fontWeight:600 }}>{n}</span>
+      <span style={{ fontSize:12, letterSpacing:".16em", color:STONE, fontWeight:600, textTransform:"uppercase" }}>{t}</span>
+      <span style={{ flex:1, borderBottom:`1px solid ${LINE}` }} />
+    </div>
+  )
 }
-
-const RISK_COLOR: Record<string, string> = {
-  CONFIRMADO: "#dc2626", IDENTIFICADO: "#d97706", CONDICIONAL: "#7c3aed"
+function Rotulo({ children }: { children: React.ReactNode }) {
+  return <div style={{ fontSize:11, letterSpacing:".14em", color:FAINT, fontWeight:600, textTransform:"uppercase", marginBottom:10 }}>{children}</div>
 }
-const ESTADO_COLOR: Record<string, { bg: string; text: string }> = {
-  Recibido:  { bg:"#d1fae5", text:"#065f46" },
-  Parcial:   { bg:"#fef3c7", text:"#92400e" },
-  Pendiente: { bg:"#fee2e2", text:"#991b1b" },
-}
+const numCell: React.CSSProperties = { fontVariantNumeric:"tabular-nums", whiteSpace:"nowrap", textAlign:"right" }
 
 export default function ReportClient({ caseId, caso, reqs, risks, sups, env, valid, valuation: v, savedNarrativa, cerrados }: Props) {
-  const [generating, setGenerating] = useState(false)
+  // ── Narrativa ejecutiva (IA, persistida) — contrato preservado ────
   const initial = savedNarrativa && savedNarrativa.resumen_ejecutivo ? {
     recomendacion: String(savedNarrativa.recomendacion ?? ""),
     resumen_ejecutivo: String(savedNarrativa.resumen_ejecutivo ?? ""),
@@ -73,58 +114,12 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
     precio_sugerido: String(savedNarrativa.precio_sugerido ?? ""),
     semaforo: (savedNarrativa.semaforo as "VERDE"|"AMARILLO"|"ROJO") ?? "AMARILLO",
   } : null
-  const [narrativa, setNarrativa] = useState<{
-    recomendacion: string
-    resumen_ejecutivo: string
-    hallazgos_criticos: string[]
-    condiciones_cierre: string[]
-    precio_sugerido: string
-    semaforo: "VERDE" | "AMARILLO" | "ROJO"
-  } | null>(initial)
-  const [lastGenerated] = useState<string | null>(savedNarrativa?.generated_at ? String(savedNarrativa.generated_at) : null)
-  const reportRef = useRef<HTMLDivElement>(null)
+  const [narrativa, setNarrativa] = useState<typeof initial>(initial)
+  const [generating, setGenerating] = useState(false)
+  const [showAnexo, setShowAnexo] = useState(false)
+  const [riskOpen, setRiskOpen] = useState<string | null>(null)
+  const lastGenerated = savedNarrativa?.generated_at ? pDate(savedNarrativa.generated_at) : null
 
-  // ── Calcular KPIs ─────────────────────────────────────────────────
-  const total = reqs.length
-  const recibidos = reqs.filter(r => r.estado === "Recibido").length
-  const parciales = reqs.filter(r => r.estado === "Parcial").length
-  const pendientes = reqs.filter(r => r.estado === "Pendiente").length
-  // Cobertura documental del tracker. Es distinta del indice de confiabilidad que
-  // se muestra en la portada: aquella pondera la solidez del analisis, esta mide papeleo.
-  // Periodo real de la serie de balances, para no escribir los años a mano
-  const aniosEECC = v.evolucionFinanciera
-    .map(b => (String(b.ejercicio).match(/(\d{4})/) || [])[1])
-    .filter(Boolean) as string[]
-  const periodoEECC = aniosEECC.length > 1
-    ? `${aniosEECC[0]}\u2013${aniosEECC[aniosEECC.length-1]}`
-    : (aniosEECC[0] ?? "")
-  // Habilitaciones efectivamente vigentes segun la sintesis ambiental
-  const habilitVigentes = env.filter(e => String(e.estado ?? "").toUpperCase().includes("VIGENTE"))
-  const coberturaDoc = reqs.length ? Math.round((recibidos + parciales * 0.5) / reqs.length * 100) : 0
-  const avance = Math.round(v.indiceConfiabilidad)  // Índice de Confiabilidad del DD — mismo valor que el dashboard, no el % de papeleo recibido
-
-  // Financiero y valuación: TODO viene del motor compartido (src/lib/valuation/compute.ts),
-  // el mismo que usa la herramienta interactiva de Valuación. Ver ahí antes de tocar fórmulas acá.
-  const ingresos = v.ingresos || null
-  const ebitda   = v.ebitdaBase2 || null   // normalizado si existe, si no el contable — igual que en Valuación
-  const precio   = v.precio
-  const margen   = (ingresos && ebitda && ingresos > 0) ? ebitda / ingresos * 100 : null
-  const multiploImplicito = (precio && ebitda && ebitda > 0) ? precio / ebitda : null
-
-  // Riesgos: desglose cualitativo por estado del workflow de DD (no confundir con el $ ajustado de la valuación)
-  const ACTIVOS_EST = ["CONFIRMADO","IDENTIFICADO","CONDICIONAL"]
-  const riesgoTotal = risks.filter(r => ACTIVOS_EST.includes(String(r.estado))).reduce((s, r) => s + (Number(r.impacto) || 0), 0)
-  const riesgoConf  = risks.filter(r => r.estado === "CONFIRMADO").reduce((s,r) => s + Number(r.impacto||0), 0)
-  const riesgoIden  = risks.filter(r => r.estado === "IDENTIFICADO").reduce((s,r) => s + Number(r.impacto||0), 0)
-  const riesgoCond  = risks.filter(r => r.estado === "CONDICIONAL").reduce((s,r) => s + Number(r.impacto||0), 0)
-
-  // Secciones del tracker
-  const secciones = Array.from(new Set(reqs.map(r => String(r.seccion ?? ""))))
-  const certs = env.filter(e => e.tipo === "certificado")
-  const corrientes = env.filter(e => e.tipo === "corriente")
-    .sort((a, b) => parseInt(String(a.clave).replace("Y","")) - parseInt(String(b.clave).replace("Y","")))
-
-  // ── Generar narrativa con IA ──────────────────────────────────────
   async function generarNarrativa() {
     setGenerating(true)
     try {
@@ -134,1160 +129,687 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
         body: JSON.stringify({ caseId })
       })
       const data = await res.json()
-      if (data.ok && data.resultado) {
-        setNarrativa(data.resultado)
-      } else {
-        alert("Error generando análisis: " + (data.error ?? "desconocido"))
-      }
+      if (data.ok && data.resultado) setNarrativa(data.resultado)
+      else alert("Error generando análisis: " + (data.error ?? "desconocido"))
     } catch (e) {
       alert("Error de conexión: " + (e instanceof Error ? e.message : ""))
     }
     setGenerating(false)
   }
-
-  // ── Abrir página limpia para imprimir/guardar como PDF ──────────────
   function imprimir() {
     const execParam = narrativa ? encodeURIComponent(JSON.stringify(narrativa)) : ""
-    const url = `/print/${caseId}${execParam ? "?exec=" + execParam : ""}`
-    window.open(url, "_blank", "width=900,height=800")
+    window.open(`/print/${caseId}${execParam ? "?exec=" + execParam : ""}`, "_blank", "width=900,height=800")
   }
 
-  const SEMAFORO_COLOR = { VERDE: "#16a34a", AMARILLO: "#d97706", ROJO: "#dc2626" }
-  const today = new Date().toLocaleDateString("es-AR", { day:"2-digit", month:"long", year:"numeric" })
+  // ── Derivaciones (todo sale de props; nada del caso vive acá) ─────
+  const nombre = String(caso?.nombre ?? "")
+  const cuit = String(caso?.cuit ?? "")
+  const industria = [
+    (caso?.industry as { nombre?: string } | null)?.nombre,
+    (caso?.sub_sector as { nombre?: string } | null)?.nombre,
+  ].filter(Boolean).join(" · ")
+  const hoy = new Date()
+
+  // Expediente
+  const totalReqs = reqs.length
+  const rec = reqs.filter(r => r.estado === "Recibido").length
+  const par = reqs.filter(r => r.estado === "Parcial").length
+  const pen = reqs.filter(r => r.estado === "Pendiente").length
+
+  // Riesgos vivos (el servidor ya excluye duplicados, reclasificados y cerrados)
+  const vivos = [...risks].sort((a, b) => Number(a.impacto ?? 0) - Number(b.impacto ?? 0))
+  const expVivos = vivos.reduce((s, r) => s + Number(r.impacto ?? 0), 0)
+  const top = vivos.slice(0, 5)
+  const resto = vivos.slice(5)
+  const expResto = resto.reduce((s, r) => s + Number(r.impacto ?? 0), 0)
+
+  // Riesgos cerrados durante el proceso
+  const expCerrados = cerrados.reduce((s, r) => s + Number(r.impacto ?? 0), 0)
+  const ratioCerrados = expVivos !== 0 ? Math.abs(expCerrados) / Math.abs(expVivos) : null
+
+  // Puente de precio
+  const brecha = v.precio - v.ofertaInic
+  const multPedido = v.ebitdaBase2 > 0 ? v.precio / v.ebitdaBase2 : NaN
+  const maxPuente = Math.max(v.precio, v.ofertaMax, v.ofertaInic, 1)
+
+  // Validación del plan del vendedor
+  const cuestionados = valid.filter(x => String(x.estado) === "Cuestionado")
+  const validPorEstado = valid.reduce<Record<string, number>>((m, x) => {
+    const e = String(x.estado ?? "Sin estado"); m[e] = (m[e] ?? 0) + 1; return m
+  }, {})
+
+  // Ambiental
+  const esVigente = (e: Record<string,unknown>) => String(e.estado ?? "").toUpperCase().includes("VIGENTE")
+  const vigentes = env.filter(esVigente)
+  const noVigentes = env.filter(e => !esVigente(e) && String(e.estado ?? "").trim() !== "")
+  const vencimientos = env
+    .map(e => ({ e, d: pDate(e.vencimiento) }))
+    .filter((x): x is { e: Record<string,unknown>; d: Date } => x.d !== null && x.d >= hoy)
+    .sort((a, b) => +a.d - +b.d)
+
+  // Evolución financiera (del motor — única fuente de verdad)
+  const evo = v.evolucionFinanciera ?? []
+  const acum = v.evolucionAcum
+  const pesoFinanciero = acum && acum.ebitda !== 0 ? Math.abs(acum.resultadoFinanciero) / Math.abs(acum.ebitda) * 100 : null
+
+  // Índice de confiabilidad
+  const icdd = Math.round(v.indiceConfiabilidad ?? 0)
+  const icddComp = [
+    { t: "Expediente documental", n: v.icddTracker },
+    { t: "Riesgo verificado con evidencia", n: v.icddRiesgo },
+    { t: "Activos verificados físicamente", n: v.icddActivos },
+    { t: "Solidez de la oferta", n: v.icddOferta },
+  ]
+
+  const sem = narrativa ? SEM[narrativa.semaforo] : null
+
+  // Gráfico de evolución: barras de ingresos + línea de margen, SVG puro.
+  const chartW = 640, chartH = 170, padL = 8, padB = 26, padT = 14
+  const maxIng = Math.max(...evo.map(e => e.ingresos), 1)
+  const margenes = evo.map(e => e.margen)
+  const maxMg = Math.max(...margenes, 0), minMg = Math.min(...margenes, 0)
+  const mgSpan = (maxMg - minMg) || 1
+  const bw = evo.length > 0 ? (chartW - padL * 2) / evo.length : 0
+  const yIng = (n: number) => padT + (chartH - padT - padB) * (1 - n / maxIng)
+  const yMg = (m: number) => padT + (chartH - padT - padB) * (1 - (m - minMg) / mgSpan)
 
   return (
-    <>
-      {/* Barra de acciones (no se imprime) */}
-      <div className="no-print sticky top-0 z-50 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="JL Advisory" className="h-8 w-auto"/>
-          <span className="text-sm font-bold text-gray-700">Vista previa del informe</span>
-        </div>
-        <div className="flex items-center gap-3">
-          {lastGenerated && (
-            <span className="text-xs text-gray-400">
-              Análisis ejecutivo actualizado: {new Date(lastGenerated).toLocaleDateString("es-AR", { day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" })}
-            </span>
+    <div className="rp-root" style={{ background:PAPER, minHeight:"100vh", color:INK }}>
+      <style>{`
+        .rp-root { font-feature-settings: "tnum" 0; }
+        .rp-wrap { max-width: 880px; margin: 0 auto; padding: 28px 24px 90px; }
+        .rp-nav a { color:${STONE}; text-decoration:none; font-size:13px; padding:6px 2px; border-bottom:2px solid transparent; }
+        .rp-nav a:hover { color:${INK}; border-bottom-color:${LINE}; }
+        .rp-card { background:${CARD}; border:1px solid ${LINE}; border-radius:14px; }
+        .rp-riskrow { width:100%; text-align:left; background:none; border:none; padding:11px 2px; cursor:pointer;
+                      display:flex; gap:14px; justify-content:space-between; align-items:baseline;
+                      border-bottom:1px solid ${LINE}; font:inherit; color:inherit; }
+        .rp-riskrow:hover { background:#faf9f5; }
+        .rp-riskrow:last-of-type { border-bottom:none; }
+        .rp-btn { padding:8px 14px; border-radius:9px; font-size:13px; font-weight:600; cursor:pointer;
+                  border:1px solid ${LINE}; background:${CARD}; color:${INK}; }
+        .rp-btn:hover { background:#f2f0ea; }
+        .rp-btn-navy { background:${NAVY}; border-color:${NAVY}; color:#fff; }
+        .rp-btn-navy:hover { background:#0e1830; }
+        .rp-btn[disabled] { opacity:.55; cursor:default; }
+        .rp-anexo table { width:100%; border-collapse:collapse; font-size:12.5px; }
+        .rp-anexo th { text-align:left; font-size:10.5px; letter-spacing:.1em; text-transform:uppercase;
+                       color:${FAINT}; font-weight:600; padding:6px 8px; border-bottom:1px solid ${LINE}; }
+        .rp-anexo td { padding:6px 8px; border-bottom:1px solid #f0eee7; vertical-align:top; color:${INK}; }
+        .rp-anexo tr:last-child td { border-bottom:none; }
+        details.rp-det > summary { cursor:pointer; list-style:none; }
+        details.rp-det > summary::-webkit-details-marker { display:none; }
+        @media print { .rp-actions, .rp-nav { display:none !important; } .rp-root { background:#fff; } }
+        @media (max-width: 640px) { .rp-masthead { flex-direction:column; align-items:flex-start !important; gap:12px; } }
+      `}</style>
+
+      <div className="rp-wrap">
+
+        {/* ═════════ Cabecera del documento ═════════ */}
+        <header className="rp-masthead" style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", gap:16, paddingBottom:16, borderBottom:`3px solid ${NAVY}` }}>
+          <div>
+            <div style={{ fontSize:11, letterSpacing:".18em", color:STONE, fontWeight:600, textTransform:"uppercase", marginBottom:6 }}>
+              Informe de due diligence · confidencial
+            </div>
+            <h1 style={{ fontSize:26, fontWeight:600, margin:0, lineHeight:1.2 }}>{nombre}</h1>
+            <div style={{ fontSize:13, color:STONE, marginTop:5 }}>
+              {[industria, cuit ? `CUIT ${cuit}` : ""].filter(Boolean).join("  ·  ")}
+            </div>
+          </div>
+          <div className="rp-actions" style={{ display:"flex", gap:8, flexShrink:0 }}>
+            <button className="rp-btn" onClick={imprimir}>Abrir PDF</button>
+            <button className="rp-btn rp-btn-navy" onClick={generarNarrativa} disabled={generating}>
+              {generating ? <span style={{ display:"inline-flex", alignItems:"center", gap:6 }}><Loader size={13} className="animate-spin" /> Analizando…</span>
+                : narrativa ? "Actualizar análisis" : "Generar análisis"}
+            </button>
+          </div>
+        </header>
+
+        {/* Navegación de estratos */}
+        <nav className="rp-nav" style={{ display:"flex", gap:22, alignItems:"center", padding:"10px 0 0" }}>
+          <a href="#decision">La decisión</a>
+          <a href="#fundamento">El fundamento</a>
+          <button className="rp-btn" style={{ marginLeft:"auto", padding:"5px 12px", fontSize:12.5 }}
+                  onClick={() => setShowAnexo(s => !s)}>
+            {showAnexo ? "Ocultar anexo" : `Anexo · ${vivos.length + cerrados.length + totalReqs + sups.length + env.length + valid.length} registros`}
+          </button>
+        </nav>
+
+        {/* ══════════════════ ESTRATO A · LA DECISIÓN ══════════════════ */}
+        <section id="decision" style={{ marginTop:34 }}>
+          <Estrato n="A" t="La decisión" />
+
+          {/* Veredicto */}
+          {narrativa && sem ? (
+            <div style={{ background:sem.bg, border:`1px solid ${sem.line}`, borderRadius:14, padding:"20px 22px" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:12, marginBottom:10 }}>
+                <span style={{ fontSize:11, letterSpacing:".16em", fontWeight:700, color:sem.fg, textTransform:"uppercase" }}>{sem.label}</span>
+                {lastGenerated && <span style={{ fontSize:12, color:STONE }}>análisis del {fFecha(lastGenerated)}</span>}
+              </div>
+              <p style={{ fontSize:21, lineHeight:1.45, color:sem.fg, margin:0, maxWidth:"62ch", fontWeight:500 }}>
+                {narrativa.recomendacion}
+              </p>
+              {narrativa.precio_sugerido && (
+                <p style={{ fontSize:14.5, lineHeight:1.65, color:INK, margin:"12px 0 0", maxWidth:"70ch" }}>
+                  {narrativa.precio_sugerido}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="rp-card" style={{ padding:"20px 22px" }}>
+              <p style={{ margin:0, fontSize:15, color:STONE, lineHeight:1.6 }}>
+                El análisis ejecutivo de este caso todavía no se generó. Las cifras de abajo salen
+                directamente de la base; el veredicto narrativo se produce con el botón «Generar análisis».
+              </p>
+            </div>
           )}
-          <button onClick={generarNarrativa} disabled={generating}
-            className={`flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-lg disabled:opacity-50 ${narrativa ? "bg-gray-100 text-gray-700 hover:bg-gray-200" : "bg-amber-500 text-white hover:bg-amber-600"}`}>
-            {generating ? <><Loader size={13} className="animate-spin"/> Generando análisis IA...</> : narrativa ? "🔄 Actualizar análisis ejecutivo" : "✨ Generar análisis ejecutivo"}
-          </button>
-          <button onClick={imprimir}
-            className="flex items-center gap-2 bg-[#1a2744] text-white text-sm font-bold px-5 py-2 rounded-lg hover:bg-[#0d1525]">
-            ⬇ Descargar PDF
-          </button>
-        </div>
-      </div>
 
-      {/* ═══════════ DOCUMENTO DEL INFORME ═══════════ */}
-      <div ref={reportRef} className="report-container bg-white">
-        <style>{`
-          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-          .report-container { font-family: 'Inter', sans-serif; color: #1a1a1a; }
-          
-          @media print {
-            .no-print { display: none !important; }
-            .page-break { page-break-before: always; }
-            body { margin: 0; }
-            .report-container { font-size: 9pt; }
-            @page { margin: 15mm 15mm 20mm 15mm; size: A4; }
-            @page :first { margin-top: 0; }
-          }
-          
-          html { scroll-behavior: smooth; }
-          .section-header { scroll-margin-top: 56px; }
-          /* En papel cada seccion abre pagina; en pantalla quedaban pegadas una debajo
-             de otra sin respiro. Se separan visualmente sin afectar la impresion. */
-          @media screen {
-            .page-break { border-top: 8px solid #f1f5f9; }
-            .report-container { background: #fafbfc; }
-            .page-break, .report-container > div[style*="padding"] { background: white; }
-          }
-          /* Acordeon: solo pantalla. Al imprimir todo queda desplegado. */
-          @media screen {
-            .section-header { cursor: pointer; user-select: none; position: relative; }
-            .section-header::after { content: "\\2212"; position: absolute; right: 16px; top: 50%;
-              transform: translateY(-50%); font-size: 15px; opacity: .55; font-weight: 400; }
-            .section-header.plegado::after { content: "+"; }
-            .sec-cuerpo { overflow: hidden; }
-            .sec-cuerpo.plegado { display: none; }
-          }
-          .acto-head { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;
-            padding:26px 50px 14px; border-top:1px solid #e5e7eb; margin-top:8px; }
-          .acto-n { font-size:11px; font-weight:800; color:#c3c9d4; letter-spacing:.06em; }
-          .acto-t { font-size:19px; font-weight:800; color:#1a2744; letter-spacing:-.01em; }
-          .acto-d { font-size:11px; color:#9ca3af; }
-          @media print { .acto-head { border-top:none; padding:0 0 6px; }
-                         .acto-d { display:none; } }
-          .kpi-box { transition: box-shadow .15s; }
-          @media screen { .kpi-box:hover { box-shadow: 0 2px 8px rgba(26,39,68,.08); } }
-          .barra-progreso { position: sticky; top: 0; z-index: 30; height: 3px; background: #e5e7eb; }
-          .barra-progreso > div { height: 100%; width: 0; background: #f59e0b; transition: width .1s linear; }
-          @media print { .barra-progreso { display: none !important; } }
-          .nav-indice { position: sticky; top: 3px; z-index: 20; background: rgba(255,255,255,0.96);
-            backdrop-filter: blur(8px); border-bottom: 1px solid #e5e7eb;
-            padding: 8px 50px; display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
-          .nav-indice a { font-size: 10px; color: #6b7280; text-decoration: none;
-            padding: 4px 9px; border-radius: 5px; white-space: nowrap; transition: all .15s; }
-          .nav-indice a:hover { background: #1a2744; color: white; }
-          @media print { .nav-indice { display: none !important; } }
-          .section-header {
-            background: #1a2744; color: white;
-            padding: 8px 16px; font-size: 11px; font-weight: 700;
-            letter-spacing: 0.1em; text-transform: uppercase;
-            border-left: 4px solid #f59e0b; margin-bottom: 12px;
-          }
-          .kpi-box { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; text-align: center; }
-          .risk-row { border-bottom: 1px solid #f3f4f6; padding: 6px 8px; display: flex; align-items: center; gap: 8px; font-size: 9px; }
-          .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 8px; font-weight: 700; }
-          .tabla td, .tabla th { padding: 5px 8px; border-bottom: 1px solid #f3f4f6; font-size: 9px; }
-          .tabla th { background: #f8fafc; font-weight: 600; color: #6b7280; font-size: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
-        `}</style>
-
-        {/* ══════════ PORTADA ══════════ */}
-        <div style={{ background:"#1a2744", minHeight:"100vh", display:"flex", flexDirection:"column", justifyContent:"space-between", padding:"60px 60px 40px" }}>
-          {/* Header portada */}
-          <div style={{ borderBottom:"2px solid #f59e0b", paddingBottom:"20px", marginBottom:"40px" }}>
-            <img src="/logo.png" alt="JL Advisory" style={{ height:"50px", filter:"brightness(0) invert(1)" }}/>
+          {/* Puente de precio — el elemento firma del informe */}
+          <div className="rp-card" style={{ marginTop:14, padding:"20px 22px" }}>
+            <Rotulo>El puente de precio</Rotulo>
+            <div style={{ display:"grid", gridTemplateColumns:"auto 1fr auto", rowGap:9, columnGap:14, alignItems:"center" }}>
+              {[
+                { t:"Precio pedido", n:v.precio, c:SEM.ROJO, m: multPedido },
+                { t:"Techo condicionado", n:v.ofertaMax, c:SEM.AMARILLO, m: v.ebitdaBase2 > 0 ? v.ofertaMax / v.ebitdaBase2 : NaN },
+                { t:"Oferta inicial", n:v.ofertaInic, c:SEM.VERDE, m: v.multImpl },
+              ].map(seg => (
+                <React.Fragment key={seg.t}>
+                  <div style={{ fontSize:13, color:STONE, whiteSpace:"nowrap" }}>{seg.t}</div>
+                  <div style={{ height:30, background:"#f3f1ea", borderRadius:7, overflow:"hidden" }}>
+                    <div style={{ width:`${Math.max(4, seg.n / maxPuente * 100)}%`, height:"100%", background:seg.c.bg,
+                                  border:`1px solid ${seg.c.line}`, borderRadius:7,
+                                  display:"flex", alignItems:"center", paddingLeft:10,
+                                  fontSize:14, fontWeight:600, color:seg.c.fg, fontVariantNumeric:"tabular-nums" }}>
+                      {fUSD(seg.n)}
+                    </div>
+                  </div>
+                  <div style={{ ...numCell, fontSize:13, color:STONE }}>{fX(seg.m)} EBITDA</div>
+                </React.Fragment>
+              ))}
+            </div>
+            <p style={{ fontSize:14, lineHeight:1.65, color:STONE, margin:"14px 0 0", maxWidth:"72ch" }}>
+              La brecha de <strong style={{ color:INK, fontVariantNumeric:"tabular-nums" }}>{fUSD(brecha)}</strong> es
+              la distancia entre {fX(multPedido)} y {fX(v.multImpl)} el EBITDA normalizado
+              de <span style={{ color:INK, fontVariantNumeric:"tabular-nums" }}>{fUSD(v.ebitdaNorm)}</span>.
+              El techo de {fUSD(v.ofertaMax)} solo se habilita si se levantan las condiciones de cierre listadas al final del fundamento.
+            </p>
           </div>
 
-          {/* Título */}
-          <div>
-            <div style={{ color:"#f59e0b", fontSize:"11px", fontWeight:700, letterSpacing:"0.15em", textTransform:"uppercase", marginBottom:"16px" }}>
-              INFORME DE DUE DILIGENCE M&A — CONFIDENCIAL
+          {/* Cuánto pesa este número */}
+          <div className="rp-card" style={{ marginTop:14, padding:"20px 22px" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:12 }}>
+              <Rotulo>Cuánto pesa este número</Rotulo>
+              <span style={{ fontSize:13, color:STONE, fontVariantNumeric:"tabular-nums" }}>
+                confiabilidad {icdd} / 100
+              </span>
             </div>
-            <div style={{ color:"white", fontSize:"36px", fontWeight:800, lineHeight:1.1, marginBottom:"12px" }}>
-              {String(caso.nombre ?? "")}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr", gap:8 }}>
+              {icddComp.map(c => (
+                <div key={c.t} style={{ display:"grid", gridTemplateColumns:"minmax(180px, 240px) 1fr auto", gap:12, alignItems:"center" }}>
+                  <span style={{ fontSize:13, color:STONE }}>{c.t}</span>
+                  <div style={{ height:7, background:"#efede6", borderRadius:4 }}>
+                    <div style={{ width:`${Math.max(0, Math.min(100, c.n))}%`, height:"100%", background:NAVY, borderRadius:4, opacity:.85 }} />
+                  </div>
+                  <span style={{ ...numCell, fontSize:12.5, color:STONE }}>{Math.round(c.n)}</span>
+                </div>
+              ))}
             </div>
-            <div style={{ color:"#93c5fd", fontSize:"16px", fontWeight:400, marginBottom:"40px" }}>
-              {String((caso as Record<string, Record<string,string>>).industry?.nombre ?? "")} · {String((caso as Record<string, Record<string,string>>).sub_sector?.nombre ?? "")}
+            <div style={{ display:"flex", height:9, borderRadius:5, overflow:"hidden", gap:2, margin:"16px 0 8px" }}>
+              {rec > 0 && <div style={{ flex:rec, background:"#2f9e6e" }} title={`${rec} recibidos`} />}
+              {par > 0 && <div style={{ flex:par, background:"#e0a63a" }} title={`${par} parciales`} />}
+              {pen > 0 && <div style={{ flex:pen, background:"#d1553f" }} title={`${pen} pendientes`} />}
+            </div>
+            <p style={{ fontSize:14, lineHeight:1.65, color:STONE, margin:0, maxWidth:"72ch" }}>
+              El EBITDA normalizado se apoya en {sups.length} supuestos documentados.
+              Del expediente de {totalReqs} requerimientos, <strong style={{ color:INK }}>{rec} están completos</strong>,
+              {" "}{par} llegaron en forma parcial y {pen} siguen pendientes. Todo precio que se ofrezca hoy
+              lleva ese estado de certeza adentro.
+            </p>
+          </div>
+
+          {/* Lo que mueve el precio */}
+          <div className="rp-card" style={{ marginTop:14, padding:"20px 22px" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:12 }}>
+              <Rotulo>Lo que mueve el precio</Rotulo>
+              <span style={{ fontSize:13, color:STONE, fontVariantNumeric:"tabular-nums" }}>
+                {top.length} de {vivos.length} riesgos vivos · exposición {fUSD(Math.abs(expVivos))}
+              </span>
+            </div>
+            {top.map(r => {
+              const id = String(r.id)
+              const abierto = riskOpen === id
+              return (
+                <div key={id}>
+                  <button className="rp-riskrow" onClick={() => setRiskOpen(abierto ? null : id)}
+                          aria-expanded={abierto}>
+                    <span style={{ fontSize:14.5, lineHeight:1.5 }}>
+                      {tramo(String(r.riesgo ?? ""))}
+                      <span style={{ fontSize:12, color:FAINT, marginLeft:8 }}>{String(r.area ?? "")}</span>
+                    </span>
+                    <span style={{ ...numCell, fontSize:14.5, fontWeight:600, color:ROJO }}>{fMiles(Math.abs(Number(r.impacto ?? 0)))}</span>
+                  </button>
+                  {abierto && (
+                    <div style={{ padding:"4px 2px 14px", borderBottom:`1px solid ${LINE}` }}>
+                      <p style={{ fontSize:13.5, lineHeight:1.65, color:STONE, margin:0, maxWidth:"74ch" }}>{String(r.riesgo ?? "")}</p>
+                      {Boolean(r.accion_requerida) && (
+                        <p style={{ fontSize:13, lineHeight:1.6, color:INK, margin:"8px 0 0", maxWidth:"74ch" }}>
+                          <span style={{ fontSize:10.5, letterSpacing:".12em", color:FAINT, fontWeight:600, textTransform:"uppercase", marginRight:8 }}>Acción</span>
+                          {String(r.accion_requerida)}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+            {resto.length > 0 && (
+              <p style={{ fontSize:13.5, lineHeight:1.6, color:STONE, margin:"14px 0 0", padding:"10px 12px", background:"#faf9f4", borderRadius:9 }}>
+                Los otros {resto.length} riesgos vivos suman <span style={{ color:INK, fontVariantNumeric:"tabular-nums" }}>{fUSD(Math.abs(expResto))}</span> y
+                no cambian la decisión por sí solos. Están completos, agrupados por área, en el anexo.
+              </p>
+            )}
+          </div>
+
+          {/* Lo que el DD resolvió */}
+          {cerrados.length > 0 && (
+            <div className="rp-card" style={{ marginTop:14, padding:"20px 22px", background:"#fbfaf6" }}>
+              <Rotulo>Lo que el proceso ya resolvió</Rotulo>
+              <p style={{ fontSize:14.5, lineHeight:1.65, color:INK, margin:"0 0 12px", maxWidth:"72ch" }}>
+                Durante el due diligence se cerraron <strong>{cerrados.length} riesgos</strong> que, de haberse
+                confirmado, representaban <strong style={{ fontVariantNumeric:"tabular-nums" }}>{fUSD(Math.abs(expCerrados))}</strong>
+                {ratioCerrados !== null && ratioCerrados > 1 && <> — {ratioCerrados.toLocaleString("es-AR",{maximumFractionDigits:1})} veces la exposición que sigue viva</>}.
+                Ese cierre es trabajo de verificación hecho, no ausencia de problemas.
+              </p>
+              {cerrados.slice(0, 3).map(r => (
+                <div key={String(r.id)} style={{ display:"flex", justifyContent:"space-between", gap:14, padding:"7px 2px", borderTop:`1px solid ${LINE}`, alignItems:"baseline" }}>
+                  <span style={{ fontSize:13.5, color:STONE, lineHeight:1.5 }}>{tramo(String(r.riesgo ?? ""), 100)}</span>
+                  <span style={{ ...numCell, fontSize:13.5, color:VERDE }}>{fMiles(Math.abs(Number(r.impacto ?? 0)))} evitados</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* ═════════════════ ESTRATO B · EL FUNDAMENTO ═════════════════ */}
+        <section id="fundamento" style={{ marginTop:44 }}>
+          <Estrato n="B" t="El fundamento" />
+
+          {/* El negocio en números */}
+          {evo.length > 0 && (
+            <div className="rp-card" style={{ padding:"20px 22px" }}>
+              <Rotulo>El negocio en números · {evo[0].ejercicio}–{evo[evo.length-1].ejercicio}</Rotulo>
+              <svg viewBox={`0 0 ${chartW} ${chartH}`} style={{ width:"100%", height:"auto", display:"block" }}
+                   role="img" aria-label={`Ingresos y margen EBITDA por ejercicio, de ${evo[0].ejercicio} a ${evo[evo.length-1].ejercicio}`}>
+                {evo.map((e, i) => {
+                  const x = padL + i * bw
+                  const yTop = yIng(e.ingresos)
+                  return (
+                    <g key={e.ejercicio}>
+                      <rect x={x + bw*0.16} y={yTop} width={bw*0.68} height={chartH - padB - yTop}
+                            rx={5} fill="#dfe4ee" stroke="#c6cede" strokeWidth={1} />
+                      <text x={x + bw/2} y={yTop - 5} textAnchor="middle" fontSize="11.5"
+                            fill={STONE} style={{ fontVariantNumeric:"tabular-nums" }}>{fMiles(e.ingresos/1000)}k</text>
+                      <text x={x + bw/2} y={chartH - 8} textAnchor="middle" fontSize="12" fill={FAINT}>{e.ejercicio}</text>
+                    </g>
+                  )
+                })}
+                {evo.length > 1 && (
+                  <polyline fill="none" stroke={NAVY} strokeWidth={2}
+                            points={evo.map((e, i) => `${padL + i*bw + bw/2},${yMg(e.margen)}`).join(" ")} />
+                )}
+                {evo.map((e, i) => (
+                  <g key={`m-${e.ejercicio}`}>
+                    <circle cx={padL + i*bw + bw/2} cy={yMg(e.margen)} r={3.6} fill={NAVY} />
+                    <text x={padL + i*bw + bw/2} y={yMg(e.margen) - 8} textAnchor="middle" fontSize="11"
+                          fill={NAVY} fontWeight={600} style={{ fontVariantNumeric:"tabular-nums" }}>{fPct(e.margen, 0)}</text>
+                  </g>
+                ))}
+              </svg>
+              <p style={{ fontSize:13, color:FAINT, margin:"6px 0 0" }}>
+                Barras: ingresos en miles de USD · línea: margen EBITDA
+              </p>
+              {acum && pesoFinanciero !== null && (
+                <p style={{ fontSize:14, lineHeight:1.65, color:STONE, margin:"12px 0 0", maxWidth:"72ch" }}>
+                  El hallazgo central del período: el resultado financiero acumulado
+                  ({fUSD(acum.resultadoFinanciero)}) equivale al <strong style={{ color:INK }}>{fPct(pesoFinanciero, 0)}</strong> del
+                  EBITDA generado ({fUSD(acum.ebitda)}). Esa proporción mide cuánto de la caja operativa se llevó el costo financiero.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* De los métodos a la oferta */}
+          <div className="rp-card" style={{ marginTop:14, padding:"20px 22px" }}>
+            <Rotulo>De los métodos a la oferta</Rotulo>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(170px, 1fr))", gap:10 }}>
+              {[
+                { t:"Método 1 · Activos netos de riesgo", n:v.valorM1 },
+                { t:"Método 2 · Flujos descontados", n:v.valorM2 },
+                { t:"Método 3 · Comparables", n:v.valorM3mid, extra:`${fUSD(v.valorM3min)} – ${fUSD(v.valorM3max)}` },
+              ].map(m => (
+                <div key={m.t} style={{ border:`1px solid ${LINE}`, borderRadius:10, padding:"12px 14px", background:"#fcfbf8" }}>
+                  <div style={{ fontSize:12, color:STONE, marginBottom:6, lineHeight:1.4 }}>{m.t}</div>
+                  <div style={{ fontSize:18, fontWeight:600, fontVariantNumeric:"tabular-nums" }}>{fUSD(m.n)}</div>
+                  {m.extra && <div style={{ fontSize:11.5, color:FAINT, marginTop:3, fontVariantNumeric:"tabular-nums" }}>{m.extra}</div>}
+                </div>
+              ))}
+            </div>
+            <p style={{ fontSize:14, lineHeight:1.65, color:STONE, margin:"14px 0 4px", maxWidth:"74ch" }}>
+              El promedio de los tres métodos da <span style={{ color:INK, fontVariantNumeric:"tabular-nums" }}>{fUSD(v.promMetodos)}</span>;
+              aplicado el descuento de liquidez del {fPct(v.descLiq * 100, 0)}, el valor de referencia queda
+              en <span style={{ color:INK, fontVariantNumeric:"tabular-nums" }}>{fUSD(v.valorLiq)}</span>, del que
+              se derivan la oferta inicial de {fUSD(v.ofertaInic)} y el techo de {fUSD(v.ofertaMax)}.
+            </p>
+            {v.trazabilidad && v.trazabilidad.length > 0 && (
+              <details className="rp-det" style={{ marginTop:10 }}>
+                <summary style={{ fontSize:13, fontWeight:600, color:NAVY, padding:"8px 0" }}>
+                  Ver la derivación completa, paso a paso ({v.trazabilidad.length} pasos auditables)
+                </summary>
+                <div style={{ borderTop:`1px solid ${LINE}`, marginTop:4 }}>
+                  {v.trazabilidad.map((p, i) => (
+                    <div key={p.clave} style={{ padding:"12px 2px", borderBottom:`1px solid #f0eee7` }}>
+                      <div style={{ display:"flex", justifyContent:"space-between", gap:12, alignItems:"baseline" }}>
+                        <span style={{ fontSize:13.5, fontWeight:600 }}>{i + 1}. {p.titulo}</span>
+                        <span style={{ ...numCell, fontSize:13.5, fontWeight:600 }}>{fUSD(p.resultado)}</span>
+                      </div>
+                      <div style={{ fontFamily:"ui-monospace, SFMono-Regular, Menlo, monospace", fontSize:12, color:STONE, marginTop:5 }}>{p.formula}</div>
+                      <div style={{ fontFamily:"ui-monospace, SFMono-Regular, Menlo, monospace", fontSize:12, color:FAINT, marginTop:2 }}>{p.sustitucion}</div>
+                      <div style={{ fontSize:12.5, color:STONE, marginTop:5 }}>{p.fuente}</div>
+                      {p.alerta && <div style={{ fontSize:12.5, color:AMBAR, marginTop:5 }}>⚠ {p.alerta}</div>}
+                    </div>
+                  ))}
+                </div>
+              </details>
+            )}
+          </div>
+
+          {/* Escenarios */}
+          <div className="rp-card" style={{ marginTop:14, padding:"20px 22px" }}>
+            <Rotulo>Qué pasa si el plan del vendedor no se cumple</Rotulo>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr auto", rowGap:0, columnGap:14 }}>
+              {[
+                { t:"Escenario base — con el plan del vendedor", n:v.promMetodos },
+                { t:"Conservador — crecimiento orgánico, sin el plan", n:v.promConservador },
+                { t:"Pesimista — sobre el EBITDA real, sin normalizar", n:v.promPesimista },
+              ].map(e => (
+                <React.Fragment key={e.t}>
+                  <span style={{ fontSize:14, color:STONE, padding:"9px 0", borderBottom:`1px solid #f0eee7` }}>{e.t}</span>
+                  <span style={{ ...numCell, fontSize:14.5, fontWeight:600, padding:"9px 0", borderBottom:`1px solid #f0eee7` }}>{fUSD(e.n)}</span>
+                </React.Fragment>
+              ))}
+            </div>
+            {v.primaCrecimiento > 0 && (
+              <p style={{ fontSize:14, lineHeight:1.65, color:STONE, margin:"14px 0 0", maxWidth:"74ch" }}>
+                La diferencia entre el escenario base y el conservador
+                — <strong style={{ color:INK, fontVariantNumeric:"tabular-nums" }}>{fUSD(v.primaCrecimiento)}</strong> — es
+                la porción del precio que depende de que el plan del vendedor se cumpla. Es la candidata natural
+                a estructurarse como earn-out en lugar de pagarse al cierre.
+              </p>
+            )}
+          </div>
+
+          {/* El plan del vendedor, contrastado */}
+          {valid.length > 0 && (
+            <div className="rp-card" style={{ marginTop:14, padding:"20px 22px" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:12, flexWrap:"wrap" }}>
+                <Rotulo>El plan del vendedor, contrastado</Rotulo>
+                <span style={{ fontSize:12.5, color:STONE }}>
+                  {Object.entries(validPorEstado).map(([e, n]) => `${n} ${e.toLowerCase()}`).join(" · ")}
+                </span>
+              </div>
+              {cuestionados.length === 0 ? (
+                <p style={{ fontSize:14, color:STONE, margin:0 }}>Ninguna afirmación del plan quedó cuestionada hasta hoy.</p>
+              ) : cuestionados.map(c => (
+                <div key={String(c.id)} style={{ padding:"12px 0", borderTop:`1px solid ${LINE}` }}>
+                  <div style={{ fontSize:14, fontWeight:600, marginBottom:8 }}>{String(c.clave ?? "")}</div>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(230px, 1fr))", gap:10 }}>
+                    <div style={{ background:"#fbfaf6", borderRadius:8, padding:"9px 12px" }}>
+                      <div style={{ fontSize:10.5, letterSpacing:".12em", color:FAINT, fontWeight:600, textTransform:"uppercase", marginBottom:4 }}>Lo que dice el plan</div>
+                      <div style={{ fontSize:13, lineHeight:1.55, color:STONE }}>{String(c.dato_plan ?? "—")}</div>
+                    </div>
+                    <div style={{ background:SEM.ROJO.bg, borderRadius:8, padding:"9px 12px" }}>
+                      <div style={{ fontSize:10.5, letterSpacing:".12em", color:ROJO, fontWeight:600, textTransform:"uppercase", marginBottom:4 }}>Lo que encontró el DD</div>
+                      <div style={{ fontSize:13, lineHeight:1.55, color:INK }}>{String(c.dato_real ?? "—")}</div>
+                    </div>
+                  </div>
+                  {Boolean(c.observaciones) && (
+                    <p style={{ fontSize:13, lineHeight:1.6, color:STONE, margin:"9px 0 0", maxWidth:"76ch" }}>{String(c.observaciones)}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Habilitaciones y ambiente */}
+          {env.length > 0 && (
+            <div className="rp-card" style={{ marginTop:14, padding:"20px 22px" }}>
+              <Rotulo>Habilitaciones y ambiente</Rotulo>
+              <p style={{ fontSize:14, lineHeight:1.65, color:STONE, margin:0, maxWidth:"74ch" }}>
+                Se relevaron {env.length} registros habilitantes; <strong style={{ color:INK }}>{vigentes.length} están vigentes</strong>
+                {noVigentes.length > 0 && <> y {noVigentes.length} en otro estado</>}.
+                {vencimientos.length > 0 && <> El vencimiento más próximo es
+                  {" "}<strong style={{ color:INK }}>{String(vencimientos[0].e.clave ?? vencimientos[0].e.numero ?? "")}</strong> el {fFecha(vencimientos[0].d)}.</>}
+                {" "}El detalle registro por registro está en el anexo.
+              </p>
+              {noVigentes.length > 0 && (
+                <div style={{ marginTop:10 }}>
+                  {noVigentes.slice(0, 5).map(e => (
+                    <div key={String(e.id)} style={{ display:"flex", justifyContent:"space-between", gap:12, padding:"7px 2px", borderTop:`1px solid #f0eee7`, alignItems:"baseline" }}>
+                      <span style={{ fontSize:13.5, color:STONE }}>{[e.clave, e.numero].filter(Boolean).join(" · ")}</span>
+                      <span style={{ fontSize:12.5, color:AMBAR, fontWeight:600 }}>{String(e.estado ?? "")}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Condiciones para avanzar */}
+          {narrativa && (narrativa.condiciones_cierre.length > 0 || narrativa.hallazgos_criticos.length > 0) && (
+            <div className="rp-card" style={{ marginTop:14, padding:"20px 22px" }}>
+              {narrativa.condiciones_cierre.length > 0 && (
+                <>
+                  <Rotulo>Condiciones para avanzar</Rotulo>
+                  <ol style={{ margin:"0 0 6px", paddingLeft:22 }}>
+                    {narrativa.condiciones_cierre.map((c, i) => (
+                      <li key={i} style={{ fontSize:14, lineHeight:1.7, color:INK, marginBottom:6, maxWidth:"74ch" }}>{c}</li>
+                    ))}
+                  </ol>
+                </>
+              )}
+              {narrativa.hallazgos_criticos.length > 0 && (
+                <details className="rp-det" style={{ marginTop:8 }}>
+                  <summary style={{ fontSize:13, fontWeight:600, color:NAVY, padding:"6px 0" }}>
+                    Hallazgos que sostienen la recomendación ({narrativa.hallazgos_criticos.length})
+                  </summary>
+                  <ul style={{ margin:"6px 0 0", paddingLeft:20 }}>
+                    {narrativa.hallazgos_criticos.map((h, i) => (
+                      <li key={i} style={{ fontSize:13.5, lineHeight:1.65, color:STONE, marginBottom:5, maxWidth:"74ch" }}>{h}</li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </div>
+          )}
+
+          {/* Resumen ejecutivo completo, si existe */}
+          {narrativa?.resumen_ejecutivo && (
+            <div className="rp-card" style={{ marginTop:14, padding:"20px 22px" }}>
+              <Rotulo>Resumen ejecutivo</Rotulo>
+              {narrativa.resumen_ejecutivo.split(/\n{2,}|\n/).filter(p => p.trim()).map((p, i) => (
+                <p key={i} style={{ fontSize:14.5, lineHeight:1.75, color:INK, margin:"0 0 12px", maxWidth:"76ch" }}>{p}</p>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* ═══════════════════ ESTRATO C · EL ANEXO ═══════════════════ */}
+        {showAnexo && (
+          <section className="rp-anexo" style={{ marginTop:44 }}>
+            <Estrato n="C" t="El anexo — inventario completo del caso" />
+            <p style={{ fontSize:13.5, color:STONE, margin:"0 0 18px", maxWidth:"76ch", lineHeight:1.6 }}>
+              Todo lo que el proceso relevó, sin filtro de materialidad. Es la base auditable de los
+              números del informe: cada cifra de arriba puede rastrearse hasta una fila de acá.
+            </p>
+
+            {/* C1 · Riesgos vivos, por área */}
+            <div className="rp-card" style={{ padding:"16px 18px", marginBottom:14 }}>
+              <Rotulo>C1 · Riesgos vivos ({vivos.length}) — exposición {fUSD(Math.abs(expVivos))}</Rotulo>
+              {Array.from(new Set(vivos.map(r => String(r.area ?? "Sin área")))).sort().map(area => {
+                const rows = vivos.filter(r => String(r.area ?? "Sin área") === area)
+                const sub = rows.reduce((s, r) => s + Number(r.impacto ?? 0), 0)
+                return (
+                  <details className="rp-det" key={area} style={{ borderTop:`1px solid ${LINE}` }}>
+                    <summary style={{ display:"flex", justifyContent:"space-between", gap:12, padding:"9px 2px", fontSize:13.5 }}>
+                      <span style={{ fontWeight:600 }}>{area} <span style={{ color:FAINT, fontWeight:400 }}>· {rows.length}</span></span>
+                      <span style={{ ...numCell, color:STONE }}>{fMiles(Math.abs(sub))}</span>
+                    </summary>
+                    <table style={{ marginBottom:8 }}>
+                      <thead><tr><th style={{ width:"58%" }}>Riesgo</th><th>Estado</th><th>Prioridad</th><th style={{ textAlign:"right" }}>Impacto USD</th></tr></thead>
+                      <tbody>
+                        {rows.map(r => (
+                          <tr key={String(r.id)}>
+                            <td>{String(r.riesgo ?? "")}</td>
+                            <td>{String(r.estado ?? "")}</td>
+                            <td>{String(r.prioridad ?? "—")}</td>
+                            <td style={numCell}>{fMiles(Math.abs(Number(r.impacto ?? 0)))}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </details>
+                )
+              })}
             </div>
 
-            {narrativa && (
-              <div style={{ background:"rgba(255,255,255,0.08)", border:`2px solid ${SEMAFORO_COLOR[narrativa.semaforo]}`, borderRadius:"12px", padding:"20px", marginBottom:"32px", maxWidth:"600px" }}>
-                <div style={{ display:"flex", alignItems:"center", gap:"12px", marginBottom:"12px" }}>
-                  <div style={{ width:"24px", height:"24px", borderRadius:"50%", background:SEMAFORO_COLOR[narrativa.semaforo] }}/>
-                  <div style={{ color:"white", fontSize:"20px", fontWeight:800 }}>{narrativa.recomendacion}</div>
-                </div>
-                <div style={{ color:"#e2e8f0", fontSize:"13px", lineHeight:1.6 }}>{narrativa.resumen_ejecutivo}</div>
+            {/* C2 · Riesgos cerrados */}
+            {cerrados.length > 0 && (
+              <div className="rp-card" style={{ padding:"16px 18px", marginBottom:14 }}>
+                <Rotulo>C2 · Riesgos cerrados durante el proceso ({cerrados.length}) — {fUSD(Math.abs(expCerrados))} evitados</Rotulo>
+                <table>
+                  <thead><tr><th style={{ width:"52%" }}>Riesgo</th><th>Área</th><th style={{ textAlign:"right" }}>Impacto USD</th><th style={{ width:"22%" }}>Cómo se cerró</th></tr></thead>
+                  <tbody>
+                    {cerrados.map(r => (
+                      <tr key={String(r.id)}>
+                        <td>{String(r.riesgo ?? "")}</td>
+                        <td>{String(r.area ?? "")}</td>
+                        <td style={numCell}>{fMiles(Math.abs(Number(r.impacto ?? 0)))}</td>
+                        <td style={{ color:STONE }}>{String(r.notas ?? "—")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
 
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"16px", maxWidth:"500px" }}>
-              {[
-                { label:"Precio pedido", value: fmtUSD(precio), color:"#f59e0b" },
-                { label:"Confiabilidad del análisis", value: `${avance}%`, color:"#34d399" },
-                { label:"Riesgo total", value: fmtUSD(Math.abs(riesgoTotal)), color:"#f87171" },
-              ].map(({ label, value, color }) => (
-                <div key={label} style={{ borderTop:`3px solid ${color}`, paddingTop:"12px" }}>
-                  <div style={{ color:"#94a3b8", fontSize:"10px", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.08em" }}>{label}</div>
-                  <div style={{ color:"white", fontSize:"18px", fontWeight:700, marginTop:"4px" }}>{value}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Footer portada */}
-          <div style={{ borderTop:"1px solid rgba(255,255,255,0.15)", paddingTop:"20px", display:"flex", justifyContent:"space-between", alignItems:"flex-end" }}>
-            <div style={{ color:"#94a3b8", fontSize:"10px" }}>
-              <div style={{ fontWeight:600, color:"#cbd5e1", marginBottom:"4px" }}>Preparado por</div>
-              <div>JL Advisory — Estrategia · Negocios · Due Diligence</div>
-              <div>Este informe es confidencial y de uso exclusivo del destinatario</div>
-            </div>
-            <div style={{ color:"#94a3b8", fontSize:"10px", textAlign:"right" }}>
-              <div>{today}</div>
-              <div>Versión preliminar — sujeta a auditoría final</div>
-            </div>
-          </div>
-        </div>
-
-        {/* ══════════ DECISIÓN Y PUENTE DE PRECIO ══════════
-            Va inmediatamente despues de la portada: la recomendacion y la aritmetica
-            que la sostiene, antes de cualquier desarrollo. El lector que solo necesita
-            decidir no tiene que atravesar el informe entero. */}
-        <div className="no-print" style={{ padding:"32px 50px 8px" }}>
-
-          {narrativa && (
-            <div style={{ display:"flex", alignItems:"center", gap:"12px", marginBottom:"22px" }}>
-              <span style={{ width:"12px", height:"12px", borderRadius:"50%",
-                             background:SEMAFORO_COLOR[narrativa.semaforo], flexShrink:0 }} />
-              <span style={{ fontSize:"17px", fontWeight:800, color:"#1a2744" }}>{narrativa.recomendacion}</span>
-            </div>
-          )}
-
-          {/* Puente: precio pedido → valor central → riesgos → oferta.
-              Los cuatro numeros viven hoy en secciones distintas y el lector
-              tiene que armar la relacion de memoria. */}
-          <div style={{ border:"1px solid #e5e7eb", borderRadius:"10px", padding:"18px 20px", marginBottom:"20px" }}>
-            <div style={{ fontSize:"9px", color:"#9ca3af", textTransform:"uppercase",
-                          letterSpacing:"0.08em", fontWeight:600, marginBottom:"16px" }}>
-              Del precio pedido a la oferta recomendada
-            </div>
-            {(() => {
-              const tope = Math.max(precio, v.promMetodos, v.ofertaInic, 1)
-              const alto = (x:number) => Math.max(10, Math.round(Math.abs(x)/tope*78))
-              const pasos = [
-                { v:precio,                    lbl:"Pedido",        sub: ebitda ? `${Math.round(precio/ebitda)}× EBITDA` : "",       col:"#dc2626", bg:"#fef2f2", sep:"→" },
-                { v:v.promMetodos,             lbl:"Valor central", sub:"promedio 3 métodos",                                        col:"#6b7280", bg:"#f8fafc", sep:"→" },
-                { v:-Math.abs(v.riesgosAjust), lbl:"Riesgos",       sub:`${v.riesgoAjustesLive.length} de ${risks.filter(r=>ACTIVOS_EST.includes(String(r.estado))).length}`, col:"#b91c1c", bg:"#fee2e2", sep:"=" },
-                { v:v.ofertaInic,              lbl:"Oferta",        sub: ebitda ? `${Math.round(v.ofertaInic/ebitda)}× EBITDA` : "", col:"#16a34a", bg:"#f0fdf4", sep:null },
-              ]
-              return (
-                <div style={{ display:"flex", alignItems:"flex-end", gap:"6px" }}>
-                  {pasos.map((p,i)=>(
-                    <React.Fragment key={i}>
-                      <div style={{ flex:1, textAlign:"center" }}>
-                        <div style={{ fontSize:"13px", fontWeight:800, color:p.col, marginBottom:"5px",
-                                      fontVariantNumeric:"tabular-nums" }}>{fmtUSD(p.v)}</div>
-                        <div style={{ height:`${alto(p.v)}px`, background:p.bg, borderTop:`3px solid ${p.col}` }} />
-                        <div style={{ fontSize:"9.5px", color:"#6b7280", marginTop:"6px", lineHeight:1.35 }}>
-                          {p.lbl}<br/><span style={{ color:"#c3c9d4" }}>{p.sub}</span>
-                        </div>
-                      </div>
-                      {p.sep && <div style={{ color:"#d1d5db", fontSize:"14px", paddingBottom:"34px" }}>{p.sep}</div>}
-                    </React.Fragment>
-                  ))}
-                </div>
-              )
-            })()}
-            <div style={{ marginTop:"16px", paddingTop:"13px", borderTop:"1px solid #f3f4f6",
-                          fontSize:"11px", color:"#6b7280", lineHeight:1.6 }}>
-              La brecha con el precio pedido asciende a <strong style={{ color:"#1a2744" }}>{fmtUSD(precio - v.ofertaInic)}</strong>.
-              Techo de negociación <strong style={{ color:"#1a2744" }}>{fmtUSD(v.ofertaMax)}</strong>.
-            </div>
-          </div>
-
-          {/* Condiciones precedentes: es la parte accionable y vivia en la seccion 9 */}
-          {narrativa && narrativa.condiciones_cierre.length > 0 && (
-            <div style={{ marginBottom:"8px" }}>
-              <div style={{ fontSize:"9px", color:"#9ca3af", textTransform:"uppercase",
-                            letterSpacing:"0.08em", fontWeight:600, marginBottom:"10px" }}>
-                Qué debe resolverse antes de firmar
-              </div>
-              <div style={{ display:"flex", flexDirection:"column", gap:"7px" }}>
-                {narrativa.condiciones_cierre.map((c,i)=>(
-                  <div key={i} style={{ display:"flex", gap:"11px", alignItems:"flex-start",
-                                        padding:"10px 13px", background:"#fffbeb",
-                                        borderLeft:"3px solid #d97706", borderRadius:"0" }}>
-                    <span style={{ fontSize:"10px", fontWeight:800, color:"#92400e", flexShrink:0,
-                                   marginTop:"2px" }}>{String(i+1).padStart(2,"0")}</span>
-                    <span style={{ fontSize:"11px", color:"#78350f", lineHeight:1.6 }}>{c}</span>
-                  </div>
-                ))}
-              </div>
-              <div style={{ fontSize:"9.5px", color:"#9ca3af", marginTop:"9px" }}>
-                El desarrollo de cada punto y su fundamento están en las secciones siguientes.
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Progreso de lectura — el informe es largo y no se sabe cuanto falta */}
-        <div className="barra-progreso"><div id="prog-fill" /></div>
-        <script dangerouslySetInnerHTML={{ __html: `
-          (function(){
-            var f = document.getElementById('prog-fill'); if(!f) return;
-            function upd(){
-              var h = document.documentElement;
-              var max = h.scrollHeight - h.clientHeight;
-              f.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
-            }
-            window.addEventListener('scroll', upd, {passive:true});
-            window.addEventListener('resize', upd); upd();
-          })();
-        `}} />
-
-        {/* ══════════ ESTRUCTURA NARRATIVA ══════════
-            El informe crecio por acumulacion y quedo en un orden que no acompaña la
-            lectura: la evolucion financiera aparecia despues de la recomendacion final,
-            y la tesis de inversion despues de los supuestos. Se reorganiza en cuatro
-            actos —la decision, el negocio, el precio, el riesgo— sin mover una linea de
-            JSX: el script reubica los bloques ya renderizados. Si no corre, el informe
-            se ve en su orden original y completo. */}
-        <script dangerouslySetInnerHTML={{ __html: `
-          (function(){
-            var ACTOS = [
-              { t: 'La decisión',            d: 'Qué recomendamos y qué debe resolverse antes de firmar', s: [1, 8] },
-              { t: 'El negocio que se compra', d: 'Sobre qué se apoya el valor y qué dicen cinco ejercicios', s: [10, 9, 6] },
-              { t: 'El precio',              d: 'Cómo se construye la cifra y qué la mueve',               s: [2, 11, 7] },
-              { t: 'Lo que puede salir mal', d: 'Exposición, mitigantes y estado de la verificación',      s: [3, 12, 5, 4, 13] }
-            ];
-            function armar(){
-              var hs = document.querySelectorAll('.section-header');
-              if (hs.length < 13) { return setTimeout(armar, 300); }
-              var cont = document.querySelector('.report-container');
-              if (!cont || cont.dataset.actos) return;
-              cont.dataset.actos = '1';
-
-              hs.forEach(function(h){
-                if (h.dataset.plegable) return;
-                h.dataset.plegable = '1';
-                var cuerpo = document.createElement('div');
-                cuerpo.className = 'sec-cuerpo';
-                var n = h.nextSibling;
-                while (n) { var sig = n.nextSibling; cuerpo.appendChild(n); n = sig; }
-                h.parentNode.appendChild(cuerpo);
-                h.addEventListener('click', function(){
-                  h.classList.toggle('plegado');
-                  cuerpo.classList.toggle('plegado');
-                });
-              });
-
-              var frag = document.createDocumentFragment();
-              ACTOS.forEach(function(a, i){
-                var wrap = document.createElement('section');
-                wrap.className = 'acto';
-                var head = document.createElement('div');
-                head.className = 'acto-head';
-                head.innerHTML = '<span class="acto-n">' + String(i+1).padStart(2,'0') + '</span>' +
-                                 '<span class="acto-t">' + a.t + '</span>' +
-                                 '<span class="acto-d">' + a.d + '</span>';
-                wrap.appendChild(head);
-                a.s.forEach(function(nro){
-                  var h = document.getElementById('sec-' + nro);
-                  if (h && h.parentNode) wrap.appendChild(h.parentNode);
-                });
-                if (wrap.children.length > 1) frag.appendChild(wrap);
-              });
-              cont.appendChild(frag);
-
-              var btn = document.getElementById('btn-plegar');
-              if (btn) btn.addEventListener('click', function(){
-                var plegar = btn.textContent.indexOf('Contraer') === 0;
-                document.querySelectorAll('.section-header').forEach(function(h){
-                  h.classList.toggle('plegado', plegar);
-                  var c = h.parentNode.querySelector('.sec-cuerpo');
-                  if (c) c.classList.toggle('plegado', plegar);
-                });
-                btn.textContent = plegar ? 'Desplegar todo' : 'Contraer todo';
-              });
-              window.addEventListener('beforeprint', function(){
-                document.querySelectorAll('.plegado').forEach(function(e){ e.classList.remove('plegado'); });
-              });
-              document.querySelectorAll('.nav-indice a').forEach(function(a){
-                a.addEventListener('click', function(){
-                  var h = document.querySelector(a.getAttribute('href'));
-                  if (!h) return;
-                  h.classList.remove('plegado');
-                  var c = h.parentNode.querySelector('.sec-cuerpo');
-                  if (c) c.classList.remove('plegado');
-                });
-              });
-            }
-            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', armar);
-            else armar();
-          })();
-        `}} />
-
-        {/* Índice navegable — solo pantalla, se oculta al imprimir */}
-        <nav className="nav-indice">
-          <span style={{ fontSize:"9px", fontWeight:800, color:"#1a2744", textTransform:"uppercase",
-                         letterSpacing:"0.08em", marginRight:"4px" }}>Ir a</span>
-          <button id="btn-plegar" type="button" style={{ fontSize:"10px", padding:"3px 10px",
-                    marginRight:"4px", borderRadius:"5px", cursor:"pointer" }}>Contraer todo</button>
-          {[["1","Resumen"],["8","Recomendación"],["10","Tesis"],["9","Evolución"],
-            ["6","Plan del vendedor"],["2","Valuación"],["11","Escenarios"],["7","Supuestos"],
-            ["3","Riesgos"],["12","Resueltos"],["5","Ambiental"],["4","Estado DD"],
-            ["13","Estructura"]].map(([n,t])=>(
-            <a key={n} href={`#sec-${n}`}>{n}. {t}</a>
-          ))}
-        </nav>
-
-        {/* ══════════ S1: RESUMEN EJECUTIVO ══════════ */}
-        <div className="page-break" style={{ padding:"40px 50px" }}>
-          <div id="sec-1" className="section-header">Sección 1 — Resumen Ejecutivo</div>
-
-          {narrativa ? (
-            <>
-              {/* Semáforo de decisión */}
-              <div style={{ background:"#f8fafc", border:"1px solid #e5e7eb", borderRadius:"12px", padding:"24px", marginBottom:"24px", display:"flex", gap:"24px", alignItems:"flex-start" }}>
-                <div style={{ flexShrink:0, textAlign:"center" }}>
-                  <div style={{ width:"64px", height:"64px", borderRadius:"50%", background:SEMAFORO_COLOR[narrativa.semaforo], display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px" }}>
-                    <span style={{ fontSize:"28px" }}>{narrativa.semaforo === "VERDE" ? "✓" : narrativa.semaforo === "ROJO" ? "✕" : "⚠"}</span>
-                  </div>
-                  <div style={{ fontSize:"9px", fontWeight:700, color:SEMAFORO_COLOR[narrativa.semaforo], textTransform:"uppercase" }}>{narrativa.semaforo}</div>
-                </div>
-                <div style={{ flex:1 }}>
-                  <div style={{ fontSize:"18px", fontWeight:800, color:"#1a2744", marginBottom:"8px" }}>{narrativa.recomendacion}</div>
-                  <div style={{ fontSize:"13px", color:"#374151", lineHeight:1.7 }}>{narrativa.resumen_ejecutivo}</div>
-                  <div style={{ marginTop:"12px", padding:"10px 16px", background:"#1a2744", borderRadius:"8px", display:"inline-block" }}>
-                    <span style={{ color:"#f59e0b", fontSize:"10px", fontWeight:700 }}>PRECIO DE OFERTA SUGERIDO: </span>
-                    <span style={{ color:"white", fontSize:"14px", fontWeight:800 }}>{narrativa.precio_sugerido}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Hallazgos críticos */}
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"20px" }}>
-                <div>
-                  <div style={{ fontWeight:700, fontSize:"11px", color:"#dc2626", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:"10px" }}>⚠ Hallazgos Críticos</div>
-                  {narrativa.hallazgos_criticos.map((h, i) => (
-                    <div key={i} style={{ display:"flex", gap:"8px", marginBottom:"8px", fontSize:"11px", lineHeight:1.5 }}>
-                      <span style={{ color:"#dc2626", fontWeight:700, flexShrink:0 }}>{i+1}.</span>
-                      <span>{h}</span>
-                    </div>
-                  ))}
-                </div>
-                <div>
-                  <div style={{ fontWeight:700, fontSize:"11px", color:"#1a2744", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:"10px" }}>✓ Condiciones de Cierre Obligatorias</div>
-                  {narrativa.condiciones_cierre.map((c, i) => (
-                    <div key={i} style={{ display:"flex", gap:"8px", marginBottom:"8px", fontSize:"11px", lineHeight:1.5 }}>
-                      <span style={{ color:"#16a34a", fontWeight:700, flexShrink:0 }}>{i+1}.</span>
-                      <span>{c}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
-          ) : (
-            <div style={{ textAlign:"center", padding:"48px", color:"#6b7280", border:"2px dashed #e5e7eb", borderRadius:"12px" }}>
-              <div style={{ fontSize:"32px", marginBottom:"12px" }}>✨</div>
-              <div style={{ fontWeight:600, marginBottom:"8px" }}>Análisis ejecutivo pendiente</div>
-              <div style={{ fontSize:"13px" }}>Hacé clic en "Generar análisis ejecutivo" para que la IA redacte el resumen, hallazgos y recomendaciones.</div>
-            </div>
-          )}
-
-          {/* KPIs rápidos */}
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"12px", marginTop:"24px" }}>
-            {[
-              { label:"Precio pedido", value: fmtUSD(precio),
-                pie: ebitda ? `${Math.round(precio/ebitda)}× EBITDA normalizado` : null, tono:"#dc2626" },
-              { label:"EBITDA normalizado", value: ebitda ? fmtUSD(ebitda) : "Pendiente EECC",
-                pie: ebitda && v.ingresos ? `margen ${Math.round(ebitda/v.ingresos*100)}% sobre ${fmtUSD(v.ingresos)}` : null, tono:"#1a2744" },
-              { label:"Promedio 3 métodos", value: fmtUSD(v.promMetodos),
-                pie: `dispersión ${fmtUSD((v as any).dispersionMetodos ?? 0)} entre el más alto y el más bajo`, tono:"#1a2744" },
-              { label:"Oferta recomendada", value: fmtUSD(v.ofertaInic),
-                pie: ebitda ? `${Math.round(v.ofertaInic/ebitda)}× EBITDA · ${Math.round((1 - v.ofertaInic/precio)*100)}% bajo el precio pedido` : null, tono:"#16a34a" },
-            ].map(({ label, value, pie, tono }) => (
-              <div key={label} className="kpi-box" style={{ borderTop:`3px solid ${tono}` }}>
-                <div style={{ fontSize:"9px", color:"#6b7280", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:"6px" }}>{label}</div>
-                <div style={{ fontSize:"17px", fontWeight:800, color:tono }}>{value}</div>
-                {pie && <div style={{ fontSize:"8.5px", color:"#9ca3af", marginTop:"4px", lineHeight:1.35 }}>{pie}</div>}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ══════════ S2: ANÁLISIS FINANCIERO Y VALUACIÓN ══════════ */}
-        <div className="page-break" style={{ padding:"40px 50px" }}>
-          <div id="sec-2" className="section-header">Sección 2 — Análisis Financiero y Valuación</div>
-
-          {/* 1. Puente EBITDA */}
-          <div style={{ border:"1px solid #e5e7eb", borderRadius:"8px", padding:"16px", marginBottom:"20px" }}>
-            <div style={{ fontWeight:700, fontSize:"11px", marginBottom:"12px", color:"#1a2744" }}>1. Puente EBITDA — por qué el contable no refleja el negocio real</div>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"12px" }}>
-              {[
-                { label:"EBITDA contable", value: fmtUSD(v.ebitda), sub:"último ejercicio cerrado", bg:"#f3f4f6", color:"#6b7280" },
-                { label:"Ajuste normalización", value: `+${fmtUSD(v.ebitdaNorm - v.ebitda)}`, sub:"retiros de accionistas eliminados", bg:"#f0fdf4", color:"#16a34a" },
-                { label:"EBITDA normalizado", value: fmtUSD(v.ebitdaNorm), sub: margen ? `margen ${margen.toFixed(1)}%` : "", bg:"#1a2744", color:"#ffffff" },
-              ].map(({label,value,sub,bg,color}) => (
-                <div key={label} style={{ background:bg, borderRadius:"8px", padding:"12px", textAlign:"center" }}>
-                  <div style={{ fontSize:"9px", color: bg==="#1a2744"?"#bfdbfe":"#6b7280", marginBottom:"4px" }}>{label}</div>
-                  <div style={{ fontSize:"14px", fontWeight:800, color }}>{value}</div>
-                  <div style={{ fontSize:"8px", color: bg==="#1a2744"?"#bfdbfe":"#9ca3af", marginTop:"2px" }}>{sub}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 2. Resumen de valuación — los tres métodos */}
-          <div style={{ border:"1px solid #e5e7eb", borderRadius:"8px", padding:"16px", marginBottom:"20px" }}>
-            <div style={{ fontWeight:700, fontSize:"11px", marginBottom:"4px", color:"#1a2744" }}>2. Resumen de valuación — tres métodos</div>
-            <div style={{ fontSize:"9px", color:"#6b7280", marginBottom:"12px" }}>Promedio de los tres métodos: <strong>{fmtUSD(v.promMetodos)}</strong></div>
-            <table className="tabla" style={{ width:"100%" }}>
-              <thead><tr><th>Método</th><th style={{textAlign:"right"}}>Resultado</th><th>Fundamento</th></tr></thead>
-              <tbody>
-                <tr>
-                  <td style={{ fontWeight:600 }}>1. Activos netos + Fondo de comercio</td>
-                  <td style={{ textAlign:"right", fontWeight:700 }}>{fmtUSD(v.valorM1Cont)} a {fmtUSD(v.valorM1)}</td>
-                  <td style={{ fontSize:"9px" }}>Activos revaluados {fmtUSD(v.activosRevalu)} − riesgos ajustados {fmtUSD(v.riesgosAjust)} + fondo de comercio sobre EBITDA normalizado</td>
-                </tr>
-                <tr>
-                  <td style={{ fontWeight:600 }}>2. Flujo de fondos descontado al {Math.round(v.tasaDCF*100)}%</td>
-                  <td style={{ textAlign:"right", fontWeight:700 }}>{fmtUSD(v.valorM2)}</td>
-                  <td style={{ fontSize:"9px" }}>Proyección propia del comprador, independiente de la del vendedor</td>
-                </tr>
-                <tr>
-                  <td style={{ fontWeight:600 }}>3. Múltiplo comparable ({v.multMinComp}-{v.multMaxComp}× EBITDA)</td>
-                  <td style={{ textAlign:"right", fontWeight:700 }}>{fmtUSD(v.valorM3min)} a {fmtUSD(v.valorM3max)}</td>
-                  <td style={{ fontSize:"9px" }}>Empresas con posición monopólica y barreras regulatorias 7-9 años en el sector</td>
-                </tr>
-                <tr style={{ background:"#f8fafc" }}>
-                  <td style={{ fontWeight:800 }}>Promedio de los tres métodos</td>
-                  <td style={{ textAlign:"right", fontWeight:800, color:"#1a2744" }}>{fmtUSD(v.promMetodos)}</td>
-                  <td></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* 3. Ajustes por riesgos identificados */}
-          <div style={{ border:"1px solid #e5e7eb", borderRadius:"8px", padding:"16px", marginBottom:"20px" }}>
-            <div style={{ fontWeight:700, fontSize:"11px", marginBottom:"4px", color:"#dc2626" }}>3. Ajustes por riesgos identificados</div>
-            <div style={{ fontSize:"9px", color:"#6b7280", marginBottom:"12px" }}>
-              Total riesgos activos en el mapa de due diligence: <strong>{fmtUSD(v.riesgosAbs)}</strong> · Ajustados con mitigantes reales: <strong>{fmtUSD(v.riesgosAjust)}</strong>
-            </div>
-            {(() => {
-              // Mismo criterio que el PDF: agrupado por campo, con barra de peso relativo.
-              // Cuando el area viene compuesta se toma el primer termino, que es el dominante.
-              const campoDe = (area?: string) => {
-                const base = (area || "General").split("/")[0].trim()
-                return base.charAt(0).toUpperCase() + base.slice(1).toLowerCase()
-              }
-              const grupos = new Map<string, typeof v.riesgoAjustesLive>()
-              for (const r of v.riesgoAjustesLive) {
-                const k = campoDe(r.area)
-                if (!grupos.has(k)) grupos.set(k, [])
-                grupos.get(k)!.push(r)
-              }
-              const orden = [...grupos.entries()]
-                .map(([campo, rs]) => ({ campo, rs: [...rs].sort((x,y)=>Math.abs(y.monto)-Math.abs(x.monto)),
-                                         subtotal: rs.reduce((acc,x)=>acc+Math.abs(x.monto),0) }))
-                .sort((x,y)=>y.subtotal-x.subtotal)
-              const totalAj  = Math.abs(v.riesgosAjust) || 1
-              const maxAjuste = Math.max(...v.riesgoAjustesLive.map(x=>Math.abs(x.monto)), 1)
-
-              return orden.map((g, gi) => (
-                <div key={g.campo} style={{ marginTop: gi===0 ? 0 : "18px" }}>
-                  <div style={{ display:"flex", alignItems:"baseline", gap:"8px", background:"#1a2744",
-                                padding:"6px 10px", borderRadius:"6px", marginBottom:"10px" }}>
-                    <span style={{ fontSize:"10px", fontWeight:800, letterSpacing:"0.08em",
-                                   textTransform:"uppercase", color:"white" }}>{g.campo}</span>
-                    <span style={{ fontSize:"9px", color:"#94a3b8" }}>
-                      {g.rs.length} {g.rs.length===1 ? "hallazgo" : "hallazgos"}
-                    </span>
-                    <span style={{ flex:1 }} />
-                    <span style={{ fontSize:"9px", color:"#94a3b8" }}>{Math.round(g.subtotal/totalAj*100)}% del ajuste</span>
-                    <span style={{ fontSize:"12px", fontWeight:800, color:"white",
-                                   fontVariantNumeric:"tabular-nums" }}>−{miles(g.subtotal)}</span>
-                  </div>
-
-                  {g.rs.map(r => {
-                    const ancho = Math.max(2, Math.round(Math.abs(r.monto)/maxAjuste*100))
-                    return (
-                      <div key={r.id} style={{ marginBottom:"12px", paddingBottom:"12px",
-                                               borderBottom:"1px solid #f3f4f6" }}>
-                        <div style={{ display:"flex", alignItems:"baseline", gap:"8px", marginBottom:"5px" }}>
-                          <span style={{ flex:1 }} />
-                          <span style={{ fontSize:"10px", color:"#9ca3af", whiteSpace:"nowrap",
-                                         fontVariantNumeric:"tabular-nums" }}>
-                            {miles(r.impactoActual)} × {r.porcentaje.toFixed(0)}%
-                          </span>
-                          <span style={{ fontSize:"13px", fontWeight:800, color:"#dc2626", whiteSpace:"nowrap",
-                                         fontVariantNumeric:"tabular-nums", minWidth:"74px", textAlign:"right" }}>
-                            −{miles(Math.abs(r.monto))}
-                          </span>
-                        </div>
-                        <div style={{ height:"4px", background:"#f3f4f6", borderRadius:"2px",
-                                      marginBottom:"7px", overflow:"hidden" }}>
-                          <div style={{ width:`${ancho}%`, height:"100%", background:"#dc2626", opacity:0.75 }} />
-                        </div>
-                        <p style={{ fontSize:"10.5px", lineHeight:1.6, color:"#1f2937", margin:"0 0 6px" }}>
-                          {r.descripcion}
-                        </p>
-                        {(r.descripcion_analista || r.nota_porcentaje || r.nota) && (
-                          <div style={{ paddingLeft:"10px", borderLeft:"2px solid #e5e7eb" }}>
-                            {r.descripcion_analista && (
-                              <p style={{ fontSize:"9.5px", lineHeight:1.55, color:"#6b7280", margin:"0 0 3px" }}>
-                                <span style={{ fontWeight:700, color:"#9ca3af", textTransform:"uppercase",
-                                               fontSize:"8px", letterSpacing:"0.05em" }}>Por qué se eligió · </span>
-                                {r.descripcion_analista}
-                              </p>
-                            )}
-                            {r.nota_porcentaje && (
-                              <p style={{ fontSize:"9.5px", lineHeight:1.55, color:"#9ca3af", margin:0 }}>
-                                <span style={{ fontWeight:700, color:"#9ca3af", textTransform:"uppercase",
-                                               fontSize:"8px", letterSpacing:"0.05em" }}>Por qué {r.porcentaje.toFixed(0)}% · </span>
-                                {r.nota_porcentaje}
-                              </p>
-                            )}
-                            {!r.descripcion_analista && !r.nota_porcentaje && r.nota && (
-                              <p style={{ fontSize:"9.5px", lineHeight:1.55, color:"#9ca3af", margin:0, whiteSpace:"pre-wrap" }}>
-                                <span style={{ fontWeight:700, color:"#9ca3af", textTransform:"uppercase",
-                                               fontSize:"8px", letterSpacing:"0.05em" }}>Justificación · </span>
-                                {r.nota}
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              ))
-            })()}
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline",
-                          marginTop:"14px", borderTop:"2px solid #1a2744", paddingTop:"10px" }}>
-              <span style={{ fontSize:"11px", fontWeight:700, color:"#1a2744" }}>
-                Total ajuste por riesgos llevados a valuación
-                <span style={{ fontWeight:400, color:"#9ca3af", marginLeft:"6px" }}>
-                  {v.riesgoAjustesLive.length} de {risks.filter(r=>!["DUPLICADO","RECLASIFICADO","CERRADO"].includes(String(r.estado))).length} hallazgos activos
-                </span>
-              </span>
-              <span style={{ fontSize:"15px", fontWeight:800, color:"#dc2626",
-                             fontVariantNumeric:"tabular-nums" }}>−{miles(Math.abs(v.riesgosAjust))}</span>
-            </div>
-          </div>
-
-          {/* 3b. Trazabilidad del cálculo — sale del modelo, no se escribe a mano */}
-          <details style={{ border:"1px solid #e5e7eb", borderRadius:"8px", padding:"12px 16px", marginBottom:"20px" }}>
-            <summary style={{ cursor:"pointer", fontWeight:700, fontSize:"11px", color:"#1a2744", listStyle:"none" }}>
-              Trazabilidad del cálculo
-              <span style={{ fontWeight:400, color:"#9ca3af", marginLeft:"8px", fontSize:"10px" }}>
-                cómo se obtiene cada valor · clic para ver
-              </span>
-            </summary>
-            <div style={{ marginTop:"12px" }}>
-              {((v as any).trazabilidad ?? []).map((paso: any) => (
-                <div key={paso.clave} style={{ marginBottom:"10px", paddingBottom:"10px", borderBottom:"1px solid #f3f4f6" }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:"12px" }}>
-                    <span style={{ fontSize:"10.5px", fontWeight:700, color:"#374151" }}>{paso.titulo}</span>
-                    <span style={{ fontSize:"11px", fontWeight:800, color:"#1a2744", whiteSpace:"nowrap",
-                                   fontVariantNumeric:"tabular-nums" }}>
-                      {paso.clave === "multImpl" ? `${paso.resultado}\u00d7` : fmtUSD(paso.resultado)}
-                    </span>
-                  </div>
-                  <div style={{ fontSize:"9.5px", color:"#6b7280", marginTop:"2px" }}>{paso.formula}</div>
-                  <div style={{ fontSize:"9.5px", color:"#9ca3af", fontFamily:"ui-monospace, monospace" }}>{paso.sustitucion}</div>
-                  <div style={{ fontSize:"9px", color:"#c3c9d4", marginTop:"1px" }}>Fuente: {paso.fuente}</div>
-                  {paso.nota && (
-                    <div style={{ fontSize:"9.5px", color:"#6b7280", background:"#f9fafb",
-                                  padding:"4px 8px", borderRadius:"4px", marginTop:"5px" }}>{paso.nota}</div>
-                  )}
-                  {paso.alerta && (
-                    <div style={{ fontSize:"9.5px", color:"#92400e", background:"#fffbeb",
-                                  padding:"4px 8px", borderRadius:"4px", marginTop:"5px" }}>{paso.alerta}</div>
-                  )}
-                </div>
-              ))}
-              <div style={{ display:"flex", gap:"10px", marginTop:"10px" }}>
-                <div style={{ flex:1, background:"#f8fafc", borderRadius:"6px", padding:"8px 10px" }}>
-                  <div style={{ fontSize:"9px", color:"#6b7280" }}>Dispersión entre métodos</div>
-                  <div style={{ fontSize:"11px", fontWeight:800, color:"#374151",
-                                fontVariantNumeric:"tabular-nums" }}>{fmtUSD((v as any).dispersionMetodos ?? 0)}</div>
-                </div>
-                <div style={{ flex:1, background:"#f8fafc", borderRadius:"6px", padding:"8px 10px" }}>
-                  <div style={{ fontSize:"9px", color:"#6b7280" }}>Peso del Método 1 en el promedio</div>
-                  <div style={{ fontSize:"11px", fontWeight:800, color:"#374151" }}>{(v as any).pesoM1EnPromedio ?? 0}%</div>
-                </div>
-              </div>
-            </div>
-          </details>
-
-          {/* 4. Conclusión — oferta recomendada */}
-          <div style={{ background:"#1a2744", borderRadius:"8px", padding:"20px", color:"white" }}>
-            <div style={{ fontWeight:700, fontSize:"11px", marginBottom:"12px", color:"#93c5fd" }}>4. Conclusión — precio de oferta recomendado</div>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"16px", textAlign:"center" }}>
-              <div>
-                <div style={{ fontSize:"9px", color:"#93c5fd" }}>Oferta inicial</div>
-                <div style={{ fontSize:"20px", fontWeight:800 }}>{fmtUSD(v.ofertaInic)}</div>
-                <div style={{ fontSize:"8px", color:"#93c5fd" }}>{v.multImpl}× EBITDA normalizado</div>
-              </div>
-              <div>
-                <div style={{ fontSize:"9px", color:"#93c5fd" }}>Máximo de negociación</div>
-                <div style={{ fontSize:"20px", fontWeight:800 }}>{fmtUSD(v.ofertaMax)}</div>
-                <div style={{ fontSize:"8px", color:"#93c5fd" }}>{ebitda ? Math.round(v.ofertaMax/ebitda) : "—"}× EBITDA normalizado</div>
-              </div>
-              <div style={{ opacity:0.5 }}>
-                <div style={{ fontSize:"9px" }}>El vendedor pide</div>
-                <div style={{ fontSize:"20px", fontWeight:800, textDecoration:"line-through" }}>{fmtUSD(v.precio)}</div>
-                <div style={{ fontSize:"8px" }}>{multiploImplicito ? multiploImplicito.toFixed(0) : "—"}× EBITDA normalizado</div>
-              </div>
-            </div>
-            <div style={{ marginTop:"14px", paddingTop:"14px", borderTop:"1px solid rgba(255,255,255,0.2)", fontSize:"9px", lineHeight:1.6 }}>
-              Valor en liquidación forzada de referencia (activos {fmtUSD(v.activosRevalu)} con descuento del {v.descLiq}%): {fmtUSD(v.valorLiq)}.
-              {v.ofertaInic > v.valorLiq
-                ? ` La oferta supera lo que recuperaría el vendedor liquidando activos por separado — rechazarla implica resignar ${fmtUSD(v.ofertaInic - v.valorLiq)} frente al peor escenario alternativo.`
-                : ` El valor de liquidación es la referencia del piso patrimonial; la oferta se apoya en los métodos de flujos y comparables.`}
-            </div>
-          </div>
-        </div>
-
-
-        {/* ══════════ S3: MAPA DE RIESGOS ══════════ */}
-        <div className="page-break" style={{ padding:"40px 50px" }}>
-          <div id="sec-3" className="section-header">Sección 3 — Mapa de Riesgos</div>
-
-          {/* Resumen cuantificado */}
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"12px", marginBottom:"20px" }}>
-            {[
-              { label:"CONFIRMADO", value: fmtUSD(Math.abs(riesgoConf)), color:"#dc2626", bg:"#fef2f2", n: risks.filter(r=>r.estado==="CONFIRMADO").length },
-              { label:"IDENTIFICADO", value: fmtUSD(Math.abs(riesgoIden)), color:"#d97706", bg:"#fffbeb", n: risks.filter(r=>r.estado==="IDENTIFICADO").length },
-              { label:"CONDICIONAL", value: fmtUSD(Math.abs(riesgoCond)), color:"#7c3aed", bg:"#f5f3ff", n: risks.filter(r=>r.estado==="CONDICIONAL").length },
-              { label:"TOTAL CUANTIFICADO", value: fmtUSD(Math.abs(riesgoTotal)), color:"#1a2744", bg:"#f8fafc", n: risks.length },
-            ].map(({ label, value, color, bg, n }) => (
-              <div key={label} style={{ background:bg, border:`1px solid ${color}22`, borderRadius:"8px", padding:"12px", textAlign:"center" }}>
-                <div style={{ fontSize:"8px", fontWeight:700, color, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:"4px" }}>{label} ({n})</div>
-                <div style={{ fontSize:"14px", fontWeight:800, color }}>{value}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* De la exposición bruta al ajuste: la pregunta que sigue naturalmente */}
-          <div style={{ background:"#f8fafc", border:"1px solid #e5e7eb", borderRadius:"8px",
-                        padding:"14px 16px", marginBottom:"20px" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:"10px", flexWrap:"wrap" }}>
-              <div>
-                <div style={{ fontSize:"8.5px", color:"#6b7280", textTransform:"uppercase",
-                              fontWeight:600, letterSpacing:"0.06em" }}>Exposición bruta activa</div>
-                <div style={{ fontSize:"18px", fontWeight:800, color:"#1a2744",
-                              fontVariantNumeric:"tabular-nums" }}>{fmtUSD(Math.abs(riesgoTotal))}</div>
-              </div>
-              <div style={{ fontSize:"18px", color:"#d1d5db", padding:"0 4px" }}>→</div>
-              <div>
-                <div style={{ fontSize:"8.5px", color:"#6b7280", textTransform:"uppercase",
-                              fontWeight:600, letterSpacing:"0.06em" }}>Llevado a precio</div>
-                <div style={{ fontSize:"18px", fontWeight:800, color:"#dc2626",
-                              fontVariantNumeric:"tabular-nums" }}>{fmtUSD(Math.abs(v.riesgosAjust))}</div>
-              </div>
-              <div style={{ flex:1, minWidth:"180px" }}>
-                <div style={{ height:"8px", background:"#e5e7eb", borderRadius:"4px", overflow:"hidden" }}>
-                  <div style={{ width:`${Math.min(100, Math.abs(v.riesgosAjust)/Math.max(Math.abs(riesgoTotal),1)*100)}%`,
-                                height:"100%", background:"#dc2626", opacity:.8 }} />
-                </div>
-                <div style={{ fontSize:"8.5px", color:"#9ca3af", marginTop:"5px", lineHeight:1.4 }}>
-                  El {Math.round(Math.abs(v.riesgosAjust)/Math.max(Math.abs(riesgoTotal),1)*100)}% de la exposición
-                  bruta se traslada al precio. El resto se cubre con condiciones precedentes, se considera mitigado
-                  o no alcanza probabilidad suficiente. Ver el detalle y su fundamento en la Sección 2.
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Tabla de riesgos */}
-          <table className="tabla" style={{ width:"100%" }}>
-            <thead>
-              <tr>
-                <th>Riesgo identificado</th>
-                <th>Área</th>
-                <th>Prob.</th>
-                <th style={{textAlign:"right"}}>Impacto</th>
-                <th>Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {risks.map((r, i) => (
-                <tr key={i}>
-                  <td style={{ maxWidth:"280px", fontSize:"9px" }}>{String(r.riesgo ?? "")}</td>
-                  <td style={{ whiteSpace:"nowrap" }}>{String(r.area ?? "")}</td>
-                  <td><span style={{ color: r.probabilidad === "ALTA" ? "#dc2626" : r.probabilidad === "MEDIA" ? "#d97706" : "#16a34a", fontWeight:700 }}>{String(r.probabilidad ?? "")}</span></td>
-                  <td style={{ textAlign:"right", fontWeight:700, color: Number(r.impacto) < 0 ? "#dc2626" : "#374151" }}>{Number(r.impacto) !== 0 ? fmtUSD(Number(r.impacto)) : "—"}</td>
-                  <td>
-                    <span className="badge" style={{ background: (RISK_COLOR[String(r.estado ?? "")] ?? "#6b7280") + "22", color: RISK_COLOR[String(r.estado ?? "")] ?? "#6b7280" }}>
-                      {String(r.estado ?? "")}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              <tr style={{ background:"#1a2744" }}>
-                <td colSpan={3} style={{ fontWeight:700, color:"white" }}>TOTAL CUANTIFICADO</td>
-                <td style={{ textAlign:"right", fontWeight:800, color:"#fbbf24" }}>{fmtUSD(riesgoTotal)}</td>
-                <td></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        {/* ══════════ S4: ESTADO DEL DD ══════════ */}
-        <div className="page-break" style={{ padding:"40px 50px" }}>
-          <div id="sec-4" className="section-header">Sección 4 — Estado del Due Diligence</div>
-
-          {/* KPIs tracker */}
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"12px", marginBottom:"20px" }}>
-            {[
-              { label:"Recibidos", n:recibidos, color:"#16a34a" },
-              { label:"Parciales", n:parciales, color:"#d97706" },
-              { label:"Pendientes", n:pendientes, color:"#dc2626" },
-              { label:"Cobertura documental", n:`${coberturaDoc}%`, color:"#1a2744",
-                pie:"recibidos + mitad de los parciales" },
-            ].map(({ label, n, color, pie }: any) => (
-              <div key={label} className="kpi-box">
-                <div style={{ fontSize:"24px", fontWeight:800, color }}>{n}</div>
-                <div style={{ fontSize:"9px", color:"#6b7280", textTransform:"uppercase", fontWeight:600 }}>{label}</div>
-                {pie && <div style={{ fontSize:"8px", color:"#c3c9d4", marginTop:"3px" }}>{pie}</div>}
-              </div>
-            ))}
-          </div>
-
-          {/* Barra apilada: la composicion del tracker de un vistazo */}
-          <div style={{ marginBottom:"20px" }}>
-            <div style={{ display:"flex", height:"10px", borderRadius:"5px", overflow:"hidden", background:"#f3f4f6" }}>
-              {[[recibidos,"#16a34a"],[parciales,"#d97706"],[pendientes,"#dc2626"]].map(([n,c]:any,i)=>(
-                n > 0 ? <div key={i} style={{ width:`${n/reqs.length*100}%`, background:c }} /> : null
-              ))}
-            </div>
-            <div style={{ display:"flex", justifyContent:"space-between", marginTop:"5px", fontSize:"8.5px", color:"#9ca3af" }}>
-              <span>{reqs.length} requerimientos en el índice</span>
-              <span>{pendientes} sin ninguna entrega</span>
-            </div>
-          </div>
-
-          {/* Por sección */}
-          {secciones.map(sec => {
-            const secReqs = reqs.filter(r => r.seccion === sec)
-            const secRec = secReqs.filter(r => r.estado === "Recibido").length
-            const secPct = secReqs.length ? Math.round((secRec + secReqs.filter(r=>r.estado==="Parcial").length * 0.5) / secReqs.length * 100) : 0
-            return (
-              <div key={sec} style={{ marginBottom:"16px" }}>
-                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"6px", fontSize:"10px", fontWeight:600 }}>
-                  <span>{sec}</span>
-                  <span style={{ color: secPct >= 70 ? "#16a34a" : secPct >= 40 ? "#d97706" : "#dc2626" }}>{secPct}% · {secReqs.length} ítems</span>
-                </div>
-                <div style={{ background:"#f3f4f6", borderRadius:"4px", height:"6px" }}>
-                  <div style={{ background: secPct >= 70 ? "#16a34a" : secPct >= 40 ? "#d97706" : "#dc2626", height:"100%", borderRadius:"4px", width:`${secPct}%` }}/>
-                </div>
-                {/* Alertas de esta sección */}
-                {secReqs.filter(r => r.alertas).slice(0,2).map((r, i) => (
-                  <div key={i} style={{ marginTop:"4px", fontSize:"9px", color:"#dc2626", paddingLeft:"8px", borderLeft:"2px solid #fca5a5" }}>
-                    N°{String(r.n_item)}: {String(r.alertas ?? "")}
-                  </div>
-                ))}
-              </div>
-            )
-          })}
-        </div>
-
-        {/* ══════════ S5: SÍNTESIS AMBIENTAL ══════════ */}
-        <div className="page-break" style={{ padding:"40px 50px" }}>
-          <div id="sec-5" className="section-header">Sección 5 — Síntesis Ambiental y Habilitaciones</div>
-
-          {/* Certificados */}
-          <div style={{ marginBottom:"20px" }}>
-            <div style={{ fontWeight:700, fontSize:"11px", marginBottom:"10px" }}>Certificados y Habilitaciones</div>
-            <table className="tabla" style={{ width:"100%" }}>
-              <thead>
-                <tr><th>Habilitación</th><th>N° / Categoría</th><th>Vencimiento</th><th>Estado</th></tr>
-              </thead>
-              <tbody>
-                {certs.map((c, i) => (
-                  <tr key={i}>
-                    <td style={{ fontWeight:600 }}>{String(c.clave ?? "")}</td>
-                    <td>{String(c.numero ?? c.categoria ?? "—")}</td>
-                    <td style={{ color: String(c.estado ?? "").includes("VENC") ? "#dc2626" : "#374151" }}>{String(c.vencimiento ?? "—")}</td>
-                    <td>
-                      <span className="badge" style={{ background: String(c.estado) === "VIGENTE" ? "#d1fae5" : "#fee2e2", color: String(c.estado) === "VIGENTE" ? "#065f46" : "#991b1b" }}>
-                        {String(c.estado ?? "")}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Corrientes Y */}
-          <div>
-            <div style={{ fontWeight:700, fontSize:"11px", marginBottom:"10px" }}>
-              Síntesis Regulatoria y Ambiental
-              <span style={{ fontWeight:400, color:"#6b7280", marginLeft:"8px" }}>({corrientes.length} corrientes habilitadas)</span>
-            </div>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"8px" }}>
-              {corrientes.map((c, i) => (
-                <div key={i} style={{ border:"1px solid #e5e7eb", borderRadius:"6px", padding:"8px", background: String(c.estado) === "VIGENTE" ? "#f8fafc" : "#fef2f2" }}>
-                  <div style={{ fontWeight:700, fontSize:"10px", color:"#1a2744" }}>{String(c.clave ?? "")}</div>
-                  <div style={{ fontSize:"8px", color:"#6b7280", marginTop:"2px" }}>{String(c.categoria ?? "")}</div>
-                  <div style={{ marginTop:"4px" }}>
-                    <span className="badge" style={{ background: String(c.estado) === "VIGENTE" ? "#d1fae5" : "#fee2e2", color: String(c.estado) === "VIGENTE" ? "#065f46" : "#991b1b" }}>
-                      {String(c.estado ?? "")}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* ══════════ S6: VALIDACIÓN DEL PLAN ══════════ */}
-        <div className="page-break" style={{ padding:"40px 50px" }}>
-          <div id="sec-6" className="section-header">Sección 6 — Validación del Plan del Vendedor</div>
-
-          <table className="tabla" style={{ width:"100%", marginBottom:"16px" }}>
-            <thead>
-              <tr><th>Concepto</th><th>Plan del Vendedor</th><th>Dato Real Verificado</th><th>Brecha</th><th>Estado</th></tr>
-            </thead>
-            <tbody>
-              {valid.map((v, i) => {
-                const estado = String(v.estado ?? "")
-                const estadoColor = estado === "Validado" ? { bg:"#d1fae5", text:"#065f46" } : estado.includes("Parcial") ? { bg:"#fef3c7", text:"#92400e" } : estado === "Sin validar" ? { bg:"#f3f4f6", text:"#374151" } : { bg:"#fee2e2", text:"#991b1b" }
+            {/* C3 · Expediente documental */}
+            <div className="rp-card" style={{ padding:"16px 18px", marginBottom:14 }}>
+              <Rotulo>C3 · Expediente documental ({totalReqs}) — {rec} recibidos · {par} parciales · {pen} pendientes</Rotulo>
+              {Array.from(new Set(reqs.map(r => String(r.seccion ?? "Sin sección")))).map(sec => {
+                const rows = reqs.filter(r => String(r.seccion ?? "Sin sección") === sec)
                 return (
-                  <tr key={i}>
-                    <td style={{ fontWeight:600, maxWidth:"160px" }}>{String(v.clave ?? "")}</td>
-                    <td style={{ fontSize:"9px", color:"#374151", maxWidth:"140px" }}>{String(v.dato_plan ?? "—")}</td>
-                    <td style={{ fontSize:"9px", fontWeight:600, maxWidth:"140px" }}>{String(v.dato_real ?? "Pendiente")}</td>
-                    <td style={{ fontSize:"9px", color: String(v.brecha ?? "").includes("CRÍTICA") || String(v.brecha ?? "").includes("-") ? "#dc2626" : "#374151", maxWidth:"120px" }}>{String(v.brecha ?? "—")}</td>
-                    <td>
-                      <span className="badge" style={{ background:estadoColor.bg, color:estadoColor.text }}>
-                        {estado}
-                      </span>
-                    </td>
-                  </tr>
+                  <details className="rp-det" key={sec} style={{ borderTop:`1px solid ${LINE}` }}>
+                    <summary style={{ display:"flex", justifyContent:"space-between", gap:12, padding:"9px 2px", fontSize:13.5 }}>
+                      <span style={{ fontWeight:600 }}>{sec}</span>
+                      <span style={{ color:FAINT }}>{rows.filter(r => r.estado === "Recibido").length}/{rows.length} completos</span>
+                    </summary>
+                    <table style={{ marginBottom:8 }}>
+                      <thead><tr><th style={{ width:"6%" }}>Nº</th><th style={{ width:"58%" }}>Documento</th><th>Estado</th><th>Cobertura</th></tr></thead>
+                      <tbody>
+                        {rows.map(r => (
+                          <tr key={String(r.id)}>
+                            <td style={{ color:FAINT }}>{String(r.n_item ?? "")}</td>
+                            <td>{String(r.documento ?? "")}</td>
+                            <td><span className={
+                              r.estado === "Recibido" ? "pill-recibido" : r.estado === "Parcial" ? "pill-parcial" : "pill-pendiente"
+                            }>{String(r.estado ?? "")}</span></td>
+                            <td style={{ color:STONE }}>{String(r.cobertura ?? "—")}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </details>
                 )
               })}
-            </tbody>
-          </table>
-
-          {/* Observaciones críticas de validación */}
-          {valid.filter(v => v.estado === "Cuestionado" && v.observaciones).slice(0,4).map((v, i) => (
-            <div key={i} style={{ background:"#fef2f2", border:"1px solid #fecaca", borderRadius:"6px", padding:"10px", marginBottom:"8px", fontSize:"10px" }}>
-              <div style={{ fontWeight:700, color:"#dc2626", marginBottom:"4px" }}>✗ {String(v.clave ?? "")}</div>
-              <div style={{ color:"#7f1d1d", lineHeight:1.5 }}>{String(v.observaciones ?? "")}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* ══════════ S7: SUPUESTOS DEL MODELO ══════════ */}
-        <div className="page-break" style={{ padding:"40px 50px" }}>
-          <div id="sec-7" className="section-header">Sección 7 — Supuestos del Modelo</div>
-          <div style={{ fontSize:"9px", color:"#9ca3af", marginBottom:"12px" }}>Importes en dólares. Criterio de conversión: las partidas devengadas a lo largo del ejercicio —ingresos, costos, EBITDA y resultado— al tipo de cambio promedio del período; las medidas a una fecha —activos, pasivos, deuda neta y capital de trabajo— al tipo de cambio de cierre. Ambos figuran entre los supuestos.</div>
-
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"24px" }}>
-            {/* Financieros */}
-            <div>
-              <div style={{ fontWeight:700, fontSize:"11px", marginBottom:"10px" }}>Supuestos Financieros</div>
-              {sups.filter(s => s.tipo === "financiero").map((s, i) => (
-                <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"5px 0", borderBottom:"1px solid #f3f4f6", fontSize:"10px" }}>
-                  <span style={{ color:"#6b7280", flex:1 }}>{String(s.label ?? "")}</span>
-                  <span style={{ fontWeight: s.valor ? 700 : 400, color: s.valor ? "#1a2744" : "#9ca3af", marginLeft:"8px" }}>
-                    {fmtSupuesto(String(s.label ?? ""), s.valor)}
-                  </span>
-                </div>
-              ))}
             </div>
 
-            {/* Categóricos y acumulativos */}
-            <div>
-              <div style={{ fontWeight:700, fontSize:"11px", marginBottom:"10px" }}>Supuestos de Proceso</div>
-              {sups.filter(s => s.tipo === "categorico" || s.tipo === "acumulativo").map((s, i) => (
-                <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"5px 0", borderBottom:"1px solid #f3f4f6", fontSize:"10px" }}>
-                  <span style={{ color:"#6b7280", flex:1, paddingRight:"8px" }}>{String(s.label ?? "")}</span>
-                  <span style={{ fontWeight: s.valor ? 700 : 400, color: s.valor ? "#1a2744" : "#9ca3af" }}>
-                    {s.valor ? String(s.valor) : "Pendiente"}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* ══════════ S8: RECOMENDACIÓN FINAL Y HOJA DE RUTA ══════════ */}
-        <div className="page-break" style={{ padding:"40px 50px" }}>
-          <div id="sec-8" className="section-header">Sección 8 — Recomendación Final y Hoja de Ruta</div>
-
-          {narrativa ? (
-            <>
-              <div style={{ background:"#1a2744", borderRadius:"12px", padding:"24px", marginBottom:"24px" }}>
-                <div style={{ color:"#f59e0b", fontSize:"10px", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:"8px" }}>Síntesis de cierre</div>
-                <div style={{ color:"white", fontSize:"13px", lineHeight:1.7 }}>
-                  Sobre la base del análisis financiero, la valuación por tres métodos y el mapa de riesgos relevado,
-                  JL Advisory sostiene la recomendación de la Sección 1 ({narrativa.semaforo}). La oferta se estructura
-                  para que el vendedor cobre el valor real del negocio hoy demostrado, y capture el resto solo si las
-                  condiciones que siguen se cumplen — no antes.
-                </div>
-                <div style={{ marginTop:"16px", paddingTop:"16px", borderTop:"1px solid rgba(255,255,255,0.15)" }}>
-                  <span style={{ color:"#f59e0b", fontWeight:700, fontSize:"11px" }}>Precio de oferta: </span>
-                  <span style={{ color:"white", fontWeight:800, fontSize:"16px" }}>{narrativa.precio_sugerido}</span>
-                </div>
+            {/* C4 · Supuestos del modelo */}
+            {sups.length > 0 && (
+              <div className="rp-card" style={{ padding:"16px 18px", marginBottom:14 }}>
+                <Rotulo>C4 · Supuestos del modelo ({sups.length})</Rotulo>
+                <table>
+                  <thead><tr><th style={{ width:"44%" }}>Supuesto</th><th style={{ textAlign:"right" }}>Valor</th><th>Fuente</th><th>Estado</th></tr></thead>
+                  <tbody>
+                    {sups.map(s => (
+                      <tr key={String(s.id)}>
+                        <td>{String(s.label ?? "")}</td>
+                        <td style={numCell}>{fmtSupuesto(String(s.label ?? ""), s.valor)}</td>
+                        <td style={{ color:STONE }}>{String(s.fuente_doc ?? "—")}</td>
+                        <td>{String(s.estado ?? "—")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
+            )}
 
-              {/* Hoja de ruta por momento del cierre */}
-              <div style={{ fontWeight:700, fontSize:"11px", color:"#1a2744", marginBottom:"12px" }}>Hoja de ruta — condiciones por momento</div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"14px" }}>
-                {[
-                  { titulo:"Antes del cierre", sub:"condición precedente", estado:"Condición", color:"#dc2626", bg:"#fef2f2" },
-                  { titulo:"Al cierre", sub:"negociar o descontar", estado:"Vigente", color:"#d97706", bg:"#fffbeb" },
-                  { titulo:"Post-cierre", sub:"monitoreo, ya mitigado", estado:null, color:"#16a34a", bg:"#f0fdf4" },
-                ].map(({titulo,sub,estado,color,bg}) => {
-                  const items = v.riesgoAjustesLive.filter(r =>
-                    estado ? r.estado === estado : (r.estado === "Reducido" || r.estado === "Resoluble")
-                  )
-                  return (
-                    <div key={titulo} style={{ border:`1px solid ${color}33`, background:bg, borderRadius:"8px", padding:"14px" }}>
-                      <div style={{ fontWeight:800, fontSize:"11px", color, marginBottom:"2px" }}>{titulo}</div>
-                      <div style={{ fontSize:"8px", color:"#6b7280", marginBottom:"10px", textTransform:"uppercase", letterSpacing:"0.05em" }}>{sub}</div>
-                      {items.length === 0 && <div style={{ fontSize:"9px", color:"#9ca3af" }}>Sin ítems en esta etapa</div>}
-                      {items.slice(0,5).map(r => (
-                        <div key={r.id} style={{ fontSize:"9px", color:"#374151", marginBottom:"6px", lineHeight:1.4 }}>
-                          · {r.descripcion}
-                        </div>
-                      ))}
-                    </div>
-                  )
-                })}
+            {/* C5 · Ambiental completo */}
+            {env.length > 0 && (
+              <div className="rp-card" style={{ padding:"16px 18px", marginBottom:14 }}>
+                <Rotulo>C5 · Habilitaciones y registros ambientales ({env.length})</Rotulo>
+                <table>
+                  <thead><tr><th>Tipo</th><th>Clave</th><th>Número / resolución</th><th>Vencimiento</th><th>Estado</th></tr></thead>
+                  <tbody>
+                    {env.map(e => {
+                      const d = pDate(e.vencimiento)
+                      const vencido = d !== null && d < hoy
+                      return (
+                        <tr key={String(e.id)}>
+                          <td style={{ textTransform:"capitalize" }}>{String(e.tipo ?? "")}</td>
+                          <td>{String(e.clave ?? "")}</td>
+                          <td style={{ color:STONE }}>{[e.numero, e.resolucion].filter(Boolean).join(" · ") || "—"}</td>
+                          <td style={{ ...numCell, textAlign:"left", color: vencido ? ROJO : INK }}>{d ? fFecha(d) : "—"}</td>
+                          <td style={{ color: esVigente(e) ? VERDE : AMBAR, fontWeight:600 }}>{String(e.estado ?? "—")}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
               </div>
-            </>
-          ) : (
-            <div style={{ textAlign:"center", padding:"48px", color:"#6b7280" }}>
-              Generá el análisis ejecutivo en la Sección 1 para ver la recomendación final y la hoja de ruta.
-            </div>
-          )}
+            )}
 
-          {/* Pie de página */}
-          <div style={{ marginTop:"48px", paddingTop:"20px", borderTop:"2px solid #1a2744", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-            <div>
-              <img src="/logo.png" alt="JL Advisory" style={{ height:"28px" }}/>
-              <div style={{ fontSize:"9px", color:"#9ca3af", marginTop:"4px" }}>
-                JL Advisory — Estrategia · Negocios · Due Diligence
+            {/* C6 · Validación completa del plan */}
+            {valid.length > 0 && (
+              <div className="rp-card" style={{ padding:"16px 18px", marginBottom:14 }}>
+                <Rotulo>C6 · Validación del plan del vendedor ({valid.length})</Rotulo>
+                <table>
+                  <thead><tr><th style={{ width:"26%" }}>Afirmación</th><th style={{ width:"24%" }}>Según el plan</th><th style={{ width:"24%" }}>Según el DD</th><th>Brecha</th><th>Estado</th></tr></thead>
+                  <tbody>
+                    {valid.map(x => (
+                      <tr key={String(x.id)}>
+                        <td>{String(x.clave ?? "")}</td>
+                        <td style={{ color:STONE }}>{String(x.dato_plan ?? "—")}</td>
+                        <td style={{ color:STONE }}>{String(x.dato_real ?? "—")}</td>
+                        <td>{String(x.brecha ?? "—")}</td>
+                        <td style={{ color: String(x.estado) === "Cuestionado" ? ROJO : INK, fontWeight: String(x.estado) === "Cuestionado" ? 600 : 400 }}>{String(x.estado ?? "—")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            </div>
-            <div style={{ textAlign:"right", fontSize:"9px", color:"#9ca3af" }}>
-              <div style={{ fontWeight:700, color:"#dc2626" }}>CONFIDENCIAL — USO EXCLUSIVO DEL DESTINATARIO</div>
-              <div>Este informe se basa en información suministrada por las partes y análisis de JL Advisory.</div>
-              <div>JL Advisory no garantiza la exactitud de los datos del vendedor ni asume responsabilidad por decisiones de inversión.</div>
-              <div style={{ marginTop:"4px" }}>Emitido: {today}</div>
-            </div>
-          </div>
-        </div>
+            )}
+          </section>
+        )}
 
+        {/* Pie del documento */}
+        <footer style={{ marginTop:40, paddingTop:14, borderTop:`1px solid ${LINE}`, display:"flex", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
+          <span style={{ fontSize:12, color:FAINT }}>
+            Informe generado sobre el estado del caso al {fFecha(hoy)} · el due diligence sigue abierto
+            y estas cifras cambian con cada documento que ingresa.
+          </span>
+          <span style={{ fontSize:12, color:FAINT }}>{nombre}</span>
+        </footer>
       </div>
-
-      {/* ─── SECCIÓN 11: EVOLUCIÓN FINANCIERA ─── */}
-      <div style={{ margin:"0 0 24px" }}>
-        <div id="sec-9" className="section-header">Sección 9 — Evolución Financiera{periodoEECC ? ` ${periodoEECC}` : ""}</div>
-        <div style={{ fontSize:"9px", color:"#9ca3af", marginBottom:"12px" }}>Cifras en dólares, convertidas al tipo de cambio promedio de cada ejercicio. Calculadas sobre los balances cargados, no sobre valores declarados.</div>
-        {v.evolucionFinanciera.length > 0 ? (
-          <>
-          <div style={{ overflowX:"auto" }}>
-          <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"10px", minWidth:"760px" }}>
-            <thead><tr style={{ background:"#1a2744", color:"white" }}>
-              {["Ejercicio","Ingresos","EBITDA","Marg.","Deprec.","EBIT","Rdo. financiero","Impuesto","Resultado neto"].map((h,i)=>(
-                <th key={i} style={{ padding:"6px 8px", textAlign:i===0?"left":"right", whiteSpace:"nowrap", fontSize:"9px" }}>{h}</th>
-              ))}
-            </tr></thead>
-            <tbody>
-              {v.evolucionFinanciera.map((b,i:number)=>(
-                <tr key={i} style={{ background:i%2===0?"#f9fafb":"white", borderBottom:"0.5px solid #e5e7eb" }}>
-                  <td style={{ padding:"5px 8px", fontWeight:600, whiteSpace:"nowrap" }}>{String(b.ejercicio)}</td>
-                  <td style={num()}>{miles(b.ingresos)}</td>
-                  <td style={num(b.ebitda<0?"#dc2626":"#16a34a", 700)}>{miles(b.ebitda)}</td>
-                  <td style={num(b.ebitda<0?"#dc2626":"#16a34a")}>{b.margen}%</td>
-                  <td style={num()}>{miles(b.depreciacion)}</td>
-                  <td style={num(b.ebit<0?"#dc2626":"#374151")}>{miles(b.ebit)}</td>
-                  <td style={num("#dc2626", 700)}>{miles(b.resultadoFinanciero)}</td>
-                  <td style={num()}>{b.impuesto ? miles(-Math.abs(b.impuesto)) : "—"}</td>
-                  <td style={num(b.resultadoNeto<0?"#dc2626":"#374151", 600)}>{miles(b.resultadoNeto)}</td>
-                </tr>
-              ))}
-              <tr style={{ background:"#f1f5f9", borderTop:"1.5px solid #1a2744" }}>
-                <td style={{ padding:"6px 8px", fontWeight:700 }}>Acumulado</td>
-                <td style={num()}>—</td>
-                <td style={num("#16a34a", 800)}>{miles(v.evolucionAcum.ebitda)}</td>
-                <td style={num()}>—</td><td style={num()}>—</td><td style={num()}>—</td>
-                <td style={num("#dc2626", 800)}>{miles(v.evolucionAcum.resultadoFinanciero)}</td>
-                <td style={num()}>—</td><td style={num()}>—</td>
-              </tr>
-            </tbody>
-          </table>
-          </div>
-          {/* El hallazgo central de la serie, calculado: cuanto del EBITDA se llevo el costo financiero */}
-          {v.evolucionAcum.ratio > 0 && (
-            <div style={{ marginTop:"10px", padding:"10px 12px", background:"#fef2f2", borderLeft:"3px solid #dc2626", borderRadius:"6px" }}>
-              <span style={{ fontSize:"10px", color:"#7f1d1d" }}>
-                El resultado financiero acumulado de {v.evolucionFinanciera.length} ejercicios asciende
-                a {fmtUSD(Math.abs(v.evolucionAcum.resultadoFinanciero))} contra un EBITDA acumulado
-                de {fmtUSD(v.evolucionAcum.ebitda)}: <strong>el costo financiero consumió el {v.evolucionAcum.ratio}%
-                de toda la caja operativa generada en el período</strong>. A diferencia de la depreciación, es erogación real de caja.
-              </span>
-            </div>
-          )}
-          </>
-        ) : <div style={{ color:"#9ca3af", fontSize:"10px" }}>Sin datos de balance cargados.</div>}
-      </div>
-
-      {/* ─── SECCIÓN 12: TESIS DE INVERSIÓN ─── */}
-      <div style={{ margin:"0 0 24px" }}>
-        <div id="sec-10" className="section-header">Sección 10 — Tesis de Inversión</div>
-        <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
-          {[
-            {n:"1.",t:"Respaldo patrimonial", body:`Activos revaluados ${fmtUSD(v.activosRevalu)}, de los cuales ${fmtUSD(v.totalInmueble)} corresponden a inmueble e instalaciones. Netos de los ajustes por riesgo: ${fmtUSD(v.activosNetos)}, equivalentes al ${Math.round(v.activosNetos/Math.max(v.ofertaInic,1)*100)}% de la oferta recomendada.`},
-            {n:"2.",t:"Barrera de entrada regulatoria", body: habilitVigentes.length > 0
-                ? `Opera con ${habilitVigentes.length} ${habilitVigentes.length===1?"habilitación vigente":"habilitaciones vigentes"} sobre corrientes de residuos peligrosos. La demanda no depende del ciclo: los generadores tienen obligación legal de contratar un operador habilitado.`
-                : "Sin habilitaciones vigentes acreditadas en el análisis ambiental. La tesis de barrera regulatoria no se sostiene con la evidencia disponible."},
-            {n:"3.",t:"Rentabilidad normalizada", body: v.ebitdaNorm > 0
-                ? `EBITDA normalizado de ${fmtUSD(v.ebitdaNorm)} sobre ingresos de ${fmtUSD(v.ingresos)}, un margen del ${Math.round(v.ebitdaNorm/Math.max(v.ingresos,1)*100)}%, contra un margen contable del ${Math.round(v.ebitda/Math.max(v.ingresos,1)*100)}%. El puente está documentado en la sección de supuestos.`
-                : `EBITDA contable de ${fmtUSD(v.ebitda)} sobre ingresos de ${fmtUSD(v.ingresos)}. No se cargó un EBITDA normalizado.`},
-          ].map((item,i)=>(
-            <div key={i} style={{ display:"flex", gap:"8px", padding:"10px", background:"#f8fafc", borderRadius:"8px", borderLeft:"3px solid #1a2744" }}>
-              <span style={{ fontWeight:700, color:"#1a2744", flexShrink:0 }}>{item.n}</span>
-              <div><span style={{ fontWeight:700, color:"#1a2744" }}>{item.t}: </span><span style={{ color:"#374151", fontSize:"10px" }}>{item.body}</span></div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ─── SECCIÓN 13: ESCENARIOS ─── */}
-      <div style={{ margin:"0 0 24px" }}>
-        <div id="sec-11" className="section-header">Sección 11 — Escenarios de Valuación</div>
-        <div style={{ fontSize:"9px", color:"#9ca3af", marginBottom:"8px" }}>Tasa {(v.tasaDCF*100).toFixed(0)}% · Múltiplo terminal {v.multVR}× · Prima de crecimiento earn-out target: {fmtUSD(v.primaCrecimiento)}</div>
-        <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"10px" }}>
-          <thead><tr style={{ background:"#1a2744", color:"white" }}>
-            <th style={{ padding:"5px 8px", textAlign:"left" }}>Escenario</th>
-            <th style={{ padding:"5px 8px", textAlign:"right" }}>DCF (M2)</th>
-            <th style={{ padding:"5px 8px", textAlign:"right" }}>Promedio métodos</th>
-            <th style={{ padding:"5px 8px", textAlign:"right" }}>vs. precio pedido</th>
-          </tr></thead>
-          <tbody>
-            {[
-              {l:"A \u2014 Plan del vendedor", m2:v.valorM2, prom:v.promMetodos, c:"#d97706"},
-              {l:"B — Sin horno ni cliente estratégico", m2:v.valorM2B, prom:v.promB, c:"#16a34a"},
-              {l:"C — Solo horno acreditado en CAA", m2:v.valorM2C, prom:v.promC, c:"#dc2626"},
-            ].map((row,i)=>(
-              <tr key={i} style={{ borderBottom:"0.5px solid #e5e7eb", background:i===0?"#fff7ed":i===1?"#f0fdf4":"#fef2f2" }}>
-                <td style={{ padding:"5px 8px" }}>{row.l}</td>
-                <td style={{ padding:"5px 8px", textAlign:"right", fontWeight:700 }}>{fmtUSD(row.m2)}</td>
-                <td style={{ padding:"5px 8px", textAlign:"right", fontWeight:700, color:row.c }}>{fmtUSD(row.prom)}</td>
-                <td style={{ padding:"5px 8px", textAlign:"right", color:row.prom>=v.precio?"#16a34a":"#dc2626" }}>{v.precio>0?`${((row.prom/v.precio-1)*100).toFixed(1)}%`:"—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* ─── SECCIÓN 14: RIESGOS RESUELTOS ─── */}
-      {cerrados.filter((r:any)=>Number(r.impacto)<0).length>0&&(
-      <div style={{ margin:"0 0 24px" }}>
-        <div id="sec-12" className="section-header">Sección 12 — Riesgos Resueltos en el DD</div>
-        <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"10px" }}>
-          <thead><tr style={{ background:"#16a34a", color:"white" }}>
-            <th style={{ padding:"5px 8px", textAlign:"left" }}>Riesgo resuelto</th>
-            <th style={{ padding:"5px 8px", textAlign:"right" }}>Exposición eliminada</th>
-          </tr></thead>
-          <tbody>
-            {cerrados.filter((r:any)=>Number(r.impacto)<0).map((r:any,i:number)=>(
-              <tr key={i} style={{ borderBottom:"0.5px solid #e5e7eb" }}>
-                <td style={{ padding:"5px 8px", color:"#16a34a" }}>{String(r.riesgo).slice(0,80)}</td>
-                <td style={{ padding:"5px 8px", textAlign:"right", color:"#16a34a", fontWeight:700 }}>{fmtUSD(Math.abs(Number(r.impacto)))}</td>
-              </tr>
-            ))}
-            <tr style={{ background:"#dcfce7" }}>
-              <td style={{ padding:"5px 8px", fontWeight:700, color:"#16a34a" }}>Total eliminado durante el DD</td>
-              <td style={{ padding:"5px 8px", textAlign:"right", fontWeight:800, color:"#16a34a" }}>{fmtUSD(cerrados.filter((r:any)=>Number(r.impacto)<0).reduce((s:number,r:any)=>s+Math.abs(Number(r.impacto)),0))}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      )}
-
-      {/* ─── SECCIÓN 15: ESTRUCTURA DEL DEAL ─── */}
-      <div style={{ margin:"0 0 24px" }}>
-        <div id="sec-13" className="section-header">Sección 13 — Estructura de la Transacción Recomendada</div>
-        <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
-          {[
-            {l:"Precio base al contado", v2:fmtUSD(v.ofertaInic), d:`Valor sin plan de crecimiento del vendedor. Máximo negociable si todas las condiciones se cumplen: ${fmtUSD(v.ofertaMax)}.`},
-            {l:"Ajuste al closing", v2:"Capital de trabajo neto", d:"El precio se ajustará por la variación del capital de trabajo neto entre firma y closing."},
-            {l:"Escrow de contingencias (18 meses)", v2:`15% — ${fmtUSD(Math.round(v.ofertaInic*0.15))}`, d:"Para cubrir las contingencias fiscales y laborales identificadas en el mapa de riesgos."},
-            {l:"Earn-out (2 años)", v2:fmtUSD(v.primaCrecimiento), d:`50% si EBITDA año 1 > ${fmtUSD(Math.round(v.ebitdaBase2*1.5))} y 50% si año 2 > ${fmtUSD(Math.round(v.ebitdaBase2*2.0))}. Condicional al cumplimiento de las condiciones precedentes.`},
-          ].map((item,i)=>(
-            <div key={i} style={{ display:"flex", justifyContent:"space-between", gap:"12px", padding:"10px 12px", background:"#f8fafc", borderRadius:"8px", borderLeft:"3px solid #d97706" }}>
-              <div style={{ flex:1 }}>
-                <div style={{ fontWeight:700, color:"#1a2744", fontSize:"10px" }}>{item.l}</div>
-                <div style={{ color:"#6b7280", fontSize:"9px", marginTop:"2px" }}>{item.d}</div>
-              </div>
-              <div style={{ fontWeight:800, color:"#d97706", fontSize:"11px", whiteSpace:"nowrap" }}>{item.v2}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </>
+    </div>
   )
 }
