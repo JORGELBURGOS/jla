@@ -91,6 +91,15 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
   const pendientes = reqs.filter(r => r.estado === "Pendiente").length
   // Cobertura documental del tracker. Es distinta del indice de confiabilidad que
   // se muestra en la portada: aquella pondera la solidez del analisis, esta mide papeleo.
+  // Periodo real de la serie de balances, para no escribir los años a mano
+  const aniosEECC = v.evolucionFinanciera
+    .map(b => (String(b.ejercicio).match(/(\d{4})/) || [])[1])
+    .filter(Boolean) as string[]
+  const periodoEECC = aniosEECC.length > 1
+    ? `${aniosEECC[0]}\u2013${aniosEECC[aniosEECC.length-1]}`
+    : (aniosEECC[0] ?? "")
+  // Habilitaciones efectivamente vigentes segun la sintesis ambiental
+  const habilitVigentes = env.filter(e => String(e.estado ?? "").toUpperCase().includes("VIGENTE"))
   const coberturaDoc = reqs.length ? Math.round((recibidos + parciales * 0.5) / reqs.length * 100) : 0
   const avance = Math.round(v.indiceConfiabilidad)  // Índice de Confiabilidad del DD — mismo valor que el dashboard, no el % de papeleo recibido
 
@@ -204,6 +213,13 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
             .sec-cuerpo { overflow: hidden; }
             .sec-cuerpo.plegado { display: none; }
           }
+          .acto-head { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;
+            padding:26px 50px 14px; border-top:1px solid #e5e7eb; margin-top:8px; }
+          .acto-n { font-size:11px; font-weight:800; color:#c3c9d4; letter-spacing:.06em; }
+          .acto-t { font-size:19px; font-weight:800; color:#1a2744; letter-spacing:-.01em; }
+          .acto-d { font-size:11px; color:#9ca3af; }
+          @media print { .acto-head { border-top:none; padding:0 0 6px; }
+                         .acto-d { display:none; } }
           .kpi-box { transition: box-shadow .15s; }
           @media screen { .kpi-box:hover { box-shadow: 0 2px 8px rgba(26,39,68,.08); } }
           .barra-progreso { position: sticky; top: 0; z-index: 30; height: 3px; background: #e5e7eb; }
@@ -382,13 +398,28 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
           })();
         `}} />
 
-        {/* Acordeón — se arma sobre el DOM ya renderizado, sin tocar la estructura de
-            las secciones. Si el script no corre, el informe se ve completo como siempre. */}
+        {/* ══════════ ESTRUCTURA NARRATIVA ══════════
+            El informe crecio por acumulacion y quedo en un orden que no acompaña la
+            lectura: la evolucion financiera aparecia despues de la recomendacion final,
+            y la tesis de inversion despues de los supuestos. Se reorganiza en cuatro
+            actos —la decision, el negocio, el precio, el riesgo— sin mover una linea de
+            JSX: el script reubica los bloques ya renderizados. Si no corre, el informe
+            se ve en su orden original y completo. */}
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){
+            var ACTOS = [
+              { t: 'La decisión',            d: 'Qué recomendamos y qué debe resolverse antes de firmar', s: [1, 8] },
+              { t: 'El negocio que se compra', d: 'Sobre qué se apoya el valor y qué dicen cinco ejercicios', s: [10, 9, 6] },
+              { t: 'El precio',              d: 'Cómo se construye la cifra y qué la mueve',               s: [2, 11, 7] },
+              { t: 'Lo que puede salir mal', d: 'Exposición, mitigantes y estado de la verificación',      s: [3, 12, 5, 4, 13] }
+            ];
             function armar(){
               var hs = document.querySelectorAll('.section-header');
-              if (!hs.length) { return setTimeout(armar, 300); }
+              if (hs.length < 13) { return setTimeout(armar, 300); }
+              var cont = document.querySelector('.report-container');
+              if (!cont || cont.dataset.actos) return;
+              cont.dataset.actos = '1';
+
               hs.forEach(function(h){
                 if (h.dataset.plegable) return;
                 h.dataset.plegable = '1';
@@ -402,6 +433,25 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
                   cuerpo.classList.toggle('plegado');
                 });
               });
+
+              var frag = document.createDocumentFragment();
+              ACTOS.forEach(function(a, i){
+                var wrap = document.createElement('section');
+                wrap.className = 'acto';
+                var head = document.createElement('div');
+                head.className = 'acto-head';
+                head.innerHTML = '<span class="acto-n">' + String(i+1).padStart(2,'0') + '</span>' +
+                                 '<span class="acto-t">' + a.t + '</span>' +
+                                 '<span class="acto-d">' + a.d + '</span>';
+                wrap.appendChild(head);
+                a.s.forEach(function(nro){
+                  var h = document.getElementById('sec-' + nro);
+                  if (h && h.parentNode) wrap.appendChild(h.parentNode);
+                });
+                if (wrap.children.length > 1) frag.appendChild(wrap);
+              });
+              cont.appendChild(frag);
+
               var btn = document.getElementById('btn-plegar');
               if (btn) btn.addEventListener('click', function(){
                 var plegar = btn.textContent.indexOf('Contraer') === 0;
@@ -436,9 +486,10 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
                          letterSpacing:"0.08em", marginRight:"4px" }}>Ir a</span>
           <button id="btn-plegar" type="button" style={{ fontSize:"10px", padding:"3px 10px",
                     marginRight:"4px", borderRadius:"5px", cursor:"pointer" }}>Contraer todo</button>
-          {[["1","Resumen"],["2","Valuación"],["3","Riesgos"],["4","Estado DD"],["5","Ambiental"],
-            ["6","Plan del vendedor"],["7","Supuestos"],["8","Recomendación"],["9","Evolución"],
-            ["10","Tesis"],["11","Escenarios"],["12","Resueltos"],["13","Estructura"]].map(([n,t])=>(
+          {[["1","Resumen"],["8","Recomendación"],["10","Tesis"],["9","Evolución"],
+            ["6","Plan del vendedor"],["2","Valuación"],["11","Escenarios"],["7","Supuestos"],
+            ["3","Riesgos"],["12","Resueltos"],["5","Ambiental"],["4","Estado DD"],
+            ["13","Estructura"]].map(([n,t])=>(
             <a key={n} href={`#sec-${n}`}>{n}. {t}</a>
           ))}
         </nav>
@@ -555,7 +606,7 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
                 <tr>
                   <td style={{ fontWeight:600 }}>2. Flujo de fondos descontado al {Math.round(v.tasaDCF*100)}%</td>
                   <td style={{ textAlign:"right", fontWeight:700 }}>{fmtUSD(v.valorM2)}</td>
-                  <td style={{ fontSize:"9px" }}>Proyección propia 2026-2030 con crecimiento gradual Oil & Gas, no la del vendedor</td>
+                  <td style={{ fontSize:"9px" }}>Proyección propia del comprador, independiente de la del vendedor</td>
                 </tr>
                 <tr>
                   <td style={{ fontWeight:600 }}>3. Múltiplo comparable ({v.multMinComp}-{v.multMaxComp}× EBITDA)</td>
@@ -1092,8 +1143,8 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
 
       {/* ─── SECCIÓN 11: EVOLUCIÓN FINANCIERA ─── */}
       <div style={{ margin:"0 0 24px" }}>
-        <div id="sec-9" className="section-header">Sección 9 — Evolución Financiera 2021–2025</div>
-        <div style={{ fontSize:"9px", color:"#9ca3af", marginBottom:"12px" }}>Ingresos y EBITDA validados cruzando EECC auditados con declaraciones juradas de IVA ante ARCA (diferencia &lt; 0,5%). Datos calculados dinámicamente del balance.</div>
+        <div id="sec-9" className="section-header">Sección 9 — Evolución Financiera{periodoEECC ? ` ${periodoEECC}` : ""}</div>
+        <div style={{ fontSize:"9px", color:"#9ca3af", marginBottom:"12px" }}>Cifras en dólares, convertidas al tipo de cambio promedio de cada ejercicio. Calculadas sobre los balances cargados, no sobre valores declarados.</div>
         {v.evolucionFinanciera.length > 0 ? (
           <>
           <div style={{ overflowX:"auto" }}>
@@ -1148,9 +1199,13 @@ export default function ReportClient({ caseId, caso, reqs, risks, sups, env, val
         <div id="sec-10" className="section-header">Sección 10 — Tesis de Inversión</div>
         <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
           {[
-            {n:"1.",t:"Respaldo patrimonial", body:`Activos revaluados ${fmtUSD(v.activosRevalu)} (inmueble ${fmtUSD(v.totalInmueble)}). Activos netos deducidos ajustes: ${fmtUSD(v.activosNetos)}.`},
-            {n:"2.",t:"Barrera regulatoria", body:"CAA Operador + DIA vigentes. Competencia nueva tarda 3-5 años. Demanda por imposición legal (Ley 24.051), no depende del ciclo económico."},
-            {n:"3.",t:"Ingresos validados por ARCA (IVA)", body:`Facturación ${fmtUSD(v.ingresos)} validada con F.2051 (diferencia -0,5%). Fuente independiente del vendedor y del auditor.`},
+            {n:"1.",t:"Respaldo patrimonial", body:`Activos revaluados ${fmtUSD(v.activosRevalu)}, de los cuales ${fmtUSD(v.totalInmueble)} corresponden a inmueble e instalaciones. Netos de los ajustes por riesgo: ${fmtUSD(v.activosNetos)}, equivalentes al ${Math.round(v.activosNetos/Math.max(v.ofertaInic,1)*100)}% de la oferta recomendada.`},
+            {n:"2.",t:"Barrera de entrada regulatoria", body: habilitVigentes.length > 0
+                ? `Opera con ${habilitVigentes.length} ${habilitVigentes.length===1?"habilitación vigente":"habilitaciones vigentes"} sobre corrientes de residuos peligrosos. La demanda no depende del ciclo: los generadores tienen obligación legal de contratar un operador habilitado.`
+                : "Sin habilitaciones vigentes acreditadas en el análisis ambiental. La tesis de barrera regulatoria no se sostiene con la evidencia disponible."},
+            {n:"3.",t:"Rentabilidad normalizada", body: v.ebitdaNorm > 0
+                ? `EBITDA normalizado de ${fmtUSD(v.ebitdaNorm)} sobre ingresos de ${fmtUSD(v.ingresos)}, un margen del ${Math.round(v.ebitdaNorm/Math.max(v.ingresos,1)*100)}%, contra un margen contable del ${Math.round(v.ebitda/Math.max(v.ingresos,1)*100)}%. El puente está documentado en la sección de supuestos.`
+                : `EBITDA contable de ${fmtUSD(v.ebitda)} sobre ingresos de ${fmtUSD(v.ingresos)}. No se cargó un EBITDA normalizado.`},
           ].map((item,i)=>(
             <div key={i} style={{ display:"flex", gap:"8px", padding:"10px", background:"#f8fafc", borderRadius:"8px", borderLeft:"3px solid #1a2744" }}>
               <span style={{ fontWeight:700, color:"#1a2744", flexShrink:0 }}>{item.n}</span>
