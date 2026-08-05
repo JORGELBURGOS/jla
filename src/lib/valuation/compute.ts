@@ -208,7 +208,7 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
     db.from("dd_case_risks").select("id,riesgo,area,impacto,accion_requerida,estado").eq("case_id", caseId)
       .not("estado", "in", '("DUPLICADO","RECLASIFICADO","CERRADO")').lt("impacto", 0),
     db.from("vw_risk_adjustments_live").select("id,origen_riesgo_id,porcentaje,estado_ajuste,descripcion_analista,nota_porcentaje,riesgo,area,accion_requerida,impacto_actual,monto_calculado").eq("case_id", caseId),
-    db.from("dd_case_requirements").select("documento,estado,antes_sena").eq("case_id", caseId),
+    db.from("dd_case_requirements").select("documento,estado,antes_sena,cobertura_pct").eq("case_id", caseId),
     db.from("dd_case_balance_sheet").select("ejercicio,ingresos,costos_servicios,gastos_admin,gastos_comercial,depreciacion,resultado_financiero,impuesto_ganancias,resultado_neto,tc_promedio").eq("case_id", caseId),
   ])
 
@@ -217,7 +217,7 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
   const assetsR = (assets ?? []) as Asset[]
   const riesgosR = (riesgosMapa ?? []) as { id:string; riesgo:string; area:string; impacto:number; accion_requerida:string; estado:string }[]
   const ajustesR = (riesgoAjustes ?? []) as { id:string; origen_riesgo_id:string; porcentaje:number; estado_ajuste:string; descripcion_analista:string|null; nota_porcentaje:string|null; riesgo:string|null; area:string|null; accion_requerida:string|null; impacto_actual:number; monto_calculado:number }[]
-  const reqsR = (reqs ?? []) as { documento:string; estado:string; antes_sena:boolean }[]
+  const reqsR = (reqs ?? []) as { documento:string; estado:string; antes_sena:boolean; cobertura_pct:number|null }[]
   const balanceR = (balanceSheet ?? []) as { ejercicio:string; ingresos:number; costos_servicios:number; gastos_admin:number; gastos_comercial:number; depreciacion:number; resultado_financiero:number; impuesto_ganancias:number; resultado_neto:number; tc_promedio:number }[]
 
   const evolucionFinanciera = [...balanceR].sort((a,b) => a.ejercicio.localeCompare(b.ejercicio)).map(b => {
@@ -381,7 +381,10 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
   let numTracker = 0, denTracker = 0
   for (const req of reqsR) {
     const pesoBase = req.antes_sena ? 2 : 1
-    const puntaje = req.estado === "Recibido" ? 1 : req.estado === "Parcial" ? 0.5 : 0
+    // Parcial: usa su grado de completitud real (cobertura_pct/100) si está cargado;
+    // 0.5 solo como piso por defecto cuando no hay dato. Recibido=1, Pendiente=0.
+    const puntajeParcial = req.cobertura_pct != null ? req.cobertura_pct / 100 : 0.5
+    const puntaje = req.estado === "Recibido" ? 1 : req.estado === "Parcial" ? puntajeParcial : 0
     const peso = req.estado === "Pendiente" ? pesoBase * factorCascada(clasificarAreaRequerimiento(req.documento)) : pesoBase
     numTracker += peso * puntaje
     denTracker += peso
