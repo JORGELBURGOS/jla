@@ -183,11 +183,11 @@ function RiskAdjRow({ r, onUpdate, onSave, onDelete, saving, defaultOpen }: {
   const sinVinculo = r.impactoActual === 0 && !r.nota
   return (
     <div className="border-b border-gray-50 py-1">
-      <div className="w-full flex items-center gap-2 text-xs">
-        <button onClick={() => setOpen(o=>!o)} className="text-gray-300 flex-shrink-0">
+      <div className="w-full flex items-start gap-2 text-xs">
+        <button onClick={() => setOpen(o=>!o)} className="text-gray-300 flex-shrink-0 mt-0.5">
           <Info size={11}/>
         </button>
-        <span className={`flex-1 min-w-0 truncate ${sinVinculo?"text-amber-600 italic":"text-gray-600"}`}>{r.descripcion}</span>
+        <span className={`flex-1 min-w-0 leading-snug break-words ${sinVinculo?"text-amber-600 italic":"text-gray-600"}`}>{r.descripcion}</span>
         <select value={r.estado} onChange={e => onUpdate("estado", e.target.value)}
           className={`shrink-0 whitespace-nowrap text-xs px-1.5 py-0.5 rounded font-semibold border-0 cursor-pointer focus:outline-none ${RIESGO_ESTADO_CLS[r.estado]??"bg-gray-100 text-gray-600"}`}>
           {RIESGO_ESTADOS.map(s => <option key={s}>{s}</option>)}
