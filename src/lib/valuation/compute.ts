@@ -380,10 +380,13 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
 
   let numTracker = 0, denTracker = 0
   for (const req of reqsR) {
-    // Post-Seña: el vendedor difirió su entrega a después de la seña. Es un faltante
-    // esperado y aceptado, así que pesa la MITAD — no castiga el índice como un faltante
-    // crítico, pero tampoco desaparece (sigue siendo algo pendiente para el cierre).
-    const pesoBase = req.antes_sena ? 0.5 : 1
+    // Post-Seña: el vendedor difirió su entrega a después de la seña. Si está incompleto
+    // (pendiente o parcial), es un faltante esperado y aceptado que NO debe castigar el
+    // índice, así que pesa la mitad. Pero si ya fue recibido, cuenta completo — su aporte
+    // positivo no tiene por qué reducirse. Reducir el peso pareja (recibidos incluidos) casi
+    // no movía el índice, porque bajaba numerador y denominador por igual.
+    const esPostSenaIncompleto = req.antes_sena && req.estado !== "Recibido"
+    const pesoBase = esPostSenaIncompleto ? 0.5 : 1
     // Parcial: usa su grado de completitud real (cobertura_pct/100) si está cargado;
     // 0.5 solo como piso por defecto cuando no hay dato. Recibido=1, Pendiente=0.
     const puntajeParcial = req.cobertura_pct != null ? req.cobertura_pct / 100 : 0.5
