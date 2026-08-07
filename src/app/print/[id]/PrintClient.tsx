@@ -263,7 +263,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
             {n:"2.", titulo:"Barrera de entrada regulatoria en sector de cumplimiento obligatorio",
              body:`El negocio opera bajo un CAA de Operador (DPA Mendoza) y una DIA vigentes — habilitaciones que representan una barrera de entrada de tres a cinco años de gestión. La demanda no depende del ciclo económico: los generadores de residuos peligrosos tienen obligación legal de contratar un operador habilitado (Ley 24.051). Este marco protege los ingresos y limita la competencia de nuevos entrantes.`},
             {n:"3.", titulo:"Ingresos validados por fuente independiente del Estado (ARCA)",
-             body:`La facturación de ${fmtUSDc(v.ingresos)} del último ejercicio fue contrastada con las declaraciones juradas de IVA presentadas ante ARCA, arrojando una diferencia de -0,5%. Esta validación cruzada —independiente del vendedor y del auditor— confirma que los ingresos declarados en los estados contables son reales. El ritmo de facturación de los primeros cuatro meses de 2026 es consistente con 2025.`},
+             body:`La facturación de ${fmtUSDc(v.ingresos)} del último ejercicio fue contrastada con las declaraciones juradas de IVA presentadas ante ARCA (serie completa de 24 meses) y con el detalle de facturación real por cliente, que confirma una cartera diversificada de más de 130 clientes sin concentración relevante (ningún cliente supera el 10% de la facturación). Esta validación cruzada —independiente del vendedor y del auditor— confirma que los ingresos declarados en los estados contables son reales y sostenibles. El ritmo de facturación de 2026 es consistente con el ejercicio anterior.`},
           ].map((item,i)=>(
             <div key={i} style={{ display:"flex", gap:"12px", marginBottom:"12px" }}>
               <span style={{ fontFamily:"Georgia,serif", fontSize:"12px", fontWeight:700, color:"#1a2744", flexShrink:0 }}>{item.n}</span>
@@ -278,8 +278,8 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
 
         {/* ══════ 3. EVOLUCIÓN FINANCIERA ══════ */}
         <div className="page-break" style={{ padding: "30px 50px" }}>
-          <H n="3." t="Evolución financiera 2021–2025" />
-          <P>Con la tesis de inversión establecida, corresponde examinar la película financiera completa: cinco ejercicios auditados que muestran un negocio en construcción, con volatilidad de márgenes y una recuperación incompleta. La facturación del último ejercicio fue validada de manera independiente contra el Libro de IVA Digital presentado ante ARCA (F.2051, período mayo-diciembre 2025 anualizado), con una diferencia inferior al 0,5% que acredita la fiabilidad del dato de base. Los ejercicios anteriores no cuentan con validación externa equivalente.</P>
+          <H n="3." t={`Evolución financiera ${v.evolucionFinanciera.length ? `${v.evolucionFinanciera[0].ejercicio}–${v.evolucionFinanciera[v.evolucionFinanciera.length-1].ejercicio}` : ""}`} />
+          <P>Con la tesis de inversión establecida, corresponde examinar la película financiera completa: cinco ejercicios auditados que muestran un negocio en construcción, con volatilidad de márgenes y una recuperación incompleta. La facturación del último ejercicio fue validada de manera independiente contra el Libro de IVA Digital presentado ante ARCA (serie completa de 24 meses) y contra el detalle de facturación real por cliente, que acreditan la fiabilidad del dato de base. Los ejercicios anteriores no cuentan con validación externa equivalente.</P>
           <div style={{ fontSize:"8px", color:"#9ca3af", margin:"10px 0 2px", fontFamily:"Inter, Arial, sans-serif" }}>
             Cifras en dólares, convertidas al tipo de cambio promedio de cada ejercicio.
           </div>
