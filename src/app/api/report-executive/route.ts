@@ -9,13 +9,42 @@ export async function POST(req: NextRequest) {
 
   const db = createServiceClient()
 
-  const [v, { data: valid }] = await Promise.all([
+  const [v, { data: valid }, { data: reqsRecibidos }, { data: risksTitulo }] = await Promise.all([
     computeValuation(caseId, db),
     db.from('dd_case_validation').select('clave,dato_plan,dato_real,brecha,estado,observaciones')
       .eq('case_id', caseId).order('seccion_orden'),
+    // Fortalezas: requerimientos comerciales/contractuales ya acreditados, para que la
+    // narrativa pueda apoyarse en evidencia dura (cartera, contratos, facturación) y no
+    // solo en los riesgos. Sin esto, el veredicto omite el lado positivo del caso.
+    db.from('dd_case_requirements').select('documento,cobertura')
+      .eq('case_id', caseId).eq('estado', 'Recibido'),
+    // Riesgos societarios/de título VIVOS: deben forzar una condición de cierre específica.
+    // Un riesgo de usufructo, prenda, cambio de control o transferibilidad vivo NO puede
+    // quedar fuera de las condiciones, aunque no esté entre los 5 de mayor monto.
+    db.from('dd_case_risks').select('riesgo,area,impacto,estado')
+      .eq('case_id', caseId)
+      .not('estado', 'in', '("CERRADO","DUPLICADO","RECLASIFICADO")'),
   ])
 
   const allValid = (valid ?? []) as Record<string,unknown>[]
+  const allReq = (reqsRecibidos ?? []) as Record<string,unknown>[]
+  const allRisks = (risksTitulo ?? []) as Record<string,unknown>[]
+
+  // Detección de riesgos que SIEMPRE deben traducirse en condición de cierre:
+  // títulos, garantías reales y transferibilidad. Se identifican por palabra clave
+  // sobre el texto del riesgo, de modo que sirve para este caso y para cualquier otro.
+  const KW_TITULO = ['usufructo','nuda propiedad','prenda','hipoteca','embargo','cambio de control',
+    'transferib','cesión','servidumbre','condición resolutoria','pacto societario','sucesi']
+  const riesgosDeTitulo = allRisks
+    .filter(r => KW_TITULO.some(k => String(r.riesgo ?? '').toLowerCase().includes(k)))
+    .map(r => `${String(r.riesgo).slice(0, 90)} (${r.area}, ${fmtUSD(Number(r.impacto ?? 0))})`)
+
+  // Fortalezas acreditadas: contratos con clientes de peso, cartera, facturación real.
+  const KW_FORTALEZA = ['ypf','contrato','cliente','factura','venta','cartera','generador','manifiesto','operador']
+  const fortalezas = allReq
+    .filter(r => KW_FORTALEZA.some(k => String(r.documento ?? '').toLowerCase().includes(k)))
+    .map(r => `${r.documento}: ${String(r.cobertura ?? '').replace(/\n+/g, ' ').slice(0, 160)}`)
+    .slice(0, 8)
 
   const margen = v.ingresos > 0 ? (v.ebitdaBase2 / v.ingresos * 100) : null
   const multiploPedido = v.ebitdaBase2 > 0 ? v.precio / v.ebitdaBase2 : null
@@ -65,6 +94,12 @@ OFERTA RECOMENDADA (ya decidida por el equipo — no la reemplaces por otra):
 HALLAZGOS CUESTIONADOS EN LA VALIDACIÓN DEL PLAN DEL VENDEDOR:
 ${validCuestionados.length ? validCuestionados.join(' | ') : 'Sin hallazgos cuestionados registrados'}
 
+FORTALEZAS ACREDITADAS DEL NEGOCIO (evidencia dura ya recibida y verificada — usalas en el resumen y en los hallazgos, no las omitas):
+${fortalezas.length ? fortalezas.map(f => `  · ${f}`).join('\n') : '  · Sin fortalezas documentales cargadas'}
+
+RIESGOS DE TÍTULO / GARANTÍAS / TRANSFERIBILIDAD VIVOS (CADA UNO debe generar una condición de cierre específica y verificable, aunque no esté entre los 5 de mayor monto):
+${riesgosDeTitulo.length ? riesgosDeTitulo.map(r => `  · ${r}`).join('\n') : '  · Ninguno vivo'}
+
 INSTRUCCIONES:
 - Escribí en español profesional, estilo informe Big4
 - Sé directo y preciso, sin frases vacías
@@ -72,6 +107,8 @@ INSTRUCCIONES:
 - El semáforo se basa en la brecha entre la oferta recomendada y el precio pedido, y en los riesgos vigentes
 - El precio sugerido en tu respuesta DEBE ser la oferta inicial ya calculada (${fmtUSD(v.ofertaInic)}), no inventes otro
 - Las condiciones de cierre deben ser obligatorias y verificables, basadas en los riesgos de mayor peso listados arriba
+- OBLIGATORIO: por CADA riesgo listado en "RIESGOS DE TÍTULO / GARANTÍAS / TRANSFERIBILIDAD VIVOS" debe existir una condición de cierre específica que lo resuelva (ej: para un usufructo vivo, la renuncia o cesión formal del usufructuario más el saneamiento registral, firmada en el mismo acto). No los agrupes ni los omitas: son condiciones estructurales que hacen a la plena adquisición.
+- OBLIGATORIO: el resumen ejecutivo y al menos uno de los hallazgos deben reflejar las FORTALEZAS ACREDITADAS listadas arriba (contratos con clientes de peso, cartera diversificada, facturación real documentada). El informe debe ser equilibrado: no solo riesgos, también el sustento del valor. Si la evidencia muestra cartera atomizada o clientes de primer nivel, decilo explícitamente.
 
 Respondé ÚNICAMENTE con este JSON (sin markdown, sin texto extra):
 {
@@ -133,6 +170,13 @@ Respondé ÚNICAMENTE con este JSON (sin markdown, sin texto extra):
         riesgos_abs: Math.round(v.riesgosAbs),
         ingresos: Math.round(v.ingresos),
         ebitda_norm: Math.round(v.ebitdaNorm),
+        // Conteos estructurales: si entra o se cierra un riesgo, o cambia el estado de un
+        // requerimiento, estos números se mueven aunque los montos redondeados no. Así la
+        // vista de "desactualizado" detecta también los cambios de composición del caso,
+        // no solo las variaciones de valor.
+        n_riesgos_vivos: allRisks.length,
+        n_riesgos_titulo: riesgosDeTitulo.length,
+        n_fortalezas: fortalezas.length,
       },
     })
 
