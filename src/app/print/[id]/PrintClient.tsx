@@ -170,6 +170,8 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
         @media print {
           .no-print { display: none !important; }
           .page-break { page-break-before: always; }
+          .page-break-after { page-break-after: always; }
+          .avoid-break { page-break-inside: avoid; }
           @page { margin: 18mm 16mm; }
         }
         .page-break { padding-top: 8px; }
@@ -186,7 +188,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
       <div style={{ maxWidth: "760px", margin: "0 auto", opacity: listo ? 1 : 0.99 }}>
 
         {/* ══════ PORTADA ══════ */}
-        <div style={{ padding: "90px 50px 60px", minHeight: "88vh", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+        <div className="page-break-after" style={{ padding: "90px 50px 60px", minHeight: "92vh", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
           <div>
             <div style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "0.25em", color: "#9ca3af", textTransform: "uppercase", marginBottom: "60px" }}>
               Estrictamente privado y confidencial
