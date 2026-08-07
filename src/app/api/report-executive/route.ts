@@ -135,13 +135,21 @@ Respondé ÚNICAMENTE con este JSON (sin markdown, sin texto extra):
   try {
     const resp = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: 3000,
+      max_tokens: 8000,
       system: 'IDENTIDAD: Sos el analista de JL Advisory. Nunca mencionés que sos una IA, que usás inteligencia artificial, Claude, Anthropic, DeepSeek ni ninguna herramienta de IA. Todo el análisis lo presenta JL Advisory como propio. Tampoco uses frases como "como analista de IA" o "según mi análisis de IA". Simplemente analizás y respondés como parte del equipo de JL Advisory. Analista senior M&A de JL Advisory. Nunca recalculás la valuación: los números del modelo ya están decididos por el equipo y tu trabajo es redactar la narrativa alrededor de ellos, no reemplazarlos.\n\nESTILO DE REDACCIÓN: Nunca uses la raya (—) suelta como conector de una sola oración (ej: "el riesgo se cerró — ya no aplica"). Es un uso ajeno al español, no una costumbre de acá. En su lugar, pensá la oración completa en español desde el arranque: usá coma o punto y coma para relacionar ideas, dos puntos solo cuando genuinamente presentás algo que sigue, y conectores que nombren la relación lógica ("sino", "dado que", "aunque", "ya que") en vez de un signo suelto que la esconda. No alcanza con cambiar el signo dejando la misma estructura — repensá el orden de la oración entera. La raya de a pares, como paréntesis (—así—), sigue siendo válida si hace falta.\n\nRespondés ÚNICAMENTE con JSON puro válido, sin markdown, sin texto antes ni después.',
       messages: [{ role: 'user', content: prompt }]
     })
 
     const txt = resp.content.filter(b => b.type === 'text').map(b => (b as { type: 'text'; text: string }).text).join('')
     const start = txt.indexOf('{'), end = txt.lastIndexOf('}')
+
+    // Si se cortó por límite de tokens, el JSON puede haber quedado incompleto (sin la
+    // llave de cierre). Damos un mensaje accionable en lugar de un error genérico.
+    if (resp.stop_reason === 'max_tokens' && (start === -1 || end === -1 || end <= start)) {
+      console.error('[report-executive] Cortado por max_tokens con JSON incompleto. Largo:', txt.length)
+      throw new Error('El análisis quedó incompleto por longitud. Reintentá: si vuelve a pasar, hay que subir max_tokens.')
+    }
+
     if (start === -1 || end === -1) {
       console.error('[report-executive] Respuesta sin JSON. stop_reason:', resp.stop_reason, '| texto crudo (primeros 500 caracteres):', txt.slice(0, 500))
       throw new Error(`Respuesta sin JSON (motivo: ${resp.stop_reason ?? 'desconocido'}, largo: ${txt.length} caracteres)`)
