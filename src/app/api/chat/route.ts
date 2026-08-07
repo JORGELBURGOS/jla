@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
 
   // Tracker COMPLETO con todos los campos
   const ctxTracker = allReqs.map(it =>
-    `N°${it.n_item} [${it.estado}]${it.antes_sena ? ' [SEÑA]' : ''}${it.antes_visita ? ' [VISITA]' : ''} ${it.documento}` +
+    `N°${it.n_item} [${it.estado}]${it.antes_sena ? ' [POST-SEÑA]' : ''}${it.antes_visita ? ' [VISITA]' : ''} ${it.documento}` +
     (it.como_cumplimentar ? `\n  Necesita: ${String(it.como_cumplimentar).slice(0, 200)}` : '') +
     (it.cobertura ? `\n  Tiene: ${String(it.cobertura).slice(0, 200)}` : '') +
     (it.faltantes ? `\n  Falta: ${String(it.faltantes).slice(0, 200)}` : '') +
@@ -181,7 +181,7 @@ Precio pedido: ${fmtUSD(Number(caseD?.precio_pedido))}
 Avance DD: ${total ? Math.round((recibidos + parciales * 0.5) / total * 100) : 0}% (${recibidos} recibidos · ${parciales} parciales · ${total - recibidos - parciales} pendientes)
 Riesgo cuantificado: ${fmtUSD(Math.abs(totalRiesgo))}
 
-PENDIENTES ANTES DE LA SEÑA: ${pendSena.length ? pendSena.map(r => `N°${r.n_item} — ${r.documento}`).join(' | ') : 'ninguno'}
+DIFERIDOS A POST-SEÑA (el vendedor los entrega tras la seña): ${pendSena.length ? pendSena.map(r => `N°${r.n_item} — ${r.documento}`).join(' | ') : 'ninguno'}
 PENDIENTES ANTES DE LA VISITA: ${pendVisita.length ? pendVisita.map(r => `N°${r.n_item} — ${r.documento}`).join(' | ') : 'ninguno'}
 
 ════ TRACKER COMPLETO ════

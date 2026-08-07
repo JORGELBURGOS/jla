@@ -174,7 +174,7 @@ export async function GET(req: NextRequest) {
 
     const bg = rowIdx % 2 === 0 ? C.lgray : C.white
     const estadoStr = it.estado === 'Parcial' ? 'Incompleto' : String(it.estado ?? 'Pendiente')
-    const antesSeña = it.antes_sena ? 'SÍ (Información Básica/Estructural)' : 'NO (Reservar para Post-Seña/Contrato)'
+    const antesSeña = it.antes_sena ? 'POST-SEÑA (diferido por el vendedor)' : ''
 
     const partes: string[] = []
     if (it.cobertura) partes.push(`Se recibió: ${it.cobertura}`)
@@ -193,7 +193,7 @@ export async function GET(req: NextRequest) {
     applyCell(ws, R, 4, { value: estadoStr, fill: C.salmon, fontColor: estadoStr === 'Incompleto' ? C.orange2 : C.orange, bold: true, size: 10, hAlign: 'center', vAlign: 'top' })
     applyCell(ws, R, 5, { value: '', fill: C.yellow, fontColor: C.yellow2, size: 9, hAlign: 'center', vAlign: 'top' })
     applyCell(ws, R, 6, { value: obsVend, fill: C.yellow, fontColor: C.yellow2, size: 9, vAlign: 'top', wrap: true })
-    applyCell(ws, R, 7, { value: antesSeña, fill: C.yellow, fontColor: C.yellow2, bold: antesSeña.startsWith('SÍ'), size: 9, hAlign: 'center', vAlign: 'top', wrap: true })
+    applyCell(ws, R, 7, { value: antesSeña, fill: C.yellow, fontColor: C.yellow2, bold: antesSeña !== '', size: 9, hAlign: 'center', vAlign: 'top', wrap: true })
 
     R++; rowIdx++
   }

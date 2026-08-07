@@ -91,7 +91,7 @@ function ItemRow({ item, toggling, onToggle, linksMap, caseId, highlight, esON }
           {item.notas      && <span className="text-blue-400 text-xs" title="Tiene notas internas">✎</span>}
           {itemLinks.length > 0 && <span className="text-purple-400 text-xs" title="Riesgos vinculados">⚠🔗</span>}
           {!esON && item.antes_sena && pendienteYSena && (
-            <span className="text-xs bg-purple-100 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded-full font-bold">Antes Seña</span>
+            <span className="text-xs bg-purple-100 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded-full font-bold">Post-Seña</span>
           )}
           {item.antes_visita && item.estado !== "Recibido" && (
             <span className="text-xs bg-teal-100 text-teal-700 border border-teal-200 px-1.5 py-0.5 rounded-full font-bold">Antes Visita</span>
@@ -106,8 +106,8 @@ function ItemRow({ item, toggling, onToggle, linksMap, caseId, highlight, esON }
         <div className="px-5 pb-4 bg-gray-50 border-t border-gray-100">
           <div className="flex gap-2 flex-wrap pt-3 pb-2">
             {pendienteYSena && (
-              <span className="text-xs bg-red-100 text-red-700 border border-red-300 px-2.5 py-1 rounded-full font-bold">
-                {!esON && "Incumplido — comprometido antes de la seña"}
+              <span className="text-xs bg-purple-50 text-purple-600 border border-purple-200 px-2.5 py-1 rounded-full font-medium">
+                {!esON && "Diferido por el vendedor para después de la seña"}
               </span>
             )}
             {item.antes_visita && item.estado !== "Recibido" && (
@@ -163,7 +163,7 @@ function ItemRow({ item, toggling, onToggle, linksMap, caseId, highlight, esON }
                   onClick={e => { e.stopPropagation(); onToggle(item, "antes_sena") }}
                   disabled={toggling === item.id}
                   className={`text-xs px-2.5 py-1.5 rounded-lg font-medium border transition-colors ${item.antes_sena ? "bg-purple-100 text-purple-700 border-purple-300" : "bg-white text-gray-500 border-gray-300 hover:bg-purple-50"}`}>
-                  {item.antes_sena ? "Antes Seña ✓" : "Marcar Antes Seña"}
+                  {item.antes_sena ? "Post-Seña ✓" : "Marcar Post-Seña"}
                 </button>}
               </div>
             </div>
@@ -384,7 +384,7 @@ export default function RequirementsPage({ params }: { params: { id: string } })
           </div>
           <p className="text-sm text-gray-500">
             {total} ítems · <span className="text-green-700 font-medium">{rec} recibidos</span> · <span className="text-amber-700 font-medium">{par} parciales</span> · {pend} pendientes
-            {!tipoCaso.startsWith("on") && pendSena.length > 0 && <span className="ml-2 text-red-600 font-bold"> · ⚠ {pendSena.length} bloqueados antes de la seña</span>}
+            {!tipoCaso.startsWith("on") && pendSena.length > 0 && <span className="ml-2 text-red-600 font-bold"> · {pendSena.length} diferidos a post-seña</span>}
           </p>
         </div>
         <div className="card p-3 text-center flex-shrink-0">

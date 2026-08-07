@@ -26,7 +26,7 @@ export default async function Dashboard({ params }: { params: Promise<{ id: stri
   const totalRiesgo = rk.filter((x: Record<string,string>) => ACTIVO(x.estado)).reduce((s: number, x: Record<string,number>) => s+(x.impacto??0), 0)
   const precio = c?.precio_pedido ?? 0
   const hayEBITDA = ss.some((s: Record<string,unknown>) => String(s.label).includes("EBITDA") && s.valor)
-  const incumplidos = r.filter((x: Record<string,unknown>) => (x.estado==="Pendiente"||x.estado==="Parcial") && x.antes_sena)
+  const diferidosPostSena = r.filter((x: Record<string,unknown>) => (x.estado==="Pendiente"||x.estado==="Parcial") && x.antes_sena)
   const secciones = [...new Set(r.map((x: Record<string,string>) => x.seccion))].sort()
   const criticos = [...rk].filter((x: Record<string,unknown>) => ACTIVO(x.estado as string) && (x.impacto as number) < 0).sort((a: Record<string,number>,b: Record<string,number>) => a.impacto-b.impacto).slice(0,6)
 
@@ -39,7 +39,7 @@ export default async function Dashboard({ params }: { params: Promise<{ id: stri
           { label:"Índice de Confiabilidad DD", value:`${Math.round(v.indiceConfiabilidad)}%`, sub:"qué tan lista está la oferta para el inversor", color:v.indiceConfiabilidad>=70?"text-green-700":v.indiceConfiabilidad>=40?"text-amber-700":"text-red-700" },
           { label:"Riesgo cuantificado", value:fmt(Math.abs(totalRiesgo)), sub:`${precio?Math.round(Math.abs(totalRiesgo)/precio*100):0}% del precio`, color:"text-red-700" },
           { label:"¿Hay valuación?", value:hayEBITDA?"SÍ":"NO", sub:hayEBITDA?"EBITDA cargado":"Bloqueado — falta ítem 6", color:hayEBITDA?"text-green-700":"text-red-700" },
-          { label:"Incumplidos seña", value:String(incumplidos.length), sub:incumplidos.length?"compromisos pendientes":"Todo en orden", color:incumplidos.length?"text-red-700":"text-green-700" }
+          { label:"Diferidos a post-seña", value:String(diferidosPostSena.length), sub:diferidosPostSena.length?"a entregar tras la seña":"ninguno", color:"text-purple-700" }
         ].map((kpi,i) => (
           <div key={i} className="card">
             <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">{kpi.label}</div>
@@ -121,14 +121,14 @@ export default async function Dashboard({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
-      {incumplidos.length > 0 && (
-        <div className="card border-red-200 bg-red-50">
-          <div className="card-title text-red-700">⚠️ Compromisos incumplidos antes de la seña</div>
+      {diferidosPostSena.length > 0 && (
+        <div className="card border-purple-200 bg-purple-50">
+          <div className="card-title text-purple-700">Documentos diferidos a post-seña</div>
           <div className="space-y-1.5">
-            {incumplidos.map((it: Record<string,unknown>) => (
+            {diferidosPostSena.map((it: Record<string,unknown>) => (
               <div key={it.id as string} className="flex items-center gap-3">
-                <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded font-bold">N°{it.n_item as number}</span>
-                <span className="text-xs text-red-800">{it.documento as string}</span>
+                <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold">N°{it.n_item as number}</span>
+                <span className="text-xs text-purple-800">{it.documento as string}</span>
                 <span className="ml-auto text-xs px-2 py-0.5 rounded font-bold bg-gray-100 text-gray-600">{it.estado as string}</span>
               </div>
             ))}

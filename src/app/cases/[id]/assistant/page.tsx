@@ -43,7 +43,7 @@ function descripcionLegible(a: Accion): string {
 }
 
 const SUGERENCIAS = [
-  "¿Qué falta resolver antes de la seña?",
+  "¿Qué documentos quedaron para después de la seña?",
   "¿Cuáles son los riesgos más críticos hoy?",
   "Revisá todo el tracker y decime el estado",
   "¿Cómo está la síntesis ambiental?",
