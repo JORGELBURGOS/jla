@@ -197,6 +197,9 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
             <div style={{ width: "72px", height: "3px", background: "#1a2744", marginBottom: "24px" }} />
             <div style={{ fontFamily: "Georgia, serif", fontSize: "19px", color: "#374151", marginBottom: "6px" }}>{nombre}</div>
             {cuit && <div style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", color: "#9ca3af" }}>CUIT {cuit}</div>}
+            <div style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", color: "#6b7280", marginTop: "14px", fontStyle: "italic" }}>
+              Estado de avance y recomendación de precio
+            </div>
           </div>
           <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "18px", display: "flex", justifyContent: "space-between", fontFamily: "Inter, sans-serif", fontSize: "10px", color: "#6b7280" }}>
             <div>
@@ -209,6 +212,110 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
             </div>
           </div>
         </div>
+
+
+        {/* ══════ 0. SÍNTESIS PARA LA DECISIÓN (resumen ejecutivo visual) ══════ */}
+        {(() => {
+          // Todo derivado de datos vivos: narrativa (semáforo/recomendación/precio/condiciones),
+          // v (puente de precio) y risks (lo que mueve el precio). Cero hardcodeo.
+          const sem = narrativa?.semaforo ?? "AMARILLO"
+          const SEM = {
+            ROJO:     { fg:"#b42318", bg:"#fdf1f0", ln:"#f2c8c4", tag:"Recomendación — no avanzar a precio pedido" },
+            AMARILLO: { fg:"#9a5b06", bg:"#fdf7e9", ln:"#f0dcb0", tag:"Recomendación — avanzar con condiciones" },
+            VERDE:    { fg:"#0b6e4f", bg:"#eef8f2", ln:"#c3e5d3", tag:"Recomendación — avanzar" },
+          }[sem] ?? { fg:"#9a5b06", bg:"#fdf7e9", ln:"#f0dcb0", tag:"Recomendación preliminar" }
+          const maxP = Math.max(v.precio, v.ofertaMax, v.ofertaInic, 1)
+          const brecha = v.precio - v.ofertaInic
+          const topRiesgos = [...risks]
+            .filter(r => ACTIVOS.includes(String(r.estado)))
+            .sort((a,b) => Number(a.impacto ?? 0) - Number(b.impacto ?? 0))
+            .slice(0, 5)
+          const condiciones = (narrativa?.condiciones_cierre ?? []).slice(0, 5)
+          return (
+            <div className="page-break" style={{ padding: "30px 50px" }}>
+              <H n="" t="Síntesis para la decisión" />
+
+              {/* Veredicto */}
+              {narrativa?.recomendacion && (
+                <div style={{ background: SEM.bg, border: `1px solid ${SEM.ln}`, borderRadius: "8px", padding: "14px 16px", marginBottom: "16px" }}>
+                  <div style={{ fontFamily: "Inter, sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: SEM.fg, marginBottom: "6px" }}>{SEM.tag}</div>
+                  <div style={{ fontFamily: "Georgia, serif", fontSize: "13px", lineHeight: 1.5, color: SEM.fg }}>{narrativa.recomendacion}</div>
+                </div>
+              )}
+
+              {/* Puente de precio */}
+              <div style={{ fontFamily: "Inter, sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#9ca3af", margin: "6px 0 8px" }}>El puente de precio</div>
+              {[
+                { t:"Precio pedido por el vendedor", n:v.precio, c:{fg:"#b42318",bg:"#fdf1f0",ln:"#f2c8c4"}, m: ebitdaBase2>0 ? v.precio/ebitdaBase2 : 0 },
+                { t:"Techo de negociación (condicionado)", n:v.ofertaMax, c:{fg:"#9a5b06",bg:"#fdf7e9",ln:"#f0dcb0"}, m: ebitdaBase2>0 ? v.ofertaMax/ebitdaBase2 : 0 },
+                { t:"Oferta inicial recomendada", n:v.ofertaInic, c:{fg:"#0b6e4f",bg:"#eef8f2",ln:"#c3e5d3"}, m: v.multImpl },
+              ].map((seg,i) => (
+                <div key={i} style={{ display:"flex", alignItems:"center", gap:"10px", marginBottom:"6px" }}>
+                  <div style={{ width:"180px", fontFamily:"Georgia,serif", fontSize:"10px", color:"#374151" }}>{seg.t}</div>
+                  <div style={{ flex:1, height:"22px", background:"#f3f1ea", borderRadius:"5px", overflow:"hidden" }}>
+                    <div style={{ width:`${Math.max(6, seg.n/maxP*100)}%`, height:"100%", background:seg.c?.bg, border:`1px solid ${seg.c?.ln}`, borderRadius:"5px", display:"flex", alignItems:"center", paddingLeft:"8px", fontFamily:"Inter,sans-serif", fontSize:"11px", fontWeight:700, color:seg.c?.fg }}>{fmtUSDc(seg.n)}</div>
+                  </div>
+                  <div style={{ width:"70px", textAlign:"right", fontFamily:"Inter,sans-serif", fontSize:"9px", color:"#6b7280", fontVariantNumeric:"tabular-nums" }}>{seg.m>0 ? `${seg.m.toLocaleString("es-AR",{maximumFractionDigits:0})}× EBITDA` : ""}</div>
+                </div>
+              ))}
+              <p style={{ fontFamily:"Georgia,serif", fontSize:"10px", lineHeight:1.6, color:"#374151", textAlign:"justify", margin:"8px 0 0" }}>
+                La brecha de <strong>{fmtUSDc(brecha)}</strong> entre la oferta recomendada y el precio pedido es la distancia entre pagar {v.multImpl>0 ? `${v.multImpl.toLocaleString("es-AR",{maximumFractionDigits:0})}×` : "—"} y {ebitdaBase2>0 ? `${(v.precio/ebitdaBase2).toLocaleString("es-AR",{maximumFractionDigits:0})}×` : "—"} el EBITDA normalizado de {fmtUSDc(v.ebitdaNorm)}. El detalle metodológico se desarrolla en las secciones siguientes.
+              </p>
+
+              {/* Estado del proceso */}
+              <div style={{ fontFamily: "Inter, sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#9ca3af", margin: "18px 0 8px" }}>Estado del proceso</div>
+              <div style={{ display:"flex", gap:"8px", marginBottom:"8px" }}>
+                {[
+                  {v:recibidos, c:"#0b6e4f", l:"Requerimientos completos"},
+                  {v:parciales, c:"#9a5b06", l:"Parciales (en avance)"},
+                  {v:pendientes, c:"#b42318", l:"Pendientes"},
+                ].map((m,i)=>(
+                  <div key={i} style={{ flex:1, border:"1px solid #e5e7eb", borderRadius:"7px", padding:"9px 11px", background:"#fcfbf8" }}>
+                    <div style={{ fontFamily:"Inter,sans-serif", fontSize:"18px", fontWeight:800, color:m.c }}>{m.v}</div>
+                    <div style={{ fontFamily:"Inter,sans-serif", fontSize:"8px", letterSpacing:"0.04em", textTransform:"uppercase", color:"#6b7280", marginTop:"2px" }}>{m.l}</div>
+                  </div>
+                ))}
+              </div>
+              <p style={{ fontFamily:"Georgia,serif", fontSize:"9.5px", lineHeight:1.55, color:"#6b7280", textAlign:"justify", fontStyle:"italic", margin:"2px 0 0" }}>
+                El presente es un informe de estado de avance: el proceso de due diligence permanece abierto y algunos requerimientos continúan en gestión. Ninguno de los puntos pendientes modifica la recomendación central de precio; deben quedar resueltos como condición previa a la firma.
+              </p>
+
+              {/* Lo que mueve el precio */}
+              {topRiesgos.length > 0 && (
+                <>
+                  <div style={{ fontFamily: "Inter, sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#9ca3af", margin: "18px 0 6px" }}>Lo que mueve el precio</div>
+                  <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                    <tbody>
+                      {topRiesgos.map((r,i) => (
+                        <tr key={i}>
+                          <td style={{ padding:"5px 0", borderBottom:"0.5px solid #e5e7eb", fontFamily:"Georgia,serif", fontSize:"10px", color:"#1f2937" }}>
+                            {String(r.riesgo ?? "").split(/[.:]/)[0].slice(0,95)}
+                            <span style={{ color:"#9ca3af", fontSize:"8.5px" }}> · {String(r.area ?? "")}</span>
+                          </td>
+                          <td style={{ padding:"5px 0", borderBottom:"0.5px solid #e5e7eb", textAlign:"right", fontFamily:"Inter,sans-serif", fontSize:"10px", fontWeight:700, color:"#b42318", fontVariantNumeric:"tabular-nums", whiteSpace:"nowrap" }}>{fmtUSDc(Math.abs(Number(r.impacto ?? 0)))}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
+              )}
+
+              {/* Condiciones para avanzar */}
+              {condiciones.length > 0 && (
+                <>
+                  <div style={{ fontFamily: "Inter, sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#9ca3af", margin: "18px 0 6px" }}>Condiciones para avanzar (síntesis)</div>
+                  <ol style={{ margin:"0 0 0 16px", padding:0 }}>
+                    {condiciones.map((c,i) => {
+                      const txt = String(c).replace(/^RIESGO:[\s\S]*?CONDICIÓN:\s*/i, "").split(/\.\s/)[0]
+                      return <li key={i} style={{ fontFamily:"Georgia,serif", fontSize:"9.5px", lineHeight:1.5, color:"#374151", textAlign:"justify", marginBottom:"4px" }}>{txt.slice(0,180)}.</li>
+                    })}
+                  </ol>
+                  <p style={{ fontFamily:"Georgia,serif", fontSize:"8.5px", color:"#9ca3af", fontStyle:"italic", margin:"6px 0 0" }}>El listado completo de condiciones de cierre, cada una vinculada a su riesgo, se detalla en la sección correspondiente.</p>
+                </>
+              )}
+            </div>
+          )
+        })()}
 
 
         {/* ══════ 1. RESUMEN EJECUTIVO ══════ */}
