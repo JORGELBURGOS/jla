@@ -90,6 +90,26 @@ export default function AdminPage() {
     await loadData()
   }
 
+  const [deletingCase, setDeletingCase] = useState<string | null>(null)
+  async function deleteCase(c: Case) {
+    // Confirmación fuerte estilo GitHub: hay que tipear el nombre exacto del caso.
+    const typed = prompt(
+      `⚠ BORRADO IRREVERSIBLE\n\nEsto elimina el caso "${c.nombre}" y TODOS sus datos: requerimientos, riesgos, ajustes, supuestos, validaciones, activos, balances y documentos. No se puede deshacer.\n\nPara confirmar, escribí el nombre exacto del caso:`
+    )
+    if (typed === null) return
+    if (typed.trim() !== c.nombre.trim()) {
+      alert("El nombre no coincide. No se borró nada.")
+      return
+    }
+    setDeletingCase(c.id)
+    const email = localStorage.getItem(EMAIL_KEY) ?? ""
+    const { data, error } = await db.rpc("delete_case_cascade", { p_case_id: c.id, p_actor_email: email })
+    setDeletingCase(null)
+    if (error) { alert("No se pudo borrar: " + error.message); return }
+    void data
+    await loadData()
+  }
+
   function upd(id: string, field: keyof UserPerm, value: unknown) {
     setUsers(prev => prev.map(u => u.id === id ? { ...u, [field]: value } : u))
   }
@@ -272,6 +292,31 @@ export default function AdminPage() {
               </div>
             )
           })}
+        </div>
+
+        {/* ══════ GESTIÓN DE CASOS (solo admin principal) ══════ */}
+        <div className="mt-8">
+          <h2 className="text-sm font-bold text-gray-700 mb-1">Gestión de casos ({cases.length})</h2>
+          <p className="text-xs text-gray-400 mb-3">Borrar un caso elimina de forma permanente todos sus datos asociados. Acción irreversible, restringida al administrador principal.</p>
+          <div className="border border-gray-200 rounded-xl divide-y divide-gray-100">
+            {cases.map(c => (
+              <div key={c.id} className="flex items-center justify-between px-4 py-3">
+                <div>
+                  <div className="text-sm text-gray-800 font-medium">{c.nombre}</div>
+                  <div className="text-xs text-gray-400 font-mono">{c.id}</div>
+                </div>
+                <button
+                  onClick={() => deleteCase(c)}
+                  disabled={deletingCase === c.id}
+                  className="text-xs font-semibold text-red-600 border border-red-200 hover:bg-red-50 rounded-lg px-3 py-1.5 disabled:opacity-50">
+                  {deletingCase === c.id ? "Borrando…" : "Borrar caso"}
+                </button>
+              </div>
+            ))}
+            {cases.length === 0 && (
+              <div className="px-4 py-6 text-center text-xs text-gray-400">No hay casos cargados.</div>
+            )}
+          </div>
         </div>
       </div>
     </div>
