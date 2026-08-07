@@ -56,7 +56,7 @@ export default async function Dashboard({ params }: { params: Promise<{ id: stri
           {[
             { label:"Solidez de la oferta", sub:"sustento de supuestos clave + convergencia DCF/comparables", val:v.icddOferta, peso:60 },
             { label:"Riesgo verificado en USD", sub:"evidencia dura vs. sospecha, ponderado por monto", val:v.icddRiesgo, peso:16 },
-            { label:"Tracker ponderado", sub:"bloqueantes pesan doble + cascada por área", val:v.icddTracker, peso:16 },
+            { label:"Tracker ponderado", sub:"diferidos post-seña pesan la mitad + cascada por área", val:v.icddTracker, peso:16 },
             { label:"Activos verificados", sub:"confirmado en visita vs. estimado", val:v.icddActivos, peso:8 },
           ].map((c2,i) => (
             <div key={i} className="flex items-center gap-3">

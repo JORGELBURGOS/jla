@@ -359,7 +359,7 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
 
   // ── Índice de Confiabilidad del DD ──
 
-  // Componente 1: tracker ponderado por bloqueante + cascada por área (16%)
+  // Componente 1: tracker ponderado (diferidos post-seña pesan la mitad) + cascada por área (16%)
   const areaMadre = (area: string) => area.split("/")[0].trim()
   const riesgosPorAreaMadre: Record<string, number> = {}
   for (const r of riesgosR) {
@@ -380,7 +380,10 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
 
   let numTracker = 0, denTracker = 0
   for (const req of reqsR) {
-    const pesoBase = req.antes_sena ? 2 : 1
+    // Post-Seña: el vendedor difirió su entrega a después de la seña. Es un faltante
+    // esperado y aceptado, así que pesa la MITAD — no castiga el índice como un faltante
+    // crítico, pero tampoco desaparece (sigue siendo algo pendiente para el cierre).
+    const pesoBase = req.antes_sena ? 0.5 : 1
     // Parcial: usa su grado de completitud real (cobertura_pct/100) si está cargado;
     // 0.5 solo como piso por defecto cuando no hay dato. Recibido=1, Pendiente=0.
     const puntajeParcial = req.cobertura_pct != null ? req.cobertura_pct / 100 : 0.5
