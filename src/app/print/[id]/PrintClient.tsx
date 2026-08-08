@@ -917,7 +917,13 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
             if (!cats.has(c)) cats.set(c, [])
             cats.get(c)!.push(a)
           }
-          const valDe = (a: Record<string,unknown>) => Number(a.valor_mercado ?? a.valor_usd ?? 0)
+          // Usa EXACTAMENTE la misma lógica que getVal() en compute.ts, para que el total del
+          // anexo coincida al peso con el "activos revaluados" del método M1 en el cuerpo del
+          // informe. Si hay cantidad y precio unitario, vale su producto; si no, el valor_usd.
+          const valDe = (a: Record<string,unknown>) =>
+            (a.cantidad != null && a.precio_unitario != null)
+              ? Math.round(Number(a.cantidad) * Number(a.precio_unitario))
+              : Number(a.valor_usd ?? 0)
           const totalGeneral = assets.reduce((s,a) => s + valDe(a), 0)
           // ordenar categorías por subtotal desc
           const catsOrdenadas = [...cats.entries()]
@@ -973,9 +979,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
                 <span style={{ fontFamily:"Inter, sans-serif", fontSize:"15px", fontWeight:800, color:"#1a2744", fontVariantNumeric:"tabular-nums" }}>{fmtUSDc(totalGeneral)}</span>
               </div>
               <p style={{ fontFamily:"Georgia, serif", fontSize:"9px", fontStyle:"italic", color:"#9ca3af", marginTop:"8px", textAlign:"justify" }}>
-                Los valores de mercado se estiman sobre la base de la documentación disponible (facturas, informes técnicos,
-                verificación en visita a planta) y pueden diferir de una tasación formal independiente. El total aquí expuesto
-                alimenta el método de activos netos revaluados descripto en la sección de valuación.
+                Los valores se estiman sobre la base de la documentación disponible, precios de reposición de mercado y verificación en visita a planta. Una parte de las estimaciones —en particular inmueble, intangibles regulatorios y maquinaria de proceso— tiene carácter preliminar y está sujeta a tasación formal independiente y a la verificación documental pendiente; los importes pueden variar respecto de una valuación definitiva. El total aquí expuesto alimenta el método de activos netos revaluados (M1) descripto en la sección de valuación y representa el techo patrimonial de referencia, no un valor líquido de realización inmediata.
               </p>
             </div>
           )
