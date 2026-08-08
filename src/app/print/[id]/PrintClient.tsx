@@ -37,21 +37,24 @@ function fmtNum(n: number) {
   return `${s}${miles(Math.abs(n))}`
 }
 // Resume una metodología a ~2 renglones SIN cortar palabras ni frases a la mitad.
-// Toma oraciones completas hasta acercarse al límite; si la primera ya lo excede,
-// corta en el último espacio y cierra con puntos suspensivos.
-function resumirMetodo(texto: string, max = 155): string {
-  const t = (texto ?? "").trim()
+// Si el texto entero entra en el límite, se devuelve COMPLETO y sin puntos suspensivos.
+// Solo cuando realmente excede el máximo se recorta —por oración si hay puntos, o por
+// palabra si no los hay— y recién ahí se cierra con puntos suspensivos.
+function resumirMetodo(texto: string, max = 175): string {
+  const t = (texto ?? "").replace(/\s+/g, " ").trim()
   if (!t || t === "—") return "—"
-  if (t.length <= max) return t
-  // Cortar por oraciones (punto seguido de espacio) y acumular mientras entren completas.
+  if (t.length <= max) return t   // entra entero: se muestra tal cual, sin "…"
+  // Intentar cortar por oraciones completas (punto + espacio).
   const oraciones = t.split(/(?<=\.)\s+/)
-  let acc = ""
-  for (const o of oraciones) {
-    if ((acc + o).length > max) break
-    acc += (acc ? " " : "") + o
+  if (oraciones.length > 1) {
+    let acc = ""
+    for (const o of oraciones) {
+      if ((acc + " " + o).trim().length > max) break
+      acc = (acc ? acc + " " : "") + o
+    }
+    if (acc) return acc   // ya termina en punto, sin "…"
   }
-  if (acc) return acc
-  // La primera oración ya supera el máximo: cortar en el último espacio antes del límite.
+  // Sin puntos aprovechables: cortar en el último espacio antes del límite y cerrar con "…".
   const corte = t.slice(0, max)
   const ultimoEspacio = corte.lastIndexOf(" ")
   return (ultimoEspacio > 40 ? corte.slice(0, ultimoEspacio) : corte).replace(/[,;:]$/, "") + "…"
@@ -981,9 +984,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
                             {String(a.nombre ?? "—")}
                             {a.descripcion ? <span style={{ color:"#9ca3af", display:"block", fontSize:"8.5px" }}>{String(a.descripcion).slice(0,70)}</span> : null}
                           </td>
-                          <td style={{ ...td, fontSize:"8.5px", color:"#6b7280", lineHeight:1.35 }}>
-                            <span style={{ display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{resumirMetodo(String(a.metodologia ?? "—"))}</span>
-                          </td>
+                          <td style={{ ...td, fontSize:"8.5px", color:"#6b7280", lineHeight:1.4, wordSpacing:"normal", whiteSpace:"normal" }}>{resumirMetodo(String(a.metodologia ?? "—"))}</td>
                           <td style={tdNum}>{valDe(a) > 0 ? fmtUSDc(valDe(a)) : "—"}</td>
                         </tr>
                       ))}
