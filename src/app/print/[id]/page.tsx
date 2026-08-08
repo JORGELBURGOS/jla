@@ -22,6 +22,7 @@ export default async function PrintPage({
     valuation,
     { data: savedNarrativa },
     { data: cerrados },
+    { data: assets },
   ] = await Promise.all([
     db.from("dd_cases").select("*, industry:dd_industries(nombre), sub_sector:dd_sub_sectors(nombre)").eq("id", id).single(),
     db.from("dd_case_requirements").select("*").eq("case_id", id).order("seccion_orden").order("n_item"),
@@ -32,6 +33,7 @@ export default async function PrintPage({
     computeValuation(id, db),
     db.from("dd_case_executive_summary").select("*").eq("case_id", id).maybeSingle(),
     db.from("dd_case_risks").select("id,riesgo,area,impacto,notas,estado").eq("case_id", id).eq("estado","CERRADO").order("impacto"),
+    db.from("dd_case_assets").select("*").eq("case_id", id).order("categoria").order("valor_usd", { ascending: false }),
   ])
 
   return (
@@ -47,6 +49,7 @@ export default async function PrintPage({
       savedNarrativa={savedNarrativa as Record<string,unknown> | null}
       execOverride={sp?.exec ?? null}
       cerrados={(cerrados ?? []) as Record<string,unknown>[]}
+      assets={(assets ?? []) as Record<string,unknown>[]}
     />
   )
 }

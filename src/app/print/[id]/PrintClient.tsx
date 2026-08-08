@@ -15,6 +15,7 @@ interface Props {
   savedNarrativa: Record<string,unknown> | null
   execOverride?: string | null
   cerrados: Record<string,unknown>[]
+  assets: Record<string,unknown>[]
 }
 
 // ── Helpers de formato ──────────────────────────────────────────────
@@ -52,7 +53,7 @@ function fmtSupuesto(label: string, valor: unknown): string {
 
 const ACTIVOS = ["CONFIRMADO","IDENTIFICADO","CONDICIONAL"]
 
-export default function PrintClient({ caso, reqs, risks, sups, valid, valuation: v, savedNarrativa, execOverride, cerrados }: Props) {
+export default function PrintClient({ caso, reqs, risks, sups, valid, valuation: v, savedNarrativa, execOverride, cerrados, assets }: Props) {
   // Narrativa ejecutiva: la que viaja por ?exec= tiene prioridad; si no, la guardada.
   let fromExec: Record<string,unknown> | null = null
   try { if (execOverride) fromExec = JSON.parse(execOverride) } catch { fromExec = null }
@@ -905,6 +906,80 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
         </div>
 
 
+
+        {/* ══════ ANEXO A · DETALLE DE VALUACIÓN DE ACTIVOS ══════ */}
+        {assets.length > 0 && (() => {
+          // Agrupar por categoría, con subtotales y los activos principales de cada una.
+          // Todo derivado de dd_case_assets en vivo: cero hardcodeo.
+          const cats = new Map<string, Record<string,unknown>[]>()
+          for (const a of assets) {
+            const c = String(a.categoria ?? "Otros")
+            if (!cats.has(c)) cats.set(c, [])
+            cats.get(c)!.push(a)
+          }
+          const valDe = (a: Record<string,unknown>) => Number(a.valor_mercado ?? a.valor_usd ?? 0)
+          const totalGeneral = assets.reduce((s,a) => s + valDe(a), 0)
+          // ordenar categorías por subtotal desc
+          const catsOrdenadas = [...cats.entries()]
+            .map(([cat, items]) => ({ cat, items, subtotal: items.reduce((s,a)=>s+valDe(a),0) }))
+            .sort((x,y) => y.subtotal - x.subtotal)
+
+          return (
+            <div className="page-break" style={{ padding: "30px 50px 60px" }}>
+              <H n="Anexo A" t="Detalle de la valuación de activos" />
+              <P>
+                El siguiente detalle respalda el método de activos netos revaluados (M1) empleado en la valuación.
+                Los valores se expresan en dólares estadounidenses y reflejan el criterio de valor de mercado
+                estimado, agrupados por categoría. Los activos con valor propio nulo (intangibles regulatorios,
+                cartera comercial) se listan por su relevancia cualitativa aunque no computen valor patrimonial directo.
+              </P>
+
+              {catsOrdenadas.map(({ cat, items, subtotal }, ci) => (
+                <div key={ci} style={{ marginBottom: "16px" }} className="avoid-break">
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", borderBottom:"2px solid #1a2744", paddingBottom:"4px", marginBottom:"6px" }}>
+                    <span style={{ fontFamily:"Inter, sans-serif", fontSize:"11px", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em", color:"#1a2744" }}>{cat}</span>
+                    <span style={{ fontFamily:"Inter, sans-serif", fontSize:"12px", fontWeight:700, color:"#1a2744", fontVariantNumeric:"tabular-nums" }}>{subtotal > 0 ? fmtUSDc(subtotal) : "—"}</span>
+                  </div>
+                  <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                    <thead>
+                      <tr>
+                        <th style={{ ...th, width:"42%" }}>Activo</th>
+                        <th style={{ ...th, width:"12%" }}>Año/Dom.</th>
+                        <th style={{ ...th, width:"16%" }}>Estado</th>
+                        <th style={{ ...th, width:"15%", textAlign:"left" }}>Metodología</th>
+                        <th style={{ ...th, textAlign:"right", width:"15%" }}>Valor USD</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((a, ai) => (
+                        <tr key={ai}>
+                          <td style={td}>
+                            {String(a.nombre ?? "—")}
+                            {a.descripcion ? <span style={{ color:"#9ca3af", display:"block", fontSize:"8.5px" }}>{String(a.descripcion).slice(0,70)}</span> : null}
+                          </td>
+                          <td style={{ ...td, fontSize:"9px", color:"#6b7280" }}>{String(a.dominio ?? a.año ?? "—")}</td>
+                          <td style={{ ...td, fontSize:"9px" }}>{String(a.estado_bien ?? a.estado ?? "—")}</td>
+                          <td style={{ ...td, fontSize:"8.5px", color:"#6b7280" }}>{String(a.metodologia ?? "—").slice(0,40)}</td>
+                          <td style={tdNum}>{valDe(a) > 0 ? fmtUSDc(valDe(a)) : "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ))}
+
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", borderTop:"2px solid #1a2744", marginTop:"6px", paddingTop:"8px" }}>
+                <span style={{ fontFamily:"Georgia, serif", fontSize:"13px", fontWeight:700, color:"#1a2744" }}>Total activos revaluados</span>
+                <span style={{ fontFamily:"Inter, sans-serif", fontSize:"15px", fontWeight:800, color:"#1a2744", fontVariantNumeric:"tabular-nums" }}>{fmtUSDc(totalGeneral)}</span>
+              </div>
+              <p style={{ fontFamily:"Georgia, serif", fontSize:"9px", fontStyle:"italic", color:"#9ca3af", marginTop:"8px", textAlign:"justify" }}>
+                Los valores de mercado se estiman sobre la base de la documentación disponible (facturas, informes técnicos,
+                verificación en visita a planta) y pueden diferir de una tasación formal independiente. El total aquí expuesto
+                alimenta el método de activos netos revaluados descripto en la sección de valuación.
+              </p>
+            </div>
+          )
+        })()}
 
         {/* ══════ 13. LIMITACIONES ══════ */}
         <div className="page-break" style={{ padding: "30px 50px 60px" }}>
