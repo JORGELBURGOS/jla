@@ -52,8 +52,6 @@ const NAV_ON: [string, string][] = [
   ["---"           , "ESTRUCTURA DE LA ON"],
   ["/on-estructura", "Estructura y Términos"],
   ["/on-garantias" , "Análisis de Garantías"],
-  ["/on-regulatorio","Marco Regulatorio CNV"],
-  ["/on-compliance", "Cumplimiento CNV"],
   ["---"           , "RIESGOS"],
   ["/on-riesgos"   , "Riesgos del Emisor"],
   ["---"           , "HERRAMIENTAS"],
