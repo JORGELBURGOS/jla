@@ -58,7 +58,7 @@ const NAV_ON: [string, string][] = [
   ["/assistant"    , "Asistente"],
   ["---"           , "ENTREGABLE"],
   ["/on-potable"   , "¿Es potable? 🚦"],
-  ["/print-on"     , "📄 Informe Final"],
+  ["/informe-on"   , "📄 Informe Final"],
   ["---"           , "REFERENCIA"],
   ["/glossary"     , "📖 Diccionario"],
   ["/log"          , "Log Auditoría"],
