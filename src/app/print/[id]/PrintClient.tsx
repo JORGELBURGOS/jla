@@ -36,6 +36,26 @@ function fmtNum(n: number) {
   if (a >= 1_000_000) return `${s}${(a/1_000_000).toLocaleString("es-AR", { maximumFractionDigits: 2 })}M`
   return `${s}${miles(Math.abs(n))}`
 }
+// Resume una metodología a ~2 renglones SIN cortar palabras ni frases a la mitad.
+// Toma oraciones completas hasta acercarse al límite; si la primera ya lo excede,
+// corta en el último espacio y cierra con puntos suspensivos.
+function resumirMetodo(texto: string, max = 155): string {
+  const t = (texto ?? "").trim()
+  if (!t || t === "—") return "—"
+  if (t.length <= max) return t
+  // Cortar por oraciones (punto seguido de espacio) y acumular mientras entren completas.
+  const oraciones = t.split(/(?<=\.)\s+/)
+  let acc = ""
+  for (const o of oraciones) {
+    if ((acc + o).length > max) break
+    acc += (acc ? " " : "") + o
+  }
+  if (acc) return acc
+  // La primera oración ya supera el máximo: cortar en el último espacio antes del límite.
+  const corte = t.slice(0, max)
+  const ultimoEspacio = corte.lastIndexOf(" ")
+  return (ultimoEspacio > 40 ? corte.slice(0, ultimoEspacio) : corte).replace(/[,;:]$/, "") + "…"
+}
 function fmtSupuesto(label: string, valor: unknown): string {
   const raw = String(valor ?? "").split("|")[0].trim()
   if (!raw) return "Pendiente"
@@ -949,11 +969,9 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
                   <table style={{ width:"100%", borderCollapse:"collapse" }}>
                     <thead>
                       <tr>
-                        <th style={{ ...th, width:"42%" }}>Activo</th>
-                        <th style={{ ...th, width:"12%" }}>Año/Dom.</th>
-                        <th style={{ ...th, width:"16%" }}>Estado</th>
-                        <th style={{ ...th, width:"15%", textAlign:"left" }}>Metodología</th>
-                        <th style={{ ...th, textAlign:"right", width:"15%" }}>Valor USD</th>
+                        <th style={{ ...th, width:"38%" }}>Activo</th>
+                        <th style={{ ...th, width:"46%", textAlign:"left" }}>Metodología</th>
+                        <th style={{ ...th, textAlign:"right", width:"16%" }}>Valor USD</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -963,9 +981,9 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
                             {String(a.nombre ?? "—")}
                             {a.descripcion ? <span style={{ color:"#9ca3af", display:"block", fontSize:"8.5px" }}>{String(a.descripcion).slice(0,70)}</span> : null}
                           </td>
-                          <td style={{ ...td, fontSize:"9px", color:"#6b7280" }}>{String(a.dominio ?? a.año ?? "—")}</td>
-                          <td style={{ ...td, fontSize:"9px" }}>{String(a.estado_bien ?? a.estado ?? "—")}</td>
-                          <td style={{ ...td, fontSize:"8.5px", color:"#6b7280" }}>{String(a.metodologia ?? "—").slice(0,40)}</td>
+                          <td style={{ ...td, fontSize:"8.5px", color:"#6b7280", lineHeight:1.35 }}>
+                            <span style={{ display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{resumirMetodo(String(a.metodologia ?? "—"))}</span>
+                          </td>
                           <td style={tdNum}>{valDe(a) > 0 ? fmtUSDc(valDe(a)) : "—"}</td>
                         </tr>
                       ))}
