@@ -1,22 +1,25 @@
-CAMBIO DE PROVEEDOR DE TOKENS — 2026-10-09
-El asistente, el informe ejecutivo, el glosario, los vinculos riesgo-requerimiento
-y el borrador de EBITDA pasan a DeepSeek. El triage de documentos (PDFs) sigue como esta.
+DEEPSEEK + LOGO DE PESTANA — 2026-10-09
 
-QUE HACER
-1. Copia las carpetas de este zip SOBRE tu carpeta C:\jla (pisa 4 archivos).
-2. Agrega la clave de DeepSeek como variable de entorno en Vercel:
-   vercel.com → proyecto jla → Settings → Environment Variables → Add
-   Nombre:  DEEPSEEK_API_KEY
-   Valor:   (tu clave de platform.deepseek.com → API keys)
-   Marcar Production, Preview y Development → Save
-3. En C:\jla, en la terminal:
+QUE TRAE ESTE ZIP (6 archivos, pisa los que ya existan)
+— 4 archivos del cambio a DeepSeek (asistente, informe ejecutivo, glosario,
+  vinculos y borrador EBITDA pasan a DeepSeek; el triage de PDFs sigue como esta).
+— 2 archivos nuevos del logo de la pestana (src/app/icon.png y src/app/favicon.ico)
+  fondo negro con "M&A" en azul. No hay que tocar nada mas, la plataforma
+  lo levanta sola.
+
+LA CLAVE DE DEEPSEEK YA ESTA CARGADA EN VERCEL (la cargue yo, encriptada,
+para Production, Preview y Development). No tenes que hacer ese paso.
+
+QUE HACER (unico paso, el mismo de siempre)
+1. Copia las carpetas de este zip SOBRE tu carpeta C:\jla (pisa los archivos).
+2. En C:\jla, en la terminal:
    git add -A
-   git commit -m "feat: asistente e informes de texto con DeepSeek"
+   git commit -m "feat: DeepSeek en asistente e informes + logo de pestana"
    git push
 
 RED DE SEGURIDAD
-Si la variable DEEPSEEK_API_KEY faltara o la borras, todo vuelve solo al proveedor
-anterior sin romperse. Podes hacer el push antes o despues de cargar la clave.
+Si la variable DEEPSEEK_API_KEY faltara o la borras, todo vuelve solo al
+proveedor anterior sin romperse.
 
 NOTA DE SALDO
 Tenes USD 1,82 en DeepSeek. El chat gasta centavos por pregunta, pero con uso
