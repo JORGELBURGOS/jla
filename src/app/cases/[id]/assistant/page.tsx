@@ -16,6 +16,7 @@ interface Message {
   role: "user" | "assistant"
   content: string
   acciones?: Accion[]
+  criterios?: number
 }
 
 // Genera texto legible para el usuario — sin términos técnicos
@@ -119,7 +120,8 @@ export default function AssistantPage({ params }: { params: { id: string } }) {
       const newMsg: Message = {
         role: "assistant",
         content: data.respuesta ?? data.error ?? "Error",
-        acciones: data.acciones?.length ? data.acciones : undefined
+        acciones: data.acciones?.length ? data.acciones : undefined,
+        criterios: data.criterios_usados || undefined
       }
       setMessages(prev => [...prev, newMsg])
       // Pre-seleccionar todas las acciones
@@ -198,6 +200,12 @@ export default function AssistantPage({ params }: { params: { id: string } }) {
               }`}>
                 {m.content}
               </div>
+
+              {m.role === "assistant" && !!m.criterios && (
+                <div className="mt-1.5 inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded-full" title="La respuesta se apoyó en criterios de trabajo de JL Advisory">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#1a2744]"/> {m.criterios} criterio{m.criterios > 1 ? "s" : ""} de la casa aplicado{m.criterios > 1 ? "s" : ""}
+                </div>
+              )}
 
               {/* Cambios propuestos — NUNCA muestra JSON */}
               {m.acciones && m.acciones.length > 0 && (

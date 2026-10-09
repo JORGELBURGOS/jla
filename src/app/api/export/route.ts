@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
   const db = createServiceClient()
   const [{ data: caseData }, { data: reqs }] = await Promise.all([
     db.from('dd_cases').select('nombre').eq('id', caseId).single(),
-    db.from('dd_case_requirements').select('*').eq('case_id', caseId).order('seccion_orden').order('n_item')
+    db.from('dd_case_requirements').select('*').eq('case_id', caseId).neq('estado','Suspendido').order('seccion_orden').order('n_item')
   ])
 
   const nombre  = (caseData as Record<string,unknown>)?.nombre as string ?? 'Due Diligence'

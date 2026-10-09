@@ -20,7 +20,8 @@ export async function POST(req: NextRequest) {
 
   const [
     { data: caseData }, { data: reqs }, { data: risks },
-    { data: supuestos }, { data: env }, { data: valid }, { data: assets }
+    { data: supuestos }, { data: env }, { data: valid }, { data: assets },
+    criteriosRes
   ] = await Promise.all([
     db.from('dd_cases').select('*, industry:dd_industries(nombre), sub_sector:dd_sub_sectors(nombre)').eq('id', caseId).single(),
     db.from('dd_case_requirements').select('*').eq('case_id', caseId).order('n_item'),
@@ -28,10 +29,17 @@ export async function POST(req: NextRequest) {
     db.from('dd_case_assumptions').select('*').eq('case_id', caseId).order('orden'),
     db.from('dd_case_environmental').select('*').eq('case_id', caseId).order('orden'),
     db.from('dd_case_validation').select('*').eq('case_id', caseId).order('seccion_orden'),
-    db.from('dd_case_assets').select('*').eq('case_id', caseId).order('categoria')
+    db.from('dd_case_assets').select('*').eq('case_id', caseId).order('categoria'),
+    // 2026-10-09 — prebúsqueda de criterios de la casa con las palabras literales del usuario (falla en silencio si la tabla aún no existe)
+    db.rpc('dd_buscar_criterios', { p_query: mensaje, p_limit: 3 }).then(r => r, () => ({ data: null }))
   ])
 
-  const allReqs = (reqs ?? []) as Record<string,unknown>[]
+  const criterios = ((criteriosRes as { data: unknown })?.data ?? []) as { categoria: string; titulo: string; contenido: string }[]
+
+  // 2026-10-09 — los ítems suspendidos quedan fuera del alcance del DD: no se piden, no cuentan, el asistente no los considera
+  const todosReqs = (reqs ?? []) as Record<string,unknown>[]
+  const suspendidos = todosReqs.filter(r => r.estado === 'Suspendido')
+  const allReqs = todosReqs.filter(r => r.estado !== 'Suspendido')
   const allRisks = (risks ?? []) as Record<string,unknown>[]
   const allSups = (supuestos ?? []) as Record<string,unknown>[]
   const allEnv = (env ?? []) as Record<string,unknown>[]
@@ -157,6 +165,8 @@ ACCIONES_JSON:[
   {"tipo":"actualizar_activo","nombre":"nombre EXACTO del activo","valor_mercado":55000,"metodologia":"nueva metodología","descripcion":"texto claro"}
 ]
 
+SUSPENSIÓN DE REQUERIMIENTOS: si el usuario dice que un ítem no aplica, que no lo pidan más o que quede fuera del alcance, proponé actualizar_item con campo "Estado" y valor "Suspendido" (y el motivo en campo "Notas" en otra acción). Para reincorporarlo, estado "Pendiente". Los suspendidos no se piden al vendedor, no cuentan para el avance y no participan del análisis.
+
 CUÁNDO USAR CADA TIPO:
 - actualizar_item: modificar estado, cobertura, faltantes, alertas, notas o ComoCumplimentar de un item EXISTENTE. El campo 'ComoCumplimentar' edita las instrucciones de cómo obtener o cumplimentar el requerimiento.
 - editar_titulo_item: corregir o mejorar el título/enunciado de un requerimiento existente (campo 'documento'). Usar cuando el usuario pide renombrar, reformular o corregir el texto de un ítem.
@@ -178,7 +188,7 @@ Si el usuario dice "necesitamos pedir también Y" → nuevo_item con el document
 ${caseD?.nombre} | CUIT: ${caseD?.cuit ?? 'N/D'}
 Industria: ${caseD?.industry?.nombre ?? '—'} — ${caseD?.sub_sector?.nombre ?? '—'}
 Precio pedido: ${fmtUSD(Number(caseD?.precio_pedido))}
-Avance DD: ${total ? Math.round((recibidos + parciales * 0.5) / total * 100) : 0}% (${recibidos} recibidos · ${parciales} parciales · ${total - recibidos - parciales} pendientes)
+Avance DD: ${total ? Math.round((recibidos + parciales * 0.5) / total * 100) : 0}% (${recibidos} recibidos · ${parciales} parciales · ${total - recibidos - parciales} pendientes)${suspendidos.length ? `\nSuspendidos (fuera del alcance, no pedirlos ni considerarlos): ${suspendidos.map(s => `N°${s.n_item} — ${s.documento}`).join(' | ')}` : ''}
 Riesgo cuantificado: ${fmtUSD(Math.abs(totalRiesgo))}
 
 DIFERIDOS A POST-SEÑA (el vendedor los entrega tras la seña): ${pendSena.length ? pendSena.map(r => `N°${r.n_item} — ${r.documento}`).join(' | ') : 'ninguno'}
@@ -197,7 +207,10 @@ ${ctxSups}
 ${ctxAmbiental}
 
 ════ VALIDACIÓN DEL PLAN ════
-${ctxValid}`
+${ctxValid}${criterios.length ? `
+
+════ CRITERIOS DE TRABAJO DE LA CASA (aplicalos cuando correspondan a la consulta) ════
+${criterios.map(c => `— [${c.categoria}] ${c.titulo}. ${c.contenido}`).join('\n')}` : ''}`
 
   try {
     const messages: Anthropic.MessageParam[] = [
@@ -242,7 +255,7 @@ ${ctxValid}`
       detalle: mensaje.slice(0, 200), org_id: ORG_ID
     })
 
-    return NextResponse.json({ ok: true, respuesta, acciones })
+    return NextResponse.json({ ok: true, respuesta, acciones, criterios_usados: criterios.length })
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : 'Error' }, { status: 500 })
   }

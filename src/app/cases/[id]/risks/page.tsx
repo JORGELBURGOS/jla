@@ -295,7 +295,7 @@ export default function RisksPage({ params }: { params: { id: string } }) {
 
     Promise.all([
       db.from("dd_case_req_risk_links").select("risk_id,n_item,efecto,descripcion").eq("case_id", caseId),
-      db.from("dd_case_requirements").select("n_item,documento,estado").eq("case_id", caseId)
+      db.from("dd_case_requirements").select("n_item,documento,estado").eq("case_id", caseId).neq("estado","Suspendido")
     ]).then(([{ data: ld }, { data: rd }]) => {
       const reqIdx: Record<number, {documento:string;estado:string}> = {}
       ;(rd ?? []).forEach((r: Record<string,unknown>) => {

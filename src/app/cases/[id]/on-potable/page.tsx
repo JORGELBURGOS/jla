@@ -44,7 +44,7 @@ export default function OnPotablePage({ params }: { params: { id: string } }) {
         db.from("dd_case_on_structure").select("*").eq("case_id", caseId).single(),
         db.from("dd_case_on_repago").select("*").eq("case_id", caseId).eq("escenario","base").order("anio"),
         db.from("dd_case_risks").select("*").eq("case_id", caseId).not("estado","in","(\"DUPLICADO\",\"RECLASIFICADO\")"),
-        db.from("dd_case_requirements").select("estado").eq("case_id", caseId),
+        db.from("dd_case_requirements").select("estado").eq("case_id", caseId).neq("estado","Suspendido"),
         db.from("dd_cases").select("nombre").eq("id", caseId).single()
       ])
 

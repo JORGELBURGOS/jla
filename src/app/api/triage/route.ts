@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   ] = await Promise.all([
     db.from('dd_case_requirements')
       .select('n_item,estado,como_cumplimentar,cobertura,faltantes,alertas,notas,documento,origen')
-      .eq('case_id', caseId).order('n_item'),
+      .eq('case_id', caseId).neq('estado','Suspendido').order('n_item'),
     db.from('dd_case_assumptions').select('*').eq('case_id', caseId).order('orden'),
     db.from('dd_case_risks').select('*').eq('case_id', caseId).neq('estado','DUPLICADO').order('fila_orden'),
     db.from('dd_case_environmental').select('*').eq('case_id', caseId).order('orden'),

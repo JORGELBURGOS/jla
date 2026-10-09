@@ -25,6 +25,7 @@ const ESTADO_STYLE: Record<string, string> = {
   Recibido: "bg-green-100 text-green-800 border-green-300",
   Parcial:  "bg-amber-100 text-amber-800 border-amber-300",
   Pendiente:"bg-gray-100 text-gray-600 border-gray-200",
+  Suspendido:"bg-gray-200 text-gray-500 border-gray-300",
 }
 
 const EFECTO_LABEL: Record<string, string> = {
@@ -58,10 +59,11 @@ function DetailField({ label, value, danger, warn, accent }: {
 }
 
 // ── ItemRow recibe linksMap como prop explícita ────────────────────
-function ItemRow({ item, toggling, onToggle, linksMap, caseId, highlight, esON }: {
+function ItemRow({ item, toggling, onToggle, onSuspender, linksMap, caseId, highlight, esON }: {
   item: Req
   toggling: string | null
   onToggle: (item: Req, campo: "antes_sena" | "antes_visita") => void
+  onSuspender: (item: Req) => void
   linksMap: LinksMap
   caseId: string
   highlight?: boolean
@@ -165,6 +167,13 @@ function ItemRow({ item, toggling, onToggle, linksMap, caseId, highlight, esON }
                   className={`text-xs px-2.5 py-1.5 rounded-lg font-medium border transition-colors ${item.antes_sena ? "bg-purple-100 text-purple-700 border-purple-300" : "bg-white text-gray-500 border-gray-300 hover:bg-purple-50"}`}>
                   {item.antes_sena ? "Post-Seña ✓" : "Marcar Post-Seña"}
                 </button>}
+                <button
+                  onClick={e => { e.stopPropagation(); onSuspender(item) }}
+                  disabled={toggling === item.id}
+                  title="Sacarlo del alcance del DD: no se pide, no cuenta para el avance y el análisis no lo considera. Es reversible."
+                  className="text-xs px-2.5 py-1.5 rounded-lg font-medium border bg-white text-gray-500 border-gray-300 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors">
+                  Suspender
+                </button>
               </div>
             </div>
           </div>
@@ -208,9 +217,10 @@ function ItemRow({ item, toggling, onToggle, linksMap, caseId, highlight, esON }
 }
 
 // ── SeccionRow recibe linksMap y la pasa a ItemRow ─────────────────
-function SeccionRow({ sec, items, toggling, onToggle, linksMap, caseId, highlightItem, esON }: {
+function SeccionRow({ sec, items, toggling, onToggle, onSuspender, linksMap, caseId, highlightItem, esON }: {
   sec: string; items: Req[]; toggling: string | null
   onToggle: (item: Req, campo: "antes_sena" | "antes_visita") => void
+  onSuspender: (item: Req) => void
   linksMap: LinksMap
   caseId: string
   highlightItem?: number; esON?: boolean
@@ -247,6 +257,7 @@ function SeccionRow({ sec, items, toggling, onToggle, linksMap, caseId, highligh
               item={item}
               toggling={toggling}
               onToggle={onToggle}
+              onSuspender={onSuspender}
               linksMap={linksMap}
               caseId={caseId}
               esON={esON}
@@ -273,6 +284,7 @@ export default function RequirementsPage({ params }: { params: { id: string } })
   }, [])
   const [toggling, setToggling] = useState<string | null>(null)
   const [downloading, setDownloading] = useState<string | null>(null)
+  const [showSusp, setShowSusp] = useState(false)
   const db = createClient()
 
   async function descargarExcel(modo: "vendedor" | "interno") {
@@ -331,16 +343,41 @@ export default function RequirementsPage({ params }: { params: { id: string } })
     setToggling(null)
   }, [db])
 
-  const secciones = [...new Set(items.map(x => x.seccion))].sort((a,b) => parseInt(a) - parseInt(b))
-  const total = items.length
-  const rec   = items.filter(x => x.estado === "Recibido").length
-  const par   = items.filter(x => x.estado === "Parcial").length
+  // 2026-10-09 — suspender saca el ítem del alcance del DD (no se pide, no cuenta, el análisis no lo considera); reversible
+  const onSuspender = useCallback(async (item: Req) => {
+    const motivo = window.prompt(`Suspender el ítem N°${item.n_item} — "${item.documento}".\nNo se va a pedir ni contar para el DD. Es reversible.\n\nMotivo (opcional):`)
+    if (motivo === null) return
+    const sello = `[${new Date().toLocaleDateString("es-AR")}] Suspendido (estaba ${item.estado})${motivo.trim() ? ` — ${motivo.trim()}` : ""}`
+    const comentarios = item.comentarios ? `${item.comentarios}\n${sello}` : sello
+    setToggling(item.id)
+    setItems(prev => prev.map(it => it.id === item.id ? { ...it, estado: "Suspendido", comentarios } : it))
+    await db.from("dd_case_requirements").update({ estado: "Suspendido", comentarios, updated_at: new Date().toISOString() }).eq("id", item.id)
+    await db.from("dd_audit_log").insert({ case_id: caseId, accion: "Suspender requerimiento", referencia: `N°${item.n_item}`, detalle: `${item.documento}${motivo.trim() ? ` — ${motivo.trim()}` : ""}`.slice(0, 200), org_id: "jl-advisory" })
+    setToggling(null)
+  }, [db, caseId])
+
+  const onReactivar = useCallback(async (item: Req) => {
+    const sello = `[${new Date().toLocaleDateString("es-AR")}] Reactivado`
+    const comentarios = item.comentarios ? `${item.comentarios}\n${sello}` : sello
+    setToggling(item.id)
+    setItems(prev => prev.map(it => it.id === item.id ? { ...it, estado: "Pendiente", comentarios } : it))
+    await db.from("dd_case_requirements").update({ estado: "Pendiente", comentarios, updated_at: new Date().toISOString() }).eq("id", item.id)
+    await db.from("dd_audit_log").insert({ case_id: caseId, accion: "Reactivar requerimiento", referencia: `N°${item.n_item}`, detalle: String(item.documento).slice(0, 200), org_id: "jl-advisory" })
+    setToggling(null)
+  }, [db, caseId])
+
+  const activos = items.filter(x => x.estado !== "Suspendido")
+  const susp    = items.filter(x => x.estado === "Suspendido")
+  const secciones = [...new Set(activos.map(x => x.seccion))].sort((a,b) => parseInt(a) - parseInt(b))
+  const total = activos.length
+  const rec   = activos.filter(x => x.estado === "Recibido").length
+  const par   = activos.filter(x => x.estado === "Parcial").length
   const pend  = total - rec - par
   const avance = total ? Math.round((rec + par * 0.5) / total * 100) : 0
-  const pendSena = items.filter(x => x.antes_sena && x.estado !== "Recibido")
+  const pendSena = activos.filter(x => x.antes_sena && x.estado !== "Recibido")
 
   if (tab === "vendedor") {
-    const pendientes = items.filter(x => x.estado !== "Recibido")
+    const pendientes = activos.filter(x => x.estado !== "Recibido")
     return (
       <div className="p-6 max-w-4xl mx-auto">
         <div className="flex items-center gap-3 mb-4">
@@ -384,6 +421,7 @@ export default function RequirementsPage({ params }: { params: { id: string } })
           </div>
           <p className="text-sm text-gray-500">
             {total} ítems · <span className="text-green-700 font-medium">{rec} recibidos</span> · <span className="text-amber-700 font-medium">{par} parciales</span> · {pend} pendientes
+            {susp.length > 0 && <span className="text-gray-400"> · {susp.length} suspendidos</span>}
             {!tipoCaso.startsWith("on") && pendSena.length > 0 && <span className="ml-2 text-red-600 font-bold"> · {pendSena.length} diferidos a post-seña</span>}
           </p>
         </div>
@@ -417,9 +455,10 @@ export default function RequirementsPage({ params }: { params: { id: string } })
           <SeccionRow
             key={sec}
             sec={sec}
-            items={items.filter(x => x.seccion === sec)}
+            items={activos.filter(x => x.seccion === sec)}
             toggling={toggling}
             onToggle={onToggle}
+            onSuspender={onSuspender}
             linksMap={linksMap}   // ← pasa el mapa a cada sección
             caseId={caseId}
             highlightItem={highlightItem}
@@ -427,6 +466,42 @@ export default function RequirementsPage({ params }: { params: { id: string } })
           />
         ))}
       </div>
+
+      {susp.length > 0 && (
+        <div className="bg-gray-50 border border-dashed border-gray-300 rounded-xl overflow-hidden mt-4">
+          <button
+            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 transition-colors"
+            onClick={() => setShowSusp(o => !o)}
+          >
+            <span className="text-gray-400">{showSusp ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}</span>
+            <span className="flex-1 text-sm font-bold text-gray-500 text-left">Suspendidos — fuera del alcance del DD</span>
+            <span className="text-xs text-gray-400">{susp.length} ítem{susp.length !== 1 ? "s" : ""}</span>
+          </button>
+          {showSusp && (
+            <div className="border-t border-gray-200 divide-y divide-gray-100">
+              {susp.map(item => (
+                <div key={item.id} className="flex items-center gap-3 px-4 py-2.5">
+                  <span className="text-xs font-bold text-gray-400 w-7 flex-shrink-0">#{item.n_item}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-medium text-gray-500 line-through">{item.documento}</div>
+                    {item.comentarios && (
+                      <div className="text-xs text-gray-400 mt-0.5 truncate" title={item.comentarios}>
+                        {item.comentarios.split("\n").slice(-1)[0]}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => onReactivar(item)}
+                    disabled={toggling === item.id}
+                    className="text-xs px-2.5 py-1.5 rounded-lg font-medium border bg-white text-gray-600 border-gray-300 hover:bg-green-50 hover:text-green-700 hover:border-green-300 transition-colors flex-shrink-0">
+                    Reactivar
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

@@ -55,7 +55,7 @@ export default function HomePage() {
     const { data: rawCases } = await query
     const enriched = await Promise.all((rawCases ?? []).map(async (c: Record<string,unknown>) => {
       const [{ data: reqs },{ data: risks }] = await Promise.all([
-        db.from("dd_case_requirements").select("estado").eq("case_id",c.id),
+        db.from("dd_case_requirements").select("estado").eq("case_id",c.id).neq("estado","Suspendido"),
         db.from("dd_case_risks").select("impacto,estado").eq("case_id",c.id)
       ])
       const r = (reqs as {estado:string}[]) ?? []

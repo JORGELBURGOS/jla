@@ -1,0 +1,20 @@
+CAMBIOS JLA — 2026-10-09
+Suspension de requerimientos + criterios de la casa en el asistente
+
+QUE HACER
+1. Copia las carpetas de este zip SOBRE tu carpeta local del repo jla
+   (pisa los 15 archivos, respeta las rutas src/...).
+2. En tu carpeta del repo:  git add -A  →  git commit -m "feat: suspension de requerimientos + criterios de la casa en el asistente"  →  git push
+3. Vercel deploya solo al recibir el push.
+
+ANTES DEL PUSH (importante para los criterios)
+Corre en el SQL Editor de Supabase, en este orden:
+  05_criterios_ddl.sql   (tabla dd_knowledge + busqueda)
+  06_criterios_datos.sql (los 88 criterios)
+Si todavia no los corriste, el chat sigue funcionando igual (la busqueda falla en silencio), solo que sin criterios.
+
+QUE CAMBIA
+- Requerimientos: boton "Suspender" en cada item (con motivo), seccion "Suspendidos" al pie con "Reactivar". Los suspendidos no se piden, no cuentan para el avance, no van al Excel del vendedor ni al informe, y quedan en el log de auditoria.
+- Asistente: antes de responder busca hasta 3 criterios de la casa segun tu pregunta y los aplica; muestra el chip "n criterios de la casa aplicados". Tambien entiende "suspende el item X" y lo propone como cambio para guardar.
+- El resto de pantallas e informes (dashboard, home, reportes, export, riesgos, valuacion, glosario, links) excluyen los suspendidos.
+- La funcion de triage del servidor ya fue actualizada aparte (v8, ya en produccion).

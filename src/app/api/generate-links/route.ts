@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     const [{ data: reqs }, { data: risks }] = await Promise.all([
       db.from("dd_case_requirements")
         .select("n_item, documento, como_cumplimentar, alertas, estado")
-        .eq("case_id", caseId).order("n_item"),
+        .eq("case_id", caseId).neq("estado","Suspendido").order("n_item"),
       db.from("dd_case_risks")
         .select("id, riesgo, area, impacto, estado")
         .eq("case_id", caseId)

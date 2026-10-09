@@ -208,7 +208,7 @@ export async function computeValuation(caseId: string, db: DbClient): Promise<Va
     db.from("dd_case_risks").select("id,riesgo,area,impacto,accion_requerida,estado").eq("case_id", caseId)
       .not("estado", "in", '("DUPLICADO","RECLASIFICADO","CERRADO")').lt("impacto", 0),
     db.from("vw_risk_adjustments_live").select("id,origen_riesgo_id,porcentaje,estado_ajuste,descripcion_analista,nota_porcentaje,riesgo,area,accion_requerida,impacto_actual,monto_calculado").eq("case_id", caseId),
-    db.from("dd_case_requirements").select("documento,estado,antes_sena,cobertura_pct").eq("case_id", caseId),
+    db.from("dd_case_requirements").select("documento,estado,antes_sena,cobertura_pct").eq("case_id", caseId).neq("estado","Suspendido"),
     db.from("dd_case_balance_sheet").select("ejercicio,ingresos,costos_servicios,gastos_admin,gastos_comercial,depreciacion,resultado_financiero,impuesto_ganancias,resultado_neto,tc_promedio").eq("case_id", caseId),
   ])
 

@@ -12,7 +12,7 @@ export default async function Dashboard({ params }: { params: Promise<{ id: stri
   const { id } = await params
   const db = await createClient()
   const [{ data: reqs }, { data: risks }, { data: sups }, { data: c }, v] = await Promise.all([
-    db.from("dd_case_requirements").select("*").eq("case_id", id).order("seccion_orden").order("n_item"),
+    db.from("dd_case_requirements").select("*").eq("case_id", id).neq("estado","Suspendido").order("seccion_orden").order("n_item"),
     db.from("dd_case_risks").select("*").eq("case_id", id).order("fila_orden"),
     db.from("dd_case_assumptions").select("*").eq("case_id", id).order("orden"),
     db.from("dd_cases").select("*").eq("id", id).single(),

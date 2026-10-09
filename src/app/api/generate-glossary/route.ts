@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     { data: sups }, { data: valid }, { data: assets },
     { data: caseData }
   ] = await Promise.all([
-    db.from('dd_case_requirements').select('documento,como_cumplimentar,cobertura,alertas,notas').eq('case_id', caseId),
+    db.from('dd_case_requirements').select('documento,como_cumplimentar,cobertura,alertas,notas').eq('case_id', caseId).neq('estado','Suspendido'),
     db.from('dd_case_risks').select('riesgo,area,accion_requerida,notas').eq('case_id', caseId).neq('estado','DUPLICADO'),
     db.from('dd_case_environmental').select('clave,categoria,notas').eq('case_id', caseId),
     db.from('dd_case_assumptions').select('label,valor').eq('case_id', caseId),
