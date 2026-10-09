@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { anthropic, MODEL, MAX_TOKENS_TRIAGE } from '@/lib/claude/api'
+import { anthropicDocs, MODEL_DOCS, MAX_TOKENS_TRIAGE } from '@/lib/claude/api'
 import Anthropic from '@anthropic-ai/sdk'
 import { createHash } from 'crypto'
 
@@ -239,8 +239,9 @@ Analizá cada documento y respondé con este JSON COMPLETO:
     }
     blocks.push({ type: 'text', text: userPrompt })
 
-    const resp = await anthropic.messages.create({
-      model: MODEL,
+    // El triage sigue con el proveedor de documentos: le mandamos los PDF e imágenes nativos
+    const resp = await anthropicDocs.messages.create({
+      model: MODEL_DOCS,
       max_tokens: MAX_TOKENS_TRIAGE,
       system: systemPrompt,
       messages: [{ role: 'user', content: blocks }]

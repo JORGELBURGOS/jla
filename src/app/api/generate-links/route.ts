@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import Anthropic from "@anthropic-ai/sdk"
 import { createServiceClient } from "@/lib/supabase/server"
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+import { anthropic } from "@/lib/claude/api"
 
 export async function POST(req: NextRequest) {
   try {

@@ -1,20 +1,23 @@
-CAMBIOS JLA — 2026-10-09
-Suspension de requerimientos + criterios de la casa en el asistente
+CAMBIO DE PROVEEDOR DE TOKENS — 2026-10-09
+El asistente, el informe ejecutivo, el glosario, los vinculos riesgo-requerimiento
+y el borrador de EBITDA pasan a DeepSeek. El triage de documentos (PDFs) sigue como esta.
 
 QUE HACER
-1. Copia las carpetas de este zip SOBRE tu carpeta local del repo jla
-   (pisa los 15 archivos, respeta las rutas src/...).
-2. En tu carpeta del repo:  git add -A  →  git commit -m "feat: suspension de requerimientos + criterios de la casa en el asistente"  →  git push
-3. Vercel deploya solo al recibir el push.
+1. Copia las carpetas de este zip SOBRE tu carpeta C:\jla (pisa 4 archivos).
+2. Agrega la clave de DeepSeek como variable de entorno en Vercel:
+   vercel.com → proyecto jla → Settings → Environment Variables → Add
+   Nombre:  DEEPSEEK_API_KEY
+   Valor:   (tu clave de platform.deepseek.com → API keys)
+   Marcar Production, Preview y Development → Save
+3. En C:\jla, en la terminal:
+   git add -A
+   git commit -m "feat: asistente e informes de texto con DeepSeek"
+   git push
 
-ANTES DEL PUSH (importante para los criterios)
-Corre en el SQL Editor de Supabase, en este orden:
-  05_criterios_ddl.sql   (tabla dd_knowledge + busqueda)
-  06_criterios_datos.sql (los 88 criterios)
-Si todavia no los corriste, el chat sigue funcionando igual (la busqueda falla en silencio), solo que sin criterios.
+RED DE SEGURIDAD
+Si la variable DEEPSEEK_API_KEY faltara o la borras, todo vuelve solo al proveedor
+anterior sin romperse. Podes hacer el push antes o despues de cargar la clave.
 
-QUE CAMBIA
-- Requerimientos: boton "Suspender" en cada item (con motivo), seccion "Suspendidos" al pie con "Reactivar". Los suspendidos no se piden, no cuentan para el avance, no van al Excel del vendedor ni al informe, y quedan en el log de auditoria.
-- Asistente: antes de responder busca hasta 3 criterios de la casa segun tu pregunta y los aplica; muestra el chip "n criterios de la casa aplicados". Tambien entiende "suspende el item X" y lo propone como cambio para guardar.
-- El resto de pantallas e informes (dashboard, home, reportes, export, riesgos, valuacion, glosario, links) excluyen los suspendidos.
-- La funcion de triage del servidor ya fue actualizada aparte (v8, ya en produccion).
+NOTA DE SALDO
+Tenes USD 1,82 en DeepSeek. El chat gasta centavos por pregunta, pero con uso
+diario conviene cargarle saldo pronto para que no se corte.
