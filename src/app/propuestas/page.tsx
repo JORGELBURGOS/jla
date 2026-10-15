@@ -1,7 +1,7 @@
 "use client"
 // 2026-10-15 — Pipeline de propuestas comerciales (tabla dd_propuestas).
-// Las propuestas se generan desde acá (botón Nueva propuesta, API /api/propuestas/generar)
-// o desde Claude; los estados se actualizan desde Claude.
+// Generación desde la plataforma con selección por listas desplegables; la referencia
+// (sigla de consultora + prefijo sectorial + correlativo) se arma sola en el servidor.
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
@@ -14,6 +14,7 @@ interface Propuesta {
   sector: string; servicio: string; cliente: string | null; consultora: string | null
   honorarios_usd: number | null; estado: string; fecha: string; notas: string | null
 }
+interface Industria { nombre: string; icono: string }
 
 const ESTADOS: Record<string, { label: string; cls: string }> = {
   borrador:  { label: "Borrador",  cls: "bg-gray-100 text-gray-600" },
@@ -24,14 +25,41 @@ const ESTADOS: Record<string, { label: string; cls: string }> = {
 }
 
 const MARCAS: Record<string, { nombre: string; tagline: string }> = {
-  tt:   { nombre: "TT Consulting", tagline: "Estrategia · M&A · Due Diligence" },
-  jl:   { nombre: "JL Advisory",   tagline: "M&A · Due Diligence" },
+  tt: { nombre: "TT Consulting", tagline: "Estrategia · M&A · Due Diligence" },
+  jl: { nombre: "JL Advisory",   tagline: "M&A · Due Diligence" },
 }
+
+const SERVICIOS: Record<"vendedor" | "comprador", string[]> = {
+  vendedor: [
+    "Preparación para la venta completa — diagnóstico pre due diligence, valuación con plan de negocio, y cuaderno de venta con data room (tres etapas)",
+    "Diagnóstico de venta (pre due diligence del vendedor)",
+    "Diagnóstico de venta + valuación con plan de negocio (dos etapas)",
+    "Valuación de la empresa con plan de negocio a cinco años",
+    "Mandato de venta — búsqueda de compradores, negociación y cierre, con honorario de éxito",
+    "Búsqueda de inversor o socio para la empresa",
+  ],
+  comprador: [
+    "Due diligence integral de adquisición + valuación independiente",
+    "Due diligence integral + valuación + acompañamiento en la negociación hasta el cierre",
+    "Due diligence por frentes específicos (contable, impositivo, laboral, legal)",
+    "Valuación independiente de la empresa objetivo",
+    "Estructuración de la oferta y condiciones de cierre",
+  ],
+}
+
+const ORIGENES = [
+  "Consulta directa del interesado",
+  "Comentario surgido en una reunión",
+  "Referido por un contacto en común",
+  "Cliente actual de la consultora",
+  "Contacto iniciado por nosotros",
+]
 
 export default function PropuestasPage() {
   const db = createClient()
   const [email, setEmail]     = useState<string | null>(null)
   const [rows, setRows]       = useState<Propuesta[]>([])
+  const [industrias, setIndustrias] = useState<Industria[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [generando, setGenerando] = useState(false)
@@ -43,10 +71,11 @@ export default function PropuestasPage() {
   const [marcaNombre, setMarcaNombre]   = useState("")
   const [marcaTagline, setMarcaTagline] = useState("")
   const [lado, setLado]         = useState<"vendedor" | "comprador">("vendedor")
-  const [prefijo, setPrefijo]   = useState("")
-  const [sector, setSector]     = useState("")
-  const [origen, setOrigen]     = useState("")
-  const [servicio, setServicio] = useState("")
+  const [industria, setIndustria] = useState("")
+  const [ubicacion, setUbicacion] = useState("")
+  const [origen, setOrigen]     = useState(ORIGENES[0])
+  const [servicio, setServicio] = useState(SERVICIOS.vendedor[0])
+  const [detalles, setDetalles] = useState("")
   const [honorarios, setHonorarios] = useState("")
   const [notas, setNotas]       = useState("")
 
@@ -63,7 +92,14 @@ export default function PropuestasPage() {
     setEmail(saved)
     if (saved !== ADMIN_EMAIL) { setLoading(false); return }
     cargar()
+    db.from("dd_industries").select("nombre,icono").order("nombre")
+      .then(({ data }) => setIndustrias((data as Industria[]) ?? []))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cargar])
+
+  function cambiarLado(v: "vendedor" | "comprador") {
+    setLado(v); setServicio(SERVICIOS[v][0])
+  }
 
   async function generar() {
     setError(""); setOk("")
@@ -71,13 +107,12 @@ export default function PropuestasPage() {
       ? { nombre: marcaNombre.trim(), tagline: marcaTagline.trim() || "Consultoría" }
       : MARCAS[marcaKey]
     if (marcaKey === "otra" && !consultora.nombre) { setError("Poné el nombre de la consultora."); return }
-    if (!/^[A-Za-z]{2,3}$/.test(prefijo.trim())) { setError("El prefijo de la referencia debe tener 2 o 3 letras (ej. FR, MET)."); return }
-    if (!sector.trim() || !servicio.trim()) { setError("Completá el sector y el servicio."); return }
+    if (!industria) { setError("Elegí la industria."); return }
     setGenerando(true)
     try {
       const r = await fetch("/api/propuestas/generar", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ consultora, prefijo: prefijo.trim(), lado, sector, origen, servicio, honorarios, notas }),
+        body: JSON.stringify({ consultora, lado, industria, ubicacion, origen, servicio, detalles, honorarios, notas }),
       })
       if (!r.ok) {
         const j = await r.json().catch(() => ({ error: "Error del servidor" }))
@@ -92,7 +127,7 @@ export default function PropuestasPage() {
       URL.revokeObjectURL(url)
       setOk(`Propuesta ${ref} generada y registrada. Revisala antes de enviarla.`)
       setShowForm(false)
-      setSector(""); setOrigen(""); setServicio(""); setHonorarios(""); setNotas(""); setPrefijo("")
+      setUbicacion(""); setDetalles(""); setHonorarios(""); setNotas("")
       cargar()
     } catch {
       setError("No se pudo generar la propuesta. Probá de nuevo.")
@@ -156,7 +191,7 @@ export default function PropuestasPage() {
               </div>
               <div>
                 <label className="text-xs font-bold text-gray-600 block mb-1">Lado de la mesa</label>
-                <select value={lado} onChange={e => setLado(e.target.value as "vendedor" | "comprador")} className={inputCls}>
+                <select value={lado} onChange={e => cambiarLado(e.target.value as "vendedor" | "comprador")} className={inputCls}>
                   <option value="vendedor">Vendedor — quiere vender su empresa o sumar un socio</option>
                   <option value="comprador">Comprador — evalúa comprar o invertir</option>
                 </select>
@@ -172,28 +207,39 @@ export default function PropuestasPage() {
                 </div>
               </>)}
               <div>
-                <label className="text-xs font-bold text-gray-600 block mb-1">Prefijo de la referencia (2-3 letras)</label>
-                <input value={prefijo} onChange={e => setPrefijo(e.target.value.toUpperCase())} maxLength={3} placeholder="FR" className={inputCls}/>
+                <label className="text-xs font-bold text-gray-600 block mb-1">Industria</label>
+                <select value={industria} onChange={e => setIndustria(e.target.value)} className={inputCls}>
+                  <option value="">Elegí la industria…</option>
+                  {industrias.map(i => <option key={i.nombre} value={i.nombre}>{i.icono} {i.nombre}</option>)}
+                </select>
               </div>
               <div>
-                <label className="text-xs font-bold text-gray-600 block mb-1">Sector y ubicación</label>
-                <input value={sector} onChange={e => setSector(e.target.value)} placeholder="Metalúrgica mediana en Rosario, Santa Fe" className={inputCls}/>
+                <label className="text-xs font-bold text-gray-600 block mb-1">Ubicación (opcional)</label>
+                <input value={ubicacion} onChange={e => setUbicacion(e.target.value)} placeholder="Rosario, Santa Fe" className={inputCls}/>
               </div>
               <div className="sm:col-span-2">
+                <label className="text-xs font-bold text-gray-600 block mb-1">Servicio a proponer</label>
+                <select value={servicio} onChange={e => setServicio(e.target.value)} className={inputCls}>
+                  {SERVICIOS[lado].map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
                 <label className="text-xs font-bold text-gray-600 block mb-1">Cómo surgió el contacto</label>
-                <input value={origen} onChange={e => setOrigen(e.target.value)} placeholder="Comentario del dueño en una reunión / referido de un cliente / consulta directa" className={inputCls}/>
-              </div>
-              <div className="sm:col-span-2">
-                <label className="text-xs font-bold text-gray-600 block mb-1">Servicio y etapas a proponer</label>
-                <textarea value={servicio} onChange={e => setServicio(e.target.value)} rows={3}
-                  placeholder="Preparación para la venta en tres etapas — diagnóstico pre due diligence, valuación con plan de negocio, cuaderno de venta y data room"
-                  className={inputCls}/>
+                <select value={origen} onChange={e => setOrigen(e.target.value)} className={inputCls}>
+                  {ORIGENES.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
               </div>
               <div>
                 <label className="text-xs font-bold text-gray-600 block mb-1">Honorarios (opcional)</label>
-                <input value={honorarios} onChange={e => setHonorarios(e.target.value)} placeholder="15.000 / 9.000 / 9.000 y paquete 28.000" className={inputCls}/>
+                <input value={honorarios} onChange={e => setHonorarios(e.target.value)} placeholder="Vacío = propone valores tentativos" className={inputCls}/>
               </div>
-              <div>
+              <div className="sm:col-span-2">
+                <label className="text-xs font-bold text-gray-600 block mb-1">Detalles del caso (opcional, mejora la redacción)</label>
+                <textarea value={detalles} onChange={e => setDetalles(e.target.value)} rows={2}
+                  placeholder="Ej. empresa familiar de 40 años, el dueño se jubila, exporta el 30%, planta propia"
+                  className={inputCls}/>
+              </div>
+              <div className="sm:col-span-2">
                 <label className="text-xs font-bold text-gray-600 block mb-1">Notas internas (no van al documento)</label>
                 <input value={notas} onChange={e => setNotas(e.target.value)} placeholder="Opcional" className={inputCls}/>
               </div>
@@ -203,7 +249,7 @@ export default function PropuestasPage() {
               className="btn-primary mt-4 disabled:opacity-50">
               {generando ? "Generando… puede tardar un minuto" : "Generar Word y registrar"}
             </button>
-            <p className="text-xs text-gray-400 mt-2">El documento se redacta automáticamente con la estética de la casa y se descarga al terminar. Revisalo siempre antes de enviarlo.</p>
+            <p className="text-xs text-gray-400 mt-2">La referencia se arma sola (sigla de la consultora + sector + correlativo). El documento se descarga al terminar — revisalo siempre antes de enviarlo.</p>
           </div>
         )}
 

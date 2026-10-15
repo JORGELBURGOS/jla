@@ -226,32 +226,62 @@ function armarDoc(c: Contenido, marca: { nombre: string; tagline: string }, refe
   })
 }
 
+// ===================== referencia automática =====================
+// 2026-10-15 — La sigla de la consultora y el prefijo sectorial se infieren solos (pedido de Jorge).
+const PREFIJO_INDUSTRIA: Record<string, string> = {
+  "Agro e Industria Rural": "AGR", "Alimentos y Bebidas": "ALI", "Comercio y Distribución": "COM",
+  "Construcción e Inmobiliario": "CON", "Deporte y Bienestar": "DEP", "Educación": "EDU",
+  "Energía y Utilities": "ENE", "Fintech y Finanzas": "FIN", "Gastronomía y Hotelería": "GAS",
+  "Industria y Manufactura": "IND", "Medios y Entretenimiento": "MED", "Minería": "MIN",
+  "Otros Sectores": "OTR", "Salud y Farmacia": "SAL", "Servicios Ambientales": "AMB",
+  "Servicios Profesionales": "PRO", "Tecnología": "TEC", "Telecomunicaciones": "TEL",
+  "Transporte y Logística": "LOG", "Turismo y Recreación": "TUR",
+}
+function sinAcentos(s: string) { return s.normalize("NFD").replace(/[̀-ͯ]/g, "") }
+function prefijoDe(industria: string) {
+  const fijo = PREFIJO_INDUSTRIA[industria]
+  if (fijo) return fijo
+  const limpio = sinAcentos(industria).toUpperCase().replace(/[^A-Z]/g, "")
+  return (limpio.slice(0, 3) || "OTR").padEnd(2, "X")
+}
+function siglaDe(consultora: string) {
+  const palabras = sinAcentos(consultora).trim().split(/\s+/).filter(Boolean)
+  if (!palabras.length) return "XX"
+  if (/^[A-Za-z]{2,3}$/.test(palabras[0])) return palabras[0].toUpperCase()
+  const iniciales = palabras.map(p => p[0]).join("").toUpperCase().replace(/[^A-Z]/g, "")
+  if (iniciales.length >= 2) return iniciales.slice(0, 3)
+  return (palabras[0].toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2) || "XX")
+}
+
 // ===================== endpoint =====================
 export async function POST(req: NextRequest) {
   try {
-    const { consultora, prefijo, lado, sector, origen, servicio, honorarios, notas } = await req.json() as {
-      consultora?: { nombre?: string; tagline?: string }; prefijo?: string; lado?: string
-      sector?: string; origen?: string; servicio?: string; honorarios?: string; notas?: string
+    const { consultora, lado, industria, ubicacion, origen, servicio, detalles, honorarios, notas } = await req.json() as {
+      consultora?: { nombre?: string; tagline?: string }; lado?: string; industria?: string
+      ubicacion?: string; origen?: string; servicio?: string; detalles?: string; honorarios?: string; notas?: string
     }
     const marca = { nombre: (consultora?.nombre ?? "").trim() || "TT Consulting", tagline: (consultora?.tagline ?? "").trim() || "Estrategia · M&A · Due Diligence" }
-    const pfx = (prefijo ?? "").trim().toUpperCase()
-    if (!/^[A-Z]{2,3}$/.test(pfx)) return NextResponse.json({ error: "El prefijo debe tener 2 o 3 letras" }, { status: 400 })
     if (lado !== "comprador" && lado !== "vendedor") return NextResponse.json({ error: "Falta el lado de la mesa" }, { status: 400 })
-    if (!sector?.trim() || !servicio?.trim()) return NextResponse.json({ error: "Faltan el sector o el servicio" }, { status: 400 })
+    if (!industria?.trim()) return NextResponse.json({ error: "Elegí la industria" }, { status: 400 })
+    if (!servicio?.trim()) return NextResponse.json({ error: "Elegí el servicio" }, { status: 400 })
+    const sector = industria.trim() + (ubicacion?.trim() ? ` — ${ubicacion.trim()}` : "")
+    const pfx = prefijoDe(industria.trim())
+    const sigla = siglaDe(marca.nombre)
 
     const db = createServiceClient()
     const anio = new Date().getFullYear()
     const { data: ult } = await db.from("dd_propuestas").select("nro").eq("anio", anio).order("nro", { ascending: false }).limit(1)
     const nro = ((ult?.[0] as { nro?: number } | undefined)?.nro ?? 0) + 1
-    const referencia = `TT-${pfx}-${anio}-${String(nro).padStart(2, "0")}`
+    const referencia = `${sigla}-${pfx}-${anio}-${String(nro).padStart(2, "0")}`
 
     const pedido = `Redactá una propuesta comercial completa con estos datos.
 
 Consultora que firma — ${marca.nombre} (${marca.tagline}).
 Lado de la mesa — el cliente es el ${lado === "comprador" ? "COMPRADOR o inversor que evalúa adquirir una empresa" : "VENDEDOR, el dueño que quiere vender su empresa o incorporar un socio"}.
-Sector y ubicación del negocio — ${sector.trim()}.
+Sector y ubicación del negocio — ${sector}.
 Cómo surgió el contacto — ${origen?.trim() || "consulta directa del interesado"}.
 Servicio y etapas a proponer — ${servicio.trim()}.
+${detalles?.trim() ? `Detalles adicionales del caso — ${detalles.trim()}.` : ""}
 Honorarios — ${honorarios?.trim() || "no definidos, proponé valores tentativos razonables"}.
 
 La referencia del documento es ${referencia}. Armá un plan en 2 a 4 etapas según el servicio pedido, con entregables concretos, cronograma realista en semanas y honorarios por etapa con un paquete completo bonificado.`
@@ -264,7 +294,7 @@ La referencia del documento es ${referencia}. Armá un plan en 2 a 4 etapas seg�
     const buf = await Packer.toBuffer(doc)
 
     const { error: insErr } = await db.from("dd_propuestas").insert({
-      anio, nro, prefijo: pfx, lado, sector: sector.trim(),
+      anio, nro, prefijo: pfx, sigla, lado, sector,
       servicio: servicio.trim().slice(0, 300), consultora: marca.nombre,
       honorarios_usd: null, estado: "borrador", archivo,
       notas: notas?.trim() || null,
