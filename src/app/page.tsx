@@ -145,7 +145,7 @@ export default function HomePage() {
       <main className="max-w-5xl mx-auto px-6 py-7">
         <div className="flex items-end justify-between gap-4 flex-wrap mb-4">
           <div>
-            <h2 className="font-cond font-bold text-[26px] leading-tight text-gray-900">Casos activos</h2>
+            <h2 className="font-cond font-bold text-[22px] leading-tight text-gray-900">Casos activos</h2>
             <p className="text-sm text-gray-500">{cases.length} caso{cases.length!==1?"s":""} disponible{cases.length!==1?"s":""}</p>
           </div>
           {(isAdmin || canCreate) && <Link href="/cases/new" className="btn-primary">+ Nuevo caso</Link>}
