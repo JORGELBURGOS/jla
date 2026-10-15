@@ -1,7 +1,7 @@
 "use client"
 // 2026-10-15 — Pipeline de propuestas comerciales (tabla dd_propuestas).
-// Generación desde la plataforma con selección por listas desplegables; la referencia
-// (sigla de consultora + prefijo sectorial + correlativo) se arma sola en el servidor.
+// Generación con desplegables, referencia automática, edición de estado y campos,
+// y regeneración del Word manteniendo la misma referencia.
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
@@ -9,20 +9,26 @@ import { createClient } from "@/lib/supabase/client"
 const ADMIN_EMAIL = "jorgeleonburgos@gmail.com"
 const EMAIL_KEY   = "jla_user_email"
 
+interface Params {
+  consultora?: { nombre?: string; tagline?: string }
+  lado?: "vendedor" | "comprador"; industria?: string; ubicacion?: string
+  origen?: string; servicio?: string; detalles?: string; honorarios?: string; notas?: string
+}
 interface Propuesta {
   id: string; referencia: string; lado: "comprador" | "vendedor"
   sector: string; servicio: string; cliente: string | null; consultora: string | null
   honorarios_usd: number | null; estado: string; fecha: string; notas: string | null
+  params: Params | null
 }
 interface Industria { nombre: string; icono: string }
 
-const ESTADOS: Record<string, { label: string; cls: string }> = {
-  borrador:  { label: "Borrador",  cls: "bg-gray-100 text-gray-600" },
-  enviada:   { label: "Enviada",   cls: "bg-blue-50 text-blue-700" },
-  aceptada:  { label: "Aceptada",  cls: "bg-green-50 text-green-700" },
-  rechazada: { label: "Rechazada", cls: "bg-red-50 text-red-700" },
-  vencida:   { label: "Vencida",   cls: "bg-amber-50 text-amber-700" },
-}
+const ESTADOS: { v: string; label: string; cls: string }[] = [
+  { v: "borrador",  label: "Borrador",  cls: "bg-gray-100 text-gray-600" },
+  { v: "enviada",   label: "Enviada",   cls: "bg-blue-50 text-blue-700" },
+  { v: "aceptada",  label: "Aceptada",  cls: "bg-green-50 text-green-700" },
+  { v: "rechazada", label: "Rechazada", cls: "bg-red-50 text-red-700" },
+  { v: "vencida",   label: "Vencida",   cls: "bg-amber-50 text-amber-700" },
+]
 
 const MARCAS: Record<string, { nombre: string; tagline: string }> = {
   tt: { nombre: "TT Consulting", tagline: "Estrategia · M&A · Due Diligence" },
@@ -65,8 +71,10 @@ export default function PropuestasPage() {
   const [generando, setGenerando] = useState(false)
   const [error, setError]     = useState("")
   const [ok, setOk]           = useState("")
+  const [regenId, setRegenId] = useState<string | null>(null)
+  const [regenRef, setRegenRef] = useState("")
 
-  // formulario
+  // formulario de generación
   const [marcaKey, setMarcaKey] = useState("tt")
   const [marcaNombre, setMarcaNombre]   = useState("")
   const [marcaTagline, setMarcaTagline] = useState("")
@@ -79,9 +87,15 @@ export default function PropuestasPage() {
   const [honorarios, setHonorarios] = useState("")
   const [notas, setNotas]       = useState("")
 
+  // edición inline de una tarjeta
+  const [editId, setEditId]   = useState<string | null>(null)
+  const [edHon, setEdHon]     = useState("")
+  const [edCli, setEdCli]     = useState("")
+  const [edNotas, setEdNotas] = useState("")
+
   const cargar = useCallback(() => {
     db.from("dd_propuestas")
-      .select("id,referencia,lado,sector,servicio,cliente,consultora,honorarios_usd,estado,fecha,notas")
+      .select("id,referencia,lado,sector,servicio,cliente,consultora,honorarios_usd,estado,fecha,notas,params")
       .order("anio", { ascending: false }).order("nro", { ascending: false })
       .then(({ data }) => { setRows((data as Propuesta[]) ?? []); setLoading(false) })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -101,6 +115,46 @@ export default function PropuestasPage() {
     setLado(v); setServicio(SERVICIOS[v][0])
   }
 
+  function nuevaPropuesta() {
+    setRegenId(null); setRegenRef("")
+    setShowForm(v => !v); setError(""); setOk("")
+  }
+
+  function regenerarDesde(p: Propuesta) {
+    const pr = p.params ?? {}
+    const nom = pr.consultora?.nombre ?? p.consultora ?? "TT Consulting"
+    if (nom === "TT Consulting") setMarcaKey("tt")
+    else if (nom === "JL Advisory") setMarcaKey("jl")
+    else { setMarcaKey("otra"); setMarcaNombre(nom); setMarcaTagline(pr.consultora?.tagline ?? "") }
+    const l = pr.lado ?? p.lado
+    setLado(l); setServicio(pr.servicio ?? SERVICIOS[l][0])
+    setIndustria(pr.industria ?? "")
+    setUbicacion(pr.ubicacion ?? "")
+    setOrigen(pr.origen || ORIGENES[0])
+    setDetalles(pr.detalles ?? "")
+    setHonorarios(pr.honorarios ?? "")
+    setNotas(pr.notas ?? p.notas ?? "")
+    setRegenId(p.id); setRegenRef(p.referencia)
+    setShowForm(true); setError(""); setOk("")
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  async function actualizar(id: string, campos: Record<string, unknown>) {
+    const r = await fetch("/api/propuestas/actualizar", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, ...campos }),
+    })
+    if (!r.ok) { const j = await r.json().catch(() => ({})); setError(j.error ?? "No se pudo actualizar."); return false }
+    cargar(); return true
+  }
+
+  async function guardarEdicion(id: string) {
+    const n = edHon.trim() ? Number(edHon.replace(/\./g, "").replace(/,/g, ".")) : null
+    if (edHon.trim() && (n == null || isNaN(n))) { setError("El monto no es un número válido."); return }
+    const okUpd = await actualizar(id, { honorarios_usd: n, cliente: edCli, notas: edNotas })
+    if (okUpd) { setEditId(null); setOk("Propuesta actualizada.") }
+  }
+
   async function generar() {
     setError(""); setOk("")
     const consultora = marcaKey === "otra"
@@ -112,7 +166,7 @@ export default function PropuestasPage() {
     try {
       const r = await fetch("/api/propuestas/generar", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ consultora, lado, industria, ubicacion, origen, servicio, detalles, honorarios, notas }),
+        body: JSON.stringify({ consultora, lado, industria, ubicacion, origen, servicio, detalles, honorarios, notas, regenerarId: regenId }),
       })
       if (!r.ok) {
         const j = await r.json().catch(() => ({ error: "Error del servidor" }))
@@ -125,8 +179,8 @@ export default function PropuestasPage() {
       a.href = url; a.download = `Propuesta_${ref.replace(/-/g, "_")}.docx`
       document.body.appendChild(a); a.click(); a.remove()
       URL.revokeObjectURL(url)
-      setOk(`Propuesta ${ref} generada y registrada. Revisala antes de enviarla.`)
-      setShowForm(false)
+      setOk(regenId ? `Propuesta ${ref} regenerada con los nuevos parámetros.` : `Propuesta ${ref} generada y registrada. Revisala antes de enviarla.`)
+      setShowForm(false); setRegenId(null); setRegenRef("")
       setUbicacion(""); setDetalles(""); setHonorarios(""); setNotas("")
       cargar()
     } catch {
@@ -159,7 +213,7 @@ export default function PropuestasPage() {
       <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
         <img src="/logo.png" alt="JL Advisory" className="h-12 w-auto"/>
         <div className="flex items-center gap-3">
-          <button onClick={() => { setShowForm(v => !v); setError(""); setOk("") }} className="btn-primary">
+          <button onClick={nuevaPropuesta} className="btn-primary">
             {showForm ? "Cerrar" : "+ Nueva propuesta"}
           </button>
           <Link href="/" className="text-xs text-gray-400 hover:text-gray-600 border border-gray-200 px-2.5 py-1 rounded-full">
@@ -176,11 +230,13 @@ export default function PropuestasPage() {
         </div>
 
         {ok && <div className="mb-4 text-sm text-green-800 bg-green-50 border border-green-200 rounded-xl px-4 py-3">{ok}</div>}
+        {error && !showForm && <div className="mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{error}</div>}
 
         {showForm && (
           <div className="card mb-6">
-            <h3 className="font-bold text-gray-900 mb-4">Nueva propuesta</h3>
-            <div className="grid sm:grid-cols-2 gap-4">
+            <h3 className="font-bold text-gray-900 mb-1">{regenId ? `Regenerar ${regenRef}` : "Nueva propuesta"}</h3>
+            {regenId && <p className="text-xs text-amber-700 mb-3">Se mantiene la referencia {regenRef}; el Word y los datos se rehacen con lo que cambies acá.</p>}
+            <div className="grid sm:grid-cols-2 gap-4 mt-3">
               <div>
                 <label className="text-xs font-bold text-gray-600 block mb-1">Consultora que firma</label>
                 <select value={marcaKey} onChange={e => setMarcaKey(e.target.value)} className={inputCls}>
@@ -207,14 +263,14 @@ export default function PropuestasPage() {
                 </div>
               </>)}
               <div>
-                <label className="text-xs font-bold text-gray-600 block mb-1">Industria</label>
+                <label className="text-xs font-bold text-gray-600 block mb-1">Industria <span className="font-normal text-gray-400">(orienta la redacción, no se nombra en el documento)</span></label>
                 <select value={industria} onChange={e => setIndustria(e.target.value)} className={inputCls}>
                   <option value="">Elegí la industria…</option>
                   {industrias.map(i => <option key={i.nombre} value={i.nombre}>{i.icono} {i.nombre}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs font-bold text-gray-600 block mb-1">Ubicación (opcional)</label>
+                <label className="text-xs font-bold text-gray-600 block mb-1">Ubicación <span className="font-normal text-gray-400">(opcional, tampoco se nombra)</span></label>
                 <input value={ubicacion} onChange={e => setUbicacion(e.target.value)} placeholder="Rosario, Santa Fe" className={inputCls}/>
               </div>
               <div className="sm:col-span-2">
@@ -247,9 +303,9 @@ export default function PropuestasPage() {
             {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
             <button onClick={generar} disabled={generando}
               className="btn-primary mt-4 disabled:opacity-50">
-              {generando ? "Generando… puede tardar un minuto" : "Generar Word y registrar"}
+              {generando ? "Generando… puede tardar un minuto" : (regenId ? "Regenerar Word" : "Generar Word y registrar")}
             </button>
-            <p className="text-xs text-gray-400 mt-2">La referencia se arma sola (sigla de la consultora + sector + correlativo). El documento se descarga al terminar — revisalo siempre antes de enviarlo.</p>
+            <p className="text-xs text-gray-400 mt-2">La industria y la ubicación personalizan el enfoque pero no aparecen en el documento. Revisalo siempre antes de enviarlo.</p>
           </div>
         )}
 
@@ -262,7 +318,8 @@ export default function PropuestasPage() {
         ) : (
           <div className="grid gap-4">
             {rows.map(p => {
-              const est = ESTADOS[p.estado] ?? { label: p.estado, cls: "bg-gray-100 text-gray-600" }
+              const est = ESTADOS.find(e => e.v === p.estado) ?? { v: p.estado, label: p.estado, cls: "bg-gray-100 text-gray-600" }
+              const editando = editId === p.id
               return (
                 <div key={p.id} className="card">
                   <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -272,20 +329,59 @@ export default function PropuestasPage() {
                         <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${p.lado === "comprador" ? "bg-blue-50 text-blue-700" : "bg-emerald-50 text-emerald-700"}`}>
                           {p.lado === "comprador" ? "Lado comprador" : "Lado vendedor"}
                         </span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${est.cls}`}>{est.label}</span>
+                        <select value={est.v} onChange={e => actualizar(p.id, { estado: e.target.value })}
+                          className={`text-xs px-2 py-0.5 rounded-full font-bold border-0 cursor-pointer ${est.cls}`}>
+                          {ESTADOS.map(e => <option key={e.v} value={e.v}>{e.label}</option>)}
+                        </select>
                         {p.consultora && <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{p.consultora}</span>}
                       </div>
                       <p className="text-sm text-gray-700 mt-1">{p.servicio}</p>
                       <p className="text-xs text-gray-500 mt-0.5">
                         {p.sector}{p.cliente ? ` · ${p.cliente}` : ""}
                       </p>
-                      {p.notas && <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-2.5 py-1.5 mt-2">{p.notas}</p>}
+                      {p.notas && !editando && <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-2.5 py-1.5 mt-2">{p.notas}</p>}
                     </div>
                     <div className="text-right flex-shrink-0">
                       <div className="text-lg font-black text-[#1a2744]">{fmt(p.honorarios_usd)}</div>
                       <div className="text-xs text-gray-500">{new Date(p.fecha + "T00:00:00").toLocaleDateString("es-AR")}</div>
+                      <div className="flex gap-2 mt-2 justify-end">
+                        <button onClick={() => {
+                          if (editando) { setEditId(null); return }
+                          setEditId(p.id)
+                          setEdHon(p.honorarios_usd != null ? String(p.honorarios_usd) : "")
+                          setEdCli(p.cliente ?? ""); setEdNotas(p.notas ?? "")
+                          setError(""); setOk("")
+                        }} className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 px-2.5 py-1 rounded-full">
+                          {editando ? "Cancelar" : "✎ Editar"}
+                        </button>
+                        {p.params && (
+                          <button onClick={() => regenerarDesde(p)}
+                            className="text-xs text-[#1a2744] hover:bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-full font-bold">
+                            ↻ Regenerar
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
+                  {editando && (
+                    <div className="mt-3 pt-3 border-t border-gray-100 grid sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-xs font-bold text-gray-600 block mb-1">Honorarios (USD)</label>
+                        <input value={edHon} onChange={e => setEdHon(e.target.value)} placeholder="28000" className={inputCls}/>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-600 block mb-1">Cliente / prospecto</label>
+                        <input value={edCli} onChange={e => setEdCli(e.target.value)} placeholder="Opcional" className={inputCls}/>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-600 block mb-1">Notas internas</label>
+                        <input value={edNotas} onChange={e => setEdNotas(e.target.value)} placeholder="Opcional" className={inputCls}/>
+                      </div>
+                      <div className="sm:col-span-3">
+                        <button onClick={() => guardarEdicion(p.id)} className="btn-primary text-sm">Guardar cambios</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )
             })}

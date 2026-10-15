@@ -116,6 +116,7 @@ function sistema(consultora: string) {
   return `Sos el redactor senior de ${consultora}, una consultora argentina de estrategia, M&A y due diligence. Escribís propuestas comerciales en español rioplatense, con tono profesional y cercano, en primera persona del plural de la firma y trato de usted implícito hacia el destinatario.
 
 Reglas de redacción obligatorias:
+- La industria y la ubicación que te dan son CONTEXTO INTERNO para orientar el enfoque, los riesgos típicos y los ejemplos. NO las menciones en el documento, ni el rubro, ni la ciudad o provincia, ni fórmulas como "una empresa del sector X". Referite siempre a "la empresa", "el negocio" o "la compañía". El conocimiento sectorial se nota en QUÉ riesgos y drivers elegís describir, no en nombrarlos.
 - Prosa corrida y fluida, párrafos de 4 a 8 líneas. Nada de listas salvo donde el esquema lo pide.
 - PROHIBIDO el signo de dos puntos (:) en todos los textos. Reescribí con comas, conectores o frases separadas. El separador con punto medio en rótulos ("Etapa 1 · Diagnóstico") sí está permitido.
 - Los títulos van sin numerar.
@@ -253,12 +254,25 @@ function siglaDe(consultora: string) {
   return (palabras[0].toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2) || "XX")
 }
 
+// 2026-10-15 — Extrae un monto en USD de un texto libre de honorarios (toma el mayor, que
+// suele ser el paquete o el total); si no hay números devuelve null.
+function montoDe(txt?: string | null): number | null {
+  if (!txt) return null
+  const ns = (String(txt).match(/\d[\d.,]*/g) ?? []).map(s => {
+    const limpio = s.replace(/\./g, "").replace(/,/g, ".")
+    const n = parseFloat(limpio)
+    return isNaN(n) ? 0 : n
+  }).filter(n => n >= 100)
+  return ns.length ? Math.max(...ns) : null
+}
+
 // ===================== endpoint =====================
 export async function POST(req: NextRequest) {
   try {
-    const { consultora, lado, industria, ubicacion, origen, servicio, detalles, honorarios, notas } = await req.json() as {
+    const { consultora, lado, industria, ubicacion, origen, servicio, detalles, honorarios, notas, regenerarId } = await req.json() as {
       consultora?: { nombre?: string; tagline?: string }; lado?: string; industria?: string
       ubicacion?: string; origen?: string; servicio?: string; detalles?: string; honorarios?: string; notas?: string
+      regenerarId?: string
     }
     const marca = { nombre: (consultora?.nombre ?? "").trim() || "TT Consulting", tagline: (consultora?.tagline ?? "").trim() || "Estrategia · M&A · Due Diligence" }
     if (lado !== "comprador" && lado !== "vendedor") return NextResponse.json({ error: "Falta el lado de la mesa" }, { status: 400 })
@@ -269,10 +283,20 @@ export async function POST(req: NextRequest) {
     const sigla = siglaDe(marca.nombre)
 
     const db = createServiceClient()
-    const anio = new Date().getFullYear()
-    const { data: ult } = await db.from("dd_propuestas").select("nro").eq("anio", anio).order("nro", { ascending: false }).limit(1)
-    const nro = ((ult?.[0] as { nro?: number } | undefined)?.nro ?? 0) + 1
-    const referencia = `${sigla}-${pfx}-${anio}-${String(nro).padStart(2, "0")}`
+    let anio = new Date().getFullYear()
+    let nro: number
+    let siglaRef = sigla, pfxRef = pfx
+    if (regenerarId) {
+      // 2026-10-15 — Regeneración: se mantiene la referencia original de la propuesta.
+      const { data: fila } = await db.from("dd_propuestas").select("anio,nro,sigla,prefijo").eq("id", regenerarId).single()
+      if (!fila) return NextResponse.json({ error: "No se encontró la propuesta a regenerar" }, { status: 404 })
+      const f = fila as { anio: number; nro: number; sigla: string; prefijo: string }
+      anio = f.anio; nro = f.nro; siglaRef = f.sigla; pfxRef = f.prefijo
+    } else {
+      const { data: ult } = await db.from("dd_propuestas").select("nro").eq("anio", anio).order("nro", { ascending: false }).limit(1)
+      nro = ((ult?.[0] as { nro?: number } | undefined)?.nro ?? 0) + 1
+    }
+    const referencia = `${siglaRef}-${pfxRef}-${anio}-${String(nro).padStart(2, "0")}`
 
     const pedido = `Redactá una propuesta comercial completa con estos datos.
 
@@ -293,12 +317,18 @@ La referencia del documento es ${referencia}. Armá un plan en 2 a 4 etapas seg�
     const doc = armarDoc(contenido, marca, referencia)
     const buf = await Packer.toBuffer(doc)
 
-    const { error: insErr } = await db.from("dd_propuestas").insert({
-      anio, nro, prefijo: pfx, sigla, lado, sector,
-      servicio: servicio.trim().slice(0, 300), consultora: marca.nombre,
-      honorarios_usd: null, estado: "borrador", archivo,
-      notas: notas?.trim() || null,
-    })
+    // 2026-10-15 — El monto sale de lo tipeado por el usuario o, si vino vacío, de la tabla
+    // de honorarios que redactó el modelo (se toma el mayor, que es el paquete o el total).
+    const monto = montoDe(honorarios) ?? montoDe((contenido.honorarios ?? []).map(r => r[1]).join(" "))
+    const params = { consultora: marca, lado, industria: industria.trim(), ubicacion: ubicacion?.trim() ?? "", origen: origen ?? "", servicio: servicio.trim(), detalles: detalles?.trim() ?? "", honorarios: honorarios?.trim() ?? "", notas: notas?.trim() ?? "" }
+    const campos = {
+      lado, sector, servicio: servicio.trim().slice(0, 300), consultora: marca.nombre,
+      honorarios_usd: monto, archivo, notas: notas?.trim() || null, params,
+      actualizado_en: new Date().toISOString(),
+    }
+    const { error: insErr } = regenerarId
+      ? await db.from("dd_propuestas").update(campos).eq("id", regenerarId)
+      : await db.from("dd_propuestas").insert({ ...campos, anio, nro, prefijo: pfx, sigla, estado: "borrador" })
     if (insErr) return NextResponse.json({ error: "No se pudo registrar la propuesta. " + insErr.message }, { status: 500 })
 
     return new NextResponse(new Uint8Array(buf), {
