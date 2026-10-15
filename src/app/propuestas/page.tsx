@@ -214,17 +214,17 @@ export default function PropuestasPage() {
       <div className="card text-center py-12 px-10">
         <div className="text-4xl mb-3">🔒</div>
         <h3 className="font-semibold text-gray-700 mb-1">Sección reservada al administrador</h3>
-        <Link href="/" className="text-sm text-[#1a2744] underline">Volver al inicio</Link>
+        <Link href="/" className="text-sm text-[#16243B] underline">Volver al inicio</Link>
       </div>
     </div>
   )
 
   const fmt = (n: number | null) => n == null ? "—" : `USD ${n.toLocaleString("es-AR")}`
-  const inputCls = "w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#1a2744]"
+  const inputCls = "w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#2051E0]"
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+      <header className="bg-white/90 backdrop-blur border-b border-gray-200 px-6 py-3.5 flex items-center justify-between sticky top-0 z-40">
         <img src="/logo.png" alt="JL Advisory" className="h-12 w-auto"/>
         <div className="flex items-center gap-3">
           <button onClick={nuevaPropuesta} className="btn-primary">
@@ -356,7 +356,7 @@ export default function PropuestasPage() {
                       {p.notas && !editando && <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-2.5 py-1.5 mt-2">{p.notas}</p>}
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <div className="text-lg font-black text-[#1a2744]">{fmt(p.honorarios_usd)}</div>
+                      <div className="text-lg font-black text-[#16243B]">{fmt(p.honorarios_usd)}</div>
                       <div className="text-xs text-gray-500">{new Date(p.fecha + "T00:00:00").toLocaleDateString("es-AR")}</div>
                       <div className="flex gap-2 mt-2 justify-end">
                         <button onClick={() => {
@@ -370,7 +370,7 @@ export default function PropuestasPage() {
                         </button>
                         {p.params && (
                           <button onClick={() => regenerarDesde(p)}
-                            className="text-xs text-[#1a2744] hover:bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-full font-bold">
+                            className="text-xs text-[#16243B] hover:bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-full font-bold">
                             ↻ Regenerar
                           </button>
                         )}

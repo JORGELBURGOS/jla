@@ -154,7 +154,7 @@ function RiskRow({ r, defaultOpen, links, caseId, highlight, onUpdated }: {
                   {err && <div className="text-xs text-red-600">{err}</div>}
                   <div className="flex gap-2">
                     <button onClick={save} disabled={saving}
-                      className="text-xs bg-[#1a2744] text-white px-3 py-1 rounded font-bold disabled:opacity-50">
+                      className="text-xs bg-[#16243B] text-white px-3 py-1 rounded font-bold disabled:opacity-50">
                       {saving ? "Guardando..." : "Guardar"}
                     </button>
                     <button onClick={() => { setEditing(false); setErr(null) }} disabled={saving}
@@ -176,8 +176,8 @@ function RiskRow({ r, defaultOpen, links, caseId, highlight, onUpdated }: {
             </div>
             <div className="space-y-3">
               {r.notas && (
-                <div className="bg-[#1a2744] bg-opacity-5 border border-[#1a2744] border-opacity-20 rounded-lg px-3 py-2">
-                  <div className="text-xs font-semibold text-[#1a2744] uppercase tracking-wide mb-1">Notas del analista</div>
+                <div className="bg-[#16243B] bg-opacity-5 border border-[#16243B] border-opacity-20 rounded-lg px-3 py-2">
+                  <div className="text-xs font-semibold text-[#16243B] uppercase tracking-wide mb-1">Notas del analista</div>
                   <div className="text-xs text-gray-800 leading-relaxed whitespace-pre-wrap">{r.notas}</div>
                 </div>
               )}
@@ -198,9 +198,9 @@ function RiskRow({ r, defaultOpen, links, caseId, highlight, onUpdated }: {
                         </div>
                         <div className="flex-1 min-w-0">
                           <Link href={`/cases/${caseId}/requirements?highlight=${lk.n_item}`}
-                            className="font-medium text-[#1a2744] underline decoration-dotted hover:decoration-solid flex items-center gap-1 leading-snug">
+                            className="font-medium text-[#16243B] underline decoration-dotted hover:decoration-solid flex items-center gap-1 leading-snug">
                             <span>{lk.documento}</span>
-                            <span className="text-xs bg-[#1a2744] text-white px-1.5 py-0.5 rounded font-bold flex-shrink-0">Ver →</span>
+                            <span className="text-xs bg-[#16243B] text-white px-1.5 py-0.5 rounded font-bold flex-shrink-0">Ver →</span>
                           </Link>
                           <div className="text-gray-500 mt-0.5 leading-relaxed">{lk.descripcion}</div>
                         </div>
@@ -358,7 +358,7 @@ export default function RisksPage({ params }: { params: { id: string } }) {
       <NivelSection titulo="CERRADOS" descripcion="Resueltos o descartados — no suman al total" nivel="" badgeLabel="CERRADOS" defaultCollapsed risks={cerrados} total={cerrados.reduce((s,r)=>s+r.impacto,0)} color="gray" {...sharedProps}/>
       <NivelSection titulo="DUPLICADOS" descripcion="Copias neutralizadas — no suman al total" nivel="" badgeLabel="DUPLICADOS" defaultCollapsed risks={duplicados} total={0} color="gray" {...sharedProps}/>
 
-      <div className="bg-[#1a2744] text-white rounded-xl p-4 mt-2 flex justify-between items-center">
+      <div className="bg-[#16243B] text-white rounded-xl p-4 mt-2 flex justify-between items-center">
         <div>
           <div className="font-bold">Descuento mínimo a negociar</div>
           <div className="text-xs opacity-60">Precio pedido: {precio ? fmtUSD(precio) : "—"}</div>

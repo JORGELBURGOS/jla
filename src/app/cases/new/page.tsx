@@ -223,8 +223,8 @@ export default function NewCasePage() {
         <div className="flex items-center gap-2 mb-8">
           {STEPS.map((s, i) => (
             <div key={i} className="flex items-center flex-1">
-              <div className={`flex items-center gap-2 ${i <= step ? "text-[#1a2744]" : "text-gray-400"}`}>
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${i < step ? "bg-green-500 text-white" : i === step ? "bg-[#1a2744] text-white" : "bg-gray-200 text-gray-500"}`}>
+              <div className={`flex items-center gap-2 ${i <= step ? "text-[#16243B]" : "text-gray-400"}`}>
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${i < step ? "bg-green-500 text-white" : i === step ? "bg-[#16243B] text-white" : "bg-gray-200 text-gray-500"}`}>
                   {i < step ? "✓" : i + 1}
                 </div>
                 <span className="text-xs font-medium hidden sm:block">{s}</span>
@@ -250,13 +250,13 @@ export default function NewCasePage() {
                     { val:"ambos" as const, icon:"🔄", title:"DD M&A + Estructuración ON", desc:"Se crean dos casos vinculados. Los documentos compartidos se marcan automáticamente en ambos." },
                   ]).map(opt => (
                     <button key={opt.val} onClick={() => setTipoCaso(opt.val)}
-                      className={`flex items-start gap-4 p-4 rounded-xl border-2 text-left transition-all ${tipoCaso === opt.val ? "border-[#1a2744] bg-blue-50" : "border-gray-200 hover:border-gray-300"}`}>
+                      className={`flex items-start gap-4 p-4 rounded-xl border-2 text-left transition-all ${tipoCaso === opt.val ? "border-[#16243B] bg-blue-50" : "border-gray-200 hover:border-gray-300"}`}>
                       <span className="text-3xl flex-shrink-0">{opt.icon}</span>
                       <div className="flex-1">
                         <div className="font-bold text-gray-900">{opt.title}</div>
                         <div className="text-sm text-gray-500 mt-0.5">{opt.desc}</div>
                       </div>
-                      {tipoCaso === opt.val && <span className="text-[#1a2744] font-black text-lg flex-shrink-0">✓</span>}
+                      {tipoCaso === opt.val && <span className="text-[#16243B] font-black text-lg flex-shrink-0">✓</span>}
                     </button>
                   ))}
                 </div>
@@ -270,20 +270,20 @@ export default function NewCasePage() {
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Nombre de la empresa *</label>
                 <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Alfa Service de Humberto Morillas S.A."
-                  className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a2744]"/>
+                  className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#16243B]"/>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">CUIT</label>
                   <input value={cuit} onChange={e => setCuit(e.target.value)} placeholder="30-12345678-9"
-                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a2744]"/>
+                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#16243B]"/>
                 </div>
                 <div>
                   {tipoCaso !== "on" && (
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-1.5">Precio pedido (USD)</label>
                       <input type="number" value={precio} onChange={e => setPrecio(e.target.value)} placeholder="5000000"
-                        className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a2744]"/>
+                        className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#16243B]"/>
                     </div>
                   )}
                 </div>
@@ -300,7 +300,7 @@ export default function NewCasePage() {
                 <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
                   {industries.map(ind => (
                     <button key={ind.id} onClick={() => setIndustryId(ind.id)}
-                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm text-left transition-all ${industryId === ind.id ? "border-[#1a2744] bg-[#1a2744] text-white" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"}`}>
+                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm text-left transition-all ${industryId === ind.id ? "border-[#2051E0] bg-[#2051E0] text-white" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"}`}>
                       <span className="text-lg">{ind.icono}</span>
                       <span className="font-medium leading-tight">{ind.nombre}</span>
                     </button>
@@ -313,7 +313,7 @@ export default function NewCasePage() {
                   <div className="space-y-2">
                     {subSectors.map(s => (
                       <button key={s.id} onClick={() => setSubSectorId(s.id)}
-                        className={`w-full flex items-start gap-3 px-4 py-3 rounded-xl border text-left transition-all ${subSectorId === s.id ? "border-[#1a2744] bg-[#1a2744] text-white" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"}`}>
+                        className={`w-full flex items-start gap-3 px-4 py-3 rounded-xl border text-left transition-all ${subSectorId === s.id ? "border-[#2051E0] bg-[#2051E0] text-white" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"}`}>
                         <CheckCircle size={16} className={`mt-0.5 flex-shrink-0 ${subSectorId === s.id ? "text-white" : "text-gray-300"}`}/>
                         <div>
                           <div className="font-semibold text-sm">{s.nombre}</div>
@@ -401,7 +401,7 @@ export default function NewCasePage() {
             </button>
             {step < STEPS.length - 1 ? (
               <button onClick={() => setStep(s => s + 1)} disabled={!canNext}
-                className="px-6 py-2.5 text-sm font-bold text-white bg-[#1a2744] rounded-xl hover:bg-[#0d1525] disabled:opacity-30 transition-colors">
+                className="px-6 py-2.5 text-sm font-bold text-white bg-[#16243B] rounded-xl hover:bg-[#2051E0] disabled:opacity-30 transition-colors">
                 Siguiente →
               </button>
             ) : (

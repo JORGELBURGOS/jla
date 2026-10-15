@@ -102,15 +102,15 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
 
   // ── Estilos de documento ──────────────────────────────────────────
   const H = ({ n, t }: { n: string; t: string }) => (
-    <div style={{ borderBottom: "2px solid #1a2744", marginBottom: "14px", paddingBottom: "6px", display: "flex", alignItems: "baseline", gap: "10px" }}>
+    <div style={{ borderBottom: "2px solid #16243B", marginBottom: "14px", paddingBottom: "6px", display: "flex", alignItems: "baseline", gap: "10px" }}>
       <span style={{ fontFamily: "Georgia, serif", fontSize: "13px", fontWeight: 700, color: "#9ca3af" }}>{n}</span>
-      <span style={{ fontFamily: "Georgia, serif", fontSize: "16px", fontWeight: 700, color: "#1a2744", letterSpacing: "0.02em" }}>{t}</span>
+      <span style={{ fontFamily: "Georgia, serif", fontSize: "16px", fontWeight: 700, color: "#16243B", letterSpacing: "0.02em" }}>{t}</span>
     </div>
   )
   const P = ({ children }: { children: React.ReactNode }) => (
     <p style={{ fontFamily: "Georgia, serif", fontSize: "11px", lineHeight: 1.75, color: "#1f2937", textAlign: "justify", margin: "0 0 10px 0" }}>{children}</p>
   )
-  const th: React.CSSProperties = { textAlign: "left", padding: "6px 8px", fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.06em", color: "#6b7280", borderBottom: "1.5px solid #1a2744", fontFamily: "Inter, Arial, sans-serif" }
+  const th: React.CSSProperties = { textAlign: "left", padding: "6px 8px", fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.06em", color: "#6b7280", borderBottom: "1.5px solid #16243B", fontFamily: "Inter, Arial, sans-serif" }
   const td: React.CSSProperties = { padding: "6px 8px", fontSize: "10px", borderBottom: "0.5px solid #e5e7eb", color: "#1f2937", fontFamily: "Inter, Arial, sans-serif" }
   const tdNum: React.CSSProperties = { ...td, textAlign: "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }
 
@@ -129,7 +129,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
       {/* Barra (no se imprime) */}
       <div className="no-print" style={{ position: "sticky", top: 0, zIndex: 50, background: "white", borderBottom: "1px solid #e5e7eb", padding: "10px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span style={{ fontSize: "13px", fontWeight: 700, color: "#374151" }}>Informe de Due Diligence — versión para impresión</span>
-        <button onClick={() => window.print()} style={{ background: "#1a2744", color: "white", fontSize: "13px", fontWeight: 700, padding: "8px 18px", borderRadius: "8px", border: "none", cursor: "pointer" }}>
+        <button onClick={() => window.print()} style={{ background: "#16243B", color: "white", fontSize: "13px", fontWeight: 700, padding: "8px 18px", borderRadius: "8px", border: "none", cursor: "pointer" }}>
           🖨 Imprimir / Guardar como PDF
         </button>
       </div>
@@ -142,10 +142,10 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
             <div style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "0.25em", color: "#9ca3af", textTransform: "uppercase", marginBottom: "60px" }}>
               Estrictamente privado y confidencial
             </div>
-            <div style={{ fontFamily: "Georgia, serif", fontSize: "34px", fontWeight: 700, color: "#1a2744", lineHeight: 1.25, marginBottom: "18px" }}>
+            <div style={{ fontFamily: "Georgia, serif", fontSize: "34px", fontWeight: 700, color: "#16243B", lineHeight: 1.25, marginBottom: "18px" }}>
               Informe de Due Diligence
             </div>
-            <div style={{ width: "72px", height: "3px", background: "#1a2744", marginBottom: "24px" }} />
+            <div style={{ width: "72px", height: "3px", background: "#16243B", marginBottom: "24px" }} />
             <div style={{ fontFamily: "Georgia, serif", fontSize: "19px", color: "#374151", marginBottom: "6px" }}>{nombre}</div>
             {cuit && <div style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", color: "#9ca3af" }}>CUIT {cuit}</div>}
           </div>
@@ -195,7 +195,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
                   <td style={td}>Precio pedido vs. valor central</td><td style={tdNum}>{gapPrecio ? `${gapPrecio.toLocaleString("es-AR", { maximumFractionDigits: 1 })}\u00d7` : "—"}</td></tr>
             </tbody>
           </table>
-          <div style={{ background: "#1a2744", borderRadius: "8px", padding: "16px 20px", marginTop: "8px" }}>
+          <div style={{ background: "#16243B", borderRadius: "8px", padding: "16px 20px", marginTop: "8px" }}>
             <div style={{ fontFamily: "Inter, sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "0.15em", color: "#f59e0b", textTransform: "uppercase", marginBottom: "6px" }}>Recomendación</div>
             <div style={{ fontFamily: "Georgia, serif", fontSize: "13px", color: "white", lineHeight: 1.6 }}>
               {semaforoTxt}{narrativa?.precio_sugerido ? ` — ${narrativa.precio_sugerido}` : ""}.
@@ -228,14 +228,14 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
           {narrativa && narrativa.hallazgos_criticos.length > 0 ? (
             narrativa.hallazgos_criticos.map((h, i) => (
               <div key={i} style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
-                <span style={{ fontFamily: "Georgia, serif", fontSize: "11px", fontWeight: 700, color: "#1a2744", flexShrink: 0 }}>3.{i + 1}</span>
+                <span style={{ fontFamily: "Georgia, serif", fontSize: "11px", fontWeight: 700, color: "#16243B", flexShrink: 0 }}>3.{i + 1}</span>
                 <p style={{ fontFamily: "Georgia, serif", fontSize: "11px", lineHeight: 1.7, color: "#1f2937", textAlign: "justify", margin: 0 }}>{h}</p>
               </div>
             ))
           ) : (
             topRiesgos.slice(0, 6).map((r, i) => (
               <div key={i} style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
-                <span style={{ fontFamily: "Georgia, serif", fontSize: "11px", fontWeight: 700, color: "#1a2744", flexShrink: 0 }}>3.{i + 1}</span>
+                <span style={{ fontFamily: "Georgia, serif", fontSize: "11px", fontWeight: 700, color: "#16243B", flexShrink: 0 }}>3.{i + 1}</span>
                 <p style={{ fontFamily: "Georgia, serif", fontSize: "11px", lineHeight: 1.7, color: "#1f2937", textAlign: "justify", margin: 0 }}>
                   {String(r.riesgo)} (exposición estimada: {fmtUSDc(Math.abs(Number(r.impacto)))}).
                 </p>
@@ -347,7 +347,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
           </P>
           {(narrativa && narrativa.condiciones_cierre.length > 0 ? narrativa.condiciones_cierre : pendCriticos.map(p => `Entrega y verificación de: ${String(p.documento)}.`)).map((c, i) => (
             <div key={i} style={{ display: "flex", gap: "10px", marginBottom: "8px" }}>
-              <span style={{ fontFamily: "Georgia, serif", fontSize: "11px", fontWeight: 700, color: "#1a2744", flexShrink: 0 }}>8.{i + 1}</span>
+              <span style={{ fontFamily: "Georgia, serif", fontSize: "11px", fontWeight: 700, color: "#16243B", flexShrink: 0 }}>8.{i + 1}</span>
               <p style={{ fontFamily: "Georgia, serif", fontSize: "11px", lineHeight: 1.7, color: "#1f2937", textAlign: "justify", margin: 0 }}>{c}</p>
             </div>
           ))}
@@ -362,22 +362,22 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
           </P>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "28px" }}>
             <div>
-              <div style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#1a2744", marginBottom: "8px" }}>Supuestos financieros</div>
+              <div style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#16243B", marginBottom: "8px" }}>Supuestos financieros</div>
               {sups.filter(s => s.tipo === "financiero").map((s, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: "8px", padding: "5px 0", borderBottom: "0.5px solid #f3f4f6" }}>
                   <span style={{ fontFamily: "Inter, sans-serif", fontSize: "9.5px", color: "#6b7280", flex: 1 }}>{String(s.label ?? "")}</span>
-                  <span style={{ fontFamily: "Inter, sans-serif", fontSize: "9.5px", fontWeight: 700, color: "#1a2744", whiteSpace: "nowrap" }}>
+                  <span style={{ fontFamily: "Inter, sans-serif", fontSize: "9.5px", fontWeight: 700, color: "#16243B", whiteSpace: "nowrap" }}>
                     {fmtSupuesto(String(s.label ?? ""), s.valor)}
                   </span>
                 </div>
               ))}
             </div>
             <div>
-              <div style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#1a2744", marginBottom: "8px" }}>Supuestos de proceso</div>
+              <div style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#16243B", marginBottom: "8px" }}>Supuestos de proceso</div>
               {sups.filter(s => s.tipo === "categorico" || s.tipo === "acumulativo").map((s, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: "8px", padding: "5px 0", borderBottom: "0.5px solid #f3f4f6" }}>
                   <span style={{ fontFamily: "Inter, sans-serif", fontSize: "9.5px", color: "#6b7280", flex: 1 }}>{String(s.label ?? "")}</span>
-                  <span style={{ fontFamily: "Inter, sans-serif", fontSize: "9.5px", fontWeight: 700, color: "#1a2744" }}>
+                  <span style={{ fontFamily: "Inter, sans-serif", fontSize: "9.5px", fontWeight: 700, color: "#16243B" }}>
                     {String(s.valor ?? "").slice(0, 28) || "Pendiente"}
                   </span>
                 </div>

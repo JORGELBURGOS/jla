@@ -109,13 +109,13 @@ export default function OnRepagoPage({ params }: { params: { id: string } }) {
           <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
             {["optimista","base","pesimista"].map(s => (
               <button key={s} onClick={() => setEsc(s)}
-                className={`text-xs px-3 py-1.5 rounded-md font-medium capitalize transition-all ${escenario===s?"bg-white shadow text-[#1a2744]":"text-gray-500 hover:text-gray-700"}`}>
+                className={`text-xs px-3 py-1.5 rounded-md font-medium capitalize transition-all ${escenario===s?"bg-white shadow text-[#16243B]":"text-gray-500 hover:text-gray-700"}`}>
                 {s}
               </button>
             ))}
           </div>
           <button onClick={save} disabled={saving}
-            className="flex items-center gap-2 bg-[#1a2744] text-white px-3 py-2 rounded-xl text-xs font-semibold hover:bg-[#0d1525] disabled:opacity-50">
+            className="flex items-center gap-2 bg-[#16243B] text-white px-3 py-2 rounded-xl text-xs font-semibold hover:bg-[#2051E0] disabled:opacity-50">
             {saving ? <RefreshCw size={12} className="animate-spin"/> : <Save size={12}/>}
             {saved ? "✓ Guardado" : "Guardar"}
           </button>
@@ -138,7 +138,7 @@ export default function OnRepagoPage({ params }: { params: { id: string } }) {
           <div className="flex items-center gap-2">
             <input type="number" step="0.1" value={dscrMin}
               onChange={e => setDscrMin(parseFloat(e.target.value)||1.2)}
-              className="w-20 border border-gray-200 rounded-lg px-2 py-1 text-2xl font-black text-[#1a2744] text-right focus:outline-none"/>
+              className="w-20 border border-gray-200 rounded-lg px-2 py-1 text-2xl font-black text-[#16243B] text-right focus:outline-none"/>
             <span className="text-xl font-black text-gray-400">x</span>
           </div>
           <p className="text-xs text-gray-400 mt-1">SGRs típicamente exigen 1.2x-1.5x</p>
@@ -159,7 +159,7 @@ export default function OnRepagoPage({ params }: { params: { id: string } }) {
       <div className="card overflow-hidden p-0">
         <table className="w-full text-xs">
           <thead>
-            <tr className="bg-[#1a2744] text-white">
+            <tr className="bg-[#16243B] text-white">
               <th className="text-left px-4 py-3 font-semibold">Concepto</th>
               {rows.map(r => <th key={r.anio} className="text-right px-3 py-3 font-semibold">Año {r.anio}</th>)}
             </tr>
@@ -185,8 +185,8 @@ export default function OnRepagoPage({ params }: { params: { id: string } }) {
               </tr>
             ))}
             {/* DSCR calculado */}
-            <tr className="border-t-2 border-[#1a2744]">
-              <td className="px-4 py-3 font-black text-[#1a2744]">DSCR (cobertura del servicio)</td>
+            <tr className="border-t-2 border-[#16243B]">
+              <td className="px-4 py-3 font-black text-[#16243B]">DSCR (cobertura del servicio)</td>
               {dscrValues.map((d, i) => (
                 <td key={i} className={`px-3 py-3 text-right text-base ${dscrColor(d)} ${dscrBg(d)}`}>
                   {d ? d.toFixed(2)+"x" : "—"}
@@ -215,7 +215,7 @@ export default function OnRepagoPage({ params }: { params: { id: string } }) {
               <div className="text-xs font-semibold text-gray-500 mb-1">Año {r.anio}</div>
               <textarea value={r.notas} onChange={e => updRow(i, "notas", e.target.value)}
                 rows={3} placeholder="Supuestos..."
-                className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#1a2744] resize-none"/>
+                className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#2051E0] resize-none"/>
             </div>
           ))}
         </div>

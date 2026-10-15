@@ -118,7 +118,7 @@ export default function OnRiesgosPage({ params }: { params: { id: string } }) {
             {sinMitigar > 0 && <div className="text-red-600 font-semibold">{sinMitigar} alto sin mitigar</div>}
           </div>
           <button onClick={saveAll} disabled={saving === "all"}
-            className="flex items-center gap-2 bg-[#1a2744] text-white px-3 py-2 rounded-xl text-xs font-semibold hover:bg-[#0d1525] disabled:opacity-50">
+            className="flex items-center gap-2 bg-[#16243B] text-white px-3 py-2 rounded-xl text-xs font-semibold hover:bg-[#2051E0] disabled:opacity-50">
             {saving === "all" ? <RefreshCw size={12} className="animate-spin"/> : <Save size={12}/>}
             Guardar todo
           </button>
@@ -142,7 +142,7 @@ export default function OnRiesgosPage({ params }: { params: { id: string } }) {
               <div>
                 <div className="text-xs font-semibold text-gray-500 mb-1">Categoria</div>
                 <input value={r.categoria} onChange={e => updR(r.id,"categoria",e.target.value)}
-                  className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#1a2744]"/>
+                  className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#2051E0]"/>
               </div>
               <div>
                 <div className="text-xs font-semibold text-gray-500 mb-1">Severidad para el inversor</div>
@@ -160,13 +160,13 @@ export default function OnRiesgosPage({ params }: { params: { id: string } }) {
               <div className="text-xs font-semibold text-gray-500 mb-1">Factor de riesgo (texto del prospecto)</div>
               <input value={r.titulo} onChange={e => updR(r.id,"titulo",e.target.value)}
                 placeholder="Descripcion concisa del riesgo para el prospecto..."
-                className="w-full text-sm font-semibold border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#1a2744]"/>
+                className="w-full text-sm font-semibold border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#2051E0]"/>
             </div>
             <div className="mb-3">
               <div className="text-xs font-semibold text-gray-500 mb-1">Analisis interno — impacto especifico en este emisor</div>
               <textarea value={r.descripcion} onChange={e => updR(r.id,"descripcion",e.target.value)}
                 rows={3} placeholder="Como se manifiesta este riesgo en este emisor? Que magnitud tiene? Hay evidencia en los EECC o en la proyeccion?"
-                className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#1a2744] resize-none"/>
+                className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#2051E0] resize-none"/>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex-1">
@@ -182,7 +182,7 @@ export default function OnRiesgosPage({ params }: { params: { id: string } }) {
                 Incluir en prospecto
               </label>
               <button onClick={() => saveRiesgo(r)} disabled={saving===r.id}
-                className="flex items-center gap-1 text-xs bg-[#1a2744] text-white px-2.5 py-1.5 rounded-lg hover:bg-[#0d1525] disabled:opacity-50">
+                className="flex items-center gap-1 text-xs bg-[#16243B] text-white px-2.5 py-1.5 rounded-lg hover:bg-[#2051E0] disabled:opacity-50">
                 {saving===r.id ? <RefreshCw size={10} className="animate-spin"/> : <Save size={10}/>}
                 Guardar
               </button>
@@ -195,7 +195,7 @@ export default function OnRiesgosPage({ params }: { params: { id: string } }) {
       </div>
 
       <button onClick={addRiesgo}
-        className="flex items-center gap-2 w-full justify-center border-2 border-dashed border-gray-200 py-3 rounded-xl text-sm text-gray-400 hover:border-[#1a2744] hover:text-[#1a2744] transition-colors">
+        className="flex items-center gap-2 w-full justify-center border-2 border-dashed border-gray-200 py-3 rounded-xl text-sm text-gray-400 hover:border-[#16243B] hover:text-[#16243B] transition-colors">
         <Plus size={14}/> Agregar factor de riesgo especifico del emisor
       </button>
     </div>

@@ -124,19 +124,19 @@ export default function AdminPage() {
   }
 
   if (!authorized) return (
-    <div className="min-h-screen bg-[#1a2744] flex items-center justify-center">
+    <div className="min-h-screen bg-[#16243B] flex items-center justify-center">
       <div className="bg-white rounded-2xl p-8 text-center max-w-sm">
         <div className="text-4xl mb-4">🔒</div>
         <h2 className="text-lg font-bold text-gray-900 mb-2">Acceso restringido</h2>
         <p className="text-sm text-gray-500 mb-4">Esta sección es solo para administradores.</p>
-        <Link href="/" className="text-sm text-[#1a2744] font-bold hover:underline">← Volver</Link>
+        <Link href="/" className="text-sm text-[#16243B] font-bold hover:underline">← Volver</Link>
       </div>
     </div>
   )
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-[#1a2744] text-white px-6 py-4 flex items-center justify-between">
+      <div className="bg-[#16243B] text-white px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <img src="/logo.png" alt="" className="h-8 filter brightness-0 invert"/>
           <div>
@@ -158,9 +158,9 @@ export default function AdminPage() {
               onChange={e => setNewEmail(e.target.value)}
               onKeyDown={e => e.key === "Enter" && addUser()}
               placeholder="email@empresa.com"
-              className="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#1a2744]"/>
+              className="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#2051E0]"/>
             <button onClick={addUser} disabled={adding || !newEmail}
-              className="flex items-center gap-2 bg-[#1a2744] text-white px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-[#0d1525] disabled:opacity-50">
+              className="flex items-center gap-2 bg-[#16243B] text-white px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-[#2051E0] disabled:opacity-50">
               <Plus size={14}/>{adding ? "Agregando..." : "Agregar"}
             </button>
           </div>
@@ -200,7 +200,7 @@ export default function AdminPage() {
                   <label className="flex items-center gap-1.5 text-xs cursor-pointer">
                     <input type="checkbox" checked={u.can_create_cases ?? false}
                       onChange={e => upd(u.id, "can_create_cases", e.target.checked)}
-                      className="rounded accent-[#1a2744]"/>
+                      className="rounded accent-[#16243B]"/>
                     <span className="text-gray-600">Puede crear casos</span>
                   </label>
 
@@ -215,11 +215,11 @@ export default function AdminPage() {
                   {!isAdmin_ && (
                     <>
                       <button onClick={() => setExpanded(isOpen ? null : u.id)}
-                        className="text-xs text-[#1a2744] font-bold hover:underline">
+                        className="text-xs text-[#16243B] font-bold hover:underline">
                         {isOpen ? "Cerrar ▲" : "Configurar ▼"}
                       </button>
                       <button onClick={() => saveUser(u)} disabled={saving_}
-                        className="flex items-center gap-1 text-xs bg-[#1a2744] text-white px-3 py-1.5 rounded-lg hover:bg-[#0d1525] disabled:opacity-50">
+                        className="flex items-center gap-1 text-xs bg-[#16243B] text-white px-3 py-1.5 rounded-lg hover:bg-[#2051E0] disabled:opacity-50">
                         {saving_ ? <RefreshCw size={11} className="animate-spin"/> : <Save size={11}/>}
                         {saving_ ? "..." : "Guardar"}
                       </button>
@@ -273,13 +273,13 @@ export default function AdminPage() {
                         onChange={e => upd(u.id, "notes", e.target.value)}
                         placeholder="ej: cliente de Mendoza, solo lectura..."
                         rows={3}
-                        className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#1a2744] resize-none mb-3"/>
+                        className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#2051E0] resize-none mb-3"/>
                       <div className="text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">Clave de acceso</div>
                       <div className="flex gap-2">
                         <input type="text" value={u.password ?? "1234"}
                           onChange={e => upd(u.id, "password", e.target.value)}
                           placeholder="clave"
-                          className="flex-1 text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#1a2744] font-mono"/>
+                          className="flex-1 text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#2051E0] font-mono"/>
                         <button onClick={() => upd(u.id, "password", "1234")}
                           className="text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg px-2 py-1">
                           Reset 1234

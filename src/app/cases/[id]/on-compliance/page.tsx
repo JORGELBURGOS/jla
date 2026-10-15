@@ -64,10 +64,10 @@ export default function OnCompliancePage({ params }: { params: { id: string } })
     <div className="max-w-4xl mx-auto p-6">
       <div className="flex items-center justify-between mb-1">
         <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-          <ShieldCheck size={20} className="text-[#1a2744]" /> Cumplimiento CNV
+          <ShieldCheck size={20} className="text-[#16243B]" /> Cumplimiento CNV
         </h1>
         <button onClick={autoDetect} disabled={refreshing}
-          className="text-xs font-semibold text-[#1a2744] border border-gray-300 hover:bg-gray-50 rounded-lg px-3 py-1.5 flex items-center gap-1.5 disabled:opacity-50">
+          className="text-xs font-semibold text-[#16243B] border border-gray-300 hover:bg-gray-50 rounded-lg px-3 py-1.5 flex items-center gap-1.5 disabled:opacity-50">
           <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} /> Auto-detectar desde estructura
         </button>
       </div>
@@ -77,7 +77,7 @@ export default function OnCompliancePage({ params }: { params: { id: string } })
       <div className="mb-5 bg-gray-50 border border-gray-200 rounded-xl p-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Avance de cumplimiento</span>
-          <span className="text-sm font-bold text-[#1a2744]">{cumplidos}/{total} · {pct}%</span>
+          <span className="text-sm font-bold text-[#16243B]">{cumplidos}/{total} · {pct}%</span>
         </div>
         <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
           <div className="h-full bg-green-600 rounded-full transition-all" style={{ width: `${pct}%` }} />
@@ -86,7 +86,7 @@ export default function OnCompliancePage({ params }: { params: { id: string } })
 
       {cats.map(cat => (
         <div key={cat} className="mb-5">
-          <div className="text-xs font-bold uppercase tracking-wide text-[#1a2744] border-b border-gray-200 pb-1.5 mb-2">{cat}</div>
+          <div className="text-xs font-bold uppercase tracking-wide text-[#16243B] border-b border-gray-200 pb-1.5 mb-2">{cat}</div>
           <div className="space-y-2">
             {items.filter(i => i.categoria === cat).map(it => (
               <div key={it.id} className="border border-gray-200 rounded-lg px-3 py-2.5">

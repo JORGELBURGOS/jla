@@ -48,7 +48,7 @@ function DetailField({ label, value, danger, warn, accent }: {
   if (!value) return null
   const bg = danger ? "bg-red-50 border-l-2 border-red-400"
     : warn   ? "bg-amber-50 border-l-2 border-amber-400"
-    : accent ? "bg-[#1a2744] bg-opacity-5 border-l-2 border-[#1a2744] border-opacity-30"
+    : accent ? "bg-[#16243B] bg-opacity-5 border-l-2 border-[#16243B] border-opacity-30"
     : "bg-white border border-gray-100"
   return (
     <div className={`rounded-lg px-3 py-2.5 ${bg}`}>
@@ -199,9 +199,9 @@ function ItemRow({ item, toggling, onToggle, onSuspender, linksMap, caseId, high
                     </div>
                     <div className="flex-1 min-w-0">
                       <Link href={`/cases/${caseId}/risks?highlight=${lk.risk_id}`}
-                        className="font-semibold text-[#1a2744] underline decoration-dotted hover:decoration-solid flex items-center gap-1 leading-snug">
+                        className="font-semibold text-[#16243B] underline decoration-dotted hover:decoration-solid flex items-center gap-1 leading-snug">
                         {lk.riesgo}
-                        <span className="text-xs bg-[#1a2744] text-white px-1.5 py-0.5 rounded font-bold flex-shrink-0 ml-1">Ver →</span>
+                        <span className="text-xs bg-[#16243B] text-white px-1.5 py-0.5 rounded font-bold flex-shrink-0 ml-1">Ver →</span>
                       </Link>
                       <div className="text-gray-500 mt-1 leading-relaxed">{lk.descripcion}</div>
                     </div>
@@ -384,7 +384,7 @@ export default function RequirementsPage({ params }: { params: { id: string } })
           <h1 className="text-xl font-bold text-gray-900">Solicitud de Información</h1>
           <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
             <button onClick={() => setTab("interna")} className="px-3 py-1 rounded text-xs text-gray-500 hover:bg-white">Vista interna</button>
-            <button className="px-3 py-1 rounded text-xs bg-white text-[#1a2744] shadow-sm font-semibold">Vista para el vendedor</button>
+            <button className="px-3 py-1 rounded text-xs bg-white text-[#16243B] shadow-sm font-semibold">Vista para el vendedor</button>
           </div>
         </div>
         <div className="space-y-1">
@@ -415,7 +415,7 @@ export default function RequirementsPage({ params }: { params: { id: string } })
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-xl font-bold text-gray-900">Requerimientos</h1>
             <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
-              <button className="px-3 py-1 rounded text-xs bg-white text-[#1a2744] shadow-sm font-semibold">Vista interna</button>
+              <button className="px-3 py-1 rounded text-xs bg-white text-[#16243B] shadow-sm font-semibold">Vista interna</button>
               <button onClick={() => setTab("vendedor")} className="px-3 py-1 rounded text-xs text-gray-500 hover:bg-white">Vista para el vendedor</button>
             </div>
           </div>
@@ -426,7 +426,7 @@ export default function RequirementsPage({ params }: { params: { id: string } })
           </p>
         </div>
         <div className="card p-3 text-center flex-shrink-0">
-          <div className="text-2xl font-black text-[#1a2744]">{avance}%</div>
+          <div className="text-2xl font-black text-[#16243B]">{avance}%</div>
           <div className="text-xs text-gray-500">completado</div>
           <div className="mt-1.5 w-16 h-2 bg-gray-100 rounded-full overflow-hidden mx-auto">
             <div className="h-full flex">
@@ -439,7 +439,7 @@ export default function RequirementsPage({ params }: { params: { id: string } })
 
       <div className="flex gap-2 flex-wrap mt-3 mb-4">
         <button onClick={() => descargarExcel("vendedor")} disabled={!!downloading}
-          className="flex items-center gap-1.5 text-xs bg-[#1a2744] text-white px-3 py-1.5 rounded-lg hover:bg-[#0d1525] disabled:opacity-50 font-medium">
+          className="flex items-center gap-1.5 text-xs bg-[#16243B] text-white px-3 py-1.5 rounded-lg hover:bg-[#2051E0] disabled:opacity-50 font-medium">
           <Download size={12}/>
           {downloading==="vendedor" ? "Generando..." : "Excel para el vendedor"}
         </button>

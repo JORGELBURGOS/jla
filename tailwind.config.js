@@ -1,6 +1,83 @@
 /** @type {import('tailwindcss').Config} */
+// 2026-10-15 — Rediseño visual. Las escalas gray, blue y green/emerald/teal se
+// remapean a la paleta de la marca (acero frío, azul del logotipo y teal del
+// logotipo) para que todas las páginas cambien de piel sin tocar su código.
 module.exports = {
   content: ['./src/**/*.{js,ts,jsx,tsx}'],
-  theme: { extend: {} },
-  plugins: []
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ['Barlow', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        cond: ['"Barlow Condensed"', '"Arial Narrow"', 'Arial', 'sans-serif'],
+      },
+      colors: {
+        gray: {
+          50:  '#EFF2F6',
+          100: '#E4EAF1',
+          200: '#D5DDE6',
+          300: '#BBC7D4',
+          400: '#91A0B2',
+          500: '#6C7A8E',
+          600: '#536175',
+          700: '#3B4A5F',
+          800: '#273549',
+          900: '#16243B',
+          950: '#0E1930',
+        },
+        blue: {
+          50:  '#EEF3FE',
+          100: '#DCE7FD',
+          200: '#B9CEFB',
+          300: '#8FAEF7',
+          400: '#5E86EF',
+          500: '#3366E8',
+          600: '#2051E0',
+          700: '#1A43BC',
+          800: '#163795',
+          900: '#132D77',
+          950: '#0D1E50',
+        },
+        green: {
+          50:  '#E7F7F3',
+          100: '#CFEFE7',
+          200: '#A0DFD0',
+          300: '#6CCBB4',
+          400: '#3DB79B',
+          500: '#23A78A',
+          600: '#198F76',
+          700: '#15785F',
+          800: '#12614E',
+          900: '#0F4F40',
+          950: '#0A3A2F',
+        },
+        emerald: {
+          50:  '#E7F7F3',
+          100: '#CFEFE7',
+          200: '#A0DFD0',
+          300: '#6CCBB4',
+          400: '#3DB79B',
+          500: '#23A78A',
+          600: '#198F76',
+          700: '#15785F',
+          800: '#12614E',
+          900: '#0F4F40',
+          950: '#0A3A2F',
+        },
+        teal: {
+          50:  '#E7F7F3',
+          100: '#CFEFE7',
+          200: '#A0DFD0',
+          300: '#6CCBB4',
+          400: '#3DB79B',
+          500: '#23A78A',
+          600: '#198F76',
+          700: '#15785F',
+          800: '#12614E',
+          900: '#0F4F40',
+          950: '#0A3A2F',
+        },
+      },
+    },
+  },
+  plugins: [],
 }

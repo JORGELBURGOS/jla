@@ -195,10 +195,10 @@ export default function OnPotablePage({ params }: { params: { id: string } }) {
         <h3 className="text-xs font-bold text-gray-600 uppercase mb-2">Conclusión del analista</h3>
         <textarea value={conclusion} onChange={e => setConclusion(e.target.value)} rows={5}
           placeholder="Síntesis ejecutiva para presentar a la ALYC. Incluir la estructura recomendada, las condiciones previas necesarias y el próximo paso..."
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1a2744] resize-none"/>
+          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2051E0] resize-none"/>
         <button onClick={async () => { setSavingConc(true); await new Promise(r=>setTimeout(r,500)); setSavingConc(false) }}
           disabled={savingConc}
-          className="mt-2 text-xs bg-[#1a2744] text-white px-3 py-1.5 rounded-lg hover:bg-[#0d1525] disabled:opacity-50">
+          className="mt-2 text-xs bg-[#16243B] text-white px-3 py-1.5 rounded-lg hover:bg-[#2051E0] disabled:opacity-50">
           {savingConc ? "Guardando..." : "Guardar conclusión"}
         </button>
       </div>

@@ -129,7 +129,7 @@ export default function AssumptionsPage({ params }: { params: { id: string } }) 
           </div>
           {isDirty && (
             <button onClick={() => save(a)} disabled={saving === a.id}
-              className="text-xs bg-[#1a2744] text-white px-3 py-1.5 rounded-lg hover:bg-[#0d1525] disabled:opacity-50 font-medium">
+              className="text-xs bg-[#16243B] text-white px-3 py-1.5 rounded-lg hover:bg-[#2051E0] disabled:opacity-50 font-medium">
               {saving === a.id ? "Guardando..." : "Guardar"}
             </button>
           )}
@@ -180,7 +180,7 @@ export default function AssumptionsPage({ params }: { params: { id: string } }) 
       )}
 
       {toast && toast.length > 0 && (
-        <div className="fixed bottom-6 right-6 bg-[#1a2744] text-white px-4 py-4 rounded-xl shadow-xl max-w-sm z-50">
+        <div className="fixed bottom-6 right-6 bg-[#16243B] text-white px-4 py-4 rounded-xl shadow-xl max-w-sm z-50">
           <div className="font-bold text-sm mb-2">Riesgos actualizados automaticamente</div>
           {toast.map((r, i) => (
             <div key={i} className="text-xs opacity-90 mb-1">

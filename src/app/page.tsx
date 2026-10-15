@@ -100,7 +100,7 @@ export default function HomePage() {
   const isAdmin = email === ADMIN_EMAIL
 
   if (showPrompt) return (
-    <div className="min-h-screen bg-[#1a2744] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#16243B] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl p-8 w-80 shadow-2xl">
         <img src="/logo.png" alt="JL Advisory" className="h-10 mx-auto mb-6"/>
         <h2 className="text-base font-bold text-gray-900 mb-1 text-center">Due Diligence M&A</h2>
@@ -110,16 +110,16 @@ export default function HomePage() {
             onChange={e => setEmailInput(e.target.value)}
             onKeyDown={e => e.key==="Enter" && confirmEmail()}
             placeholder="tu@email.com"
-            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1a2744]"/>
+            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#2051E0]"/>
           <input type="password" value={passInput}
             onChange={e => setPassInput(e.target.value)}
             onKeyDown={e => e.key==="Enter" && confirmEmail()}
             placeholder="Clave"
-            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1a2744]"/>
+            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#2051E0]"/>
         </div>
         {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
         <button onClick={confirmEmail} disabled={!emailInput || !passInput}
-          className="w-full bg-[#1a2744] text-white font-bold py-2.5 rounded-xl text-sm hover:bg-[#0d1525] disabled:opacity-40 mt-4">
+          className="w-full bg-[#16243B] text-white font-bold py-2.5 rounded-xl text-sm hover:bg-[#2051E0] disabled:opacity-40 mt-4">
           Ingresar →
         </button>
         <p className="text-xs text-gray-400 text-center mt-3">
@@ -137,7 +137,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+      <header className="bg-white/90 backdrop-blur border-b border-gray-200 px-6 py-3.5 flex items-center justify-between sticky top-0 z-40">
         <img src="/logo.png" alt="JL Advisory" className="h-12 w-auto"/>
         <div className="flex items-center gap-3">
           <span className="text-xs text-gray-400">{email}</span>
@@ -177,7 +177,7 @@ export default function HomePage() {
                   <div className="flex items-start gap-3 flex-1 min-w-0">
                     <span className="text-3xl flex-shrink-0">{c.industry?.icono??"🏭"}</span>
                     <div className="min-w-0">
-                      <h3 className="font-bold text-gray-900 group-hover:text-[#1a2744] truncate">{c.nombre}</h3>
+                      <h3 className="font-bold text-gray-900 group-hover:text-[#16243B] truncate">{c.nombre}</h3>
                       {c.cuit && <p className="text-xs text-gray-500">CUIT {c.cuit}</p>}
                       <div className="flex gap-2 mt-1 flex-wrap">
                         {c.industry && <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{c.industry.nombre}</span>}
@@ -186,7 +186,7 @@ export default function HomePage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-5 flex-shrink-0 text-center">
-                    <div><div className="text-lg font-black text-[#1a2744]">{c.avance}%</div><div className="text-xs text-gray-500">avance</div></div>
+                    <div><div className="text-lg font-black text-[#16243B]">{c.avance}%</div><div className="text-xs text-gray-500">avance</div></div>
                     <div><div className="text-lg font-black text-red-700">{c.totalRiesgo<0?`USD ${(Math.abs(c.totalRiesgo)/1e6).toFixed(1)}M`:"—"}</div><div className="text-xs text-gray-500">riesgo</div></div>
                     <div><div className="text-lg font-black text-gray-900">USD {(c.precio_pedido/1e6).toFixed(1)}M</div><div className="text-xs text-gray-500">precio</div></div>
                   </div>

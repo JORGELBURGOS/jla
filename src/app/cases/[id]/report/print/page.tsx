@@ -86,27 +86,27 @@ export default async function PrintPage({ params, searchParams }: {
           p  { line-height:1.6; }
 
           /* ── Portada ── */
-          .cover { background:#1a2744; min-height:100vh; padding:48px 52px; display:flex; flex-direction:column; justify-content:space-between; page-break-after:always; }
+          .cover { background:#16243B; min-height:100vh; padding:48px 52px; display:flex; flex-direction:column; justify-content:space-between; page-break-after:always; }
 
           /* ── Índice ── */
           .toc { padding:40px 52px; page-break-after:always; }
           .toc-item { display:flex; align-items:baseline; gap:8px; padding:9px 0; border-bottom:1px dotted #e2e8f0; font-size:11px; }
-          .toc-item .num { font-family:'Source Serif 4',serif; font-weight:700; color:#1a2744; width:22px; flex-shrink:0; }
+          .toc-item .num { font-family:'Source Serif 4',serif; font-weight:700; color:#16243B; width:22px; flex-shrink:0; }
           .toc-item .txt { flex-shrink:0; color:#1a1a1a; font-weight:500; }
           .toc-item .dots { flex:1; border-bottom:1px dotted #cbd5e1; margin:0 6px 3px; }
           .toc-item .pg { color:#94a3b8; font-size:9px; }
           .toc-parte { font-family:'Source Serif 4',serif; font-size:10px; font-weight:800; color:#f59e0b; text-transform:uppercase; letter-spacing:0.15em; margin:20px 0 8px; }
 
           /* ── Separador de Parte ── */
-          .parte-divider { background:#1a2744; min-height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:flex-start; padding:52px; page-break-after:always; }
+          .parte-divider { background:#16243B; min-height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:flex-start; padding:52px; page-break-after:always; }
           .parte-divider .kicker { color:#f59e0b; font-size:11px; font-weight:700; letter-spacing:0.25em; text-transform:uppercase; margin-bottom:14px; }
           .parte-divider h1 { color:white; font-size:36px; margin-bottom:16px; }
           .parte-divider .desc { color:#93c5fd; font-size:13px; max-width:440px; line-height:1.7; }
 
           /* ── Secciones ── */
           .section { padding:28px 36px; page-break-before:always; }
-          .section-header { font-family:'Source Serif 4',serif; background:#1a2744; color:white; padding:8px 14px; font-size:11px; font-weight:700; letter-spacing:.04em; margin-bottom:16px; border-left:4px solid #f59e0b; }
-          .anexo-header { font-family:'Source Serif 4',serif; background:#f8fafc; color:#1a2744; padding:8px 14px; font-size:11px; font-weight:700; letter-spacing:.04em; margin-bottom:16px; border-left:4px solid #94a3b8; border-top:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; }
+          .section-header { font-family:'Source Serif 4',serif; background:#16243B; color:white; padding:8px 14px; font-size:11px; font-weight:700; letter-spacing:.04em; margin-bottom:16px; border-left:4px solid #f59e0b; }
+          .anexo-header { font-family:'Source Serif 4',serif; background:#f8fafc; color:#16243B; padding:8px 14px; font-size:11px; font-weight:700; letter-spacing:.04em; margin-bottom:16px; border-left:4px solid #94a3b8; border-top:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; }
           .narrativa-txt { font-family:'Source Serif 4',serif; }
 
           /* ── Tablas ── */
@@ -122,7 +122,7 @@ export default async function PrintPage({ params, searchParams }: {
           .grid4 { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
           .box { border:1px solid #e2e8f0; border-radius:8px; padding:12px; }
           .kpi { text-align:center; }
-          .kpi .val { font-size:16px; font-weight:800; color:#1a2744; }
+          .kpi .val { font-size:16px; font-weight:800; color:#16243B; }
           .kpi .lbl { font-size:8px; color:#94a3b8; text-transform:uppercase; font-weight:600; letter-spacing:.06em; margin-top:3px; }
           .row { display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #f3f4f6; }
           .row .k { color:#6b7280; }
@@ -202,7 +202,7 @@ export default async function PrintPage({ params, searchParams }: {
                 {/* ════════ ÍNDICE ════════ */}
         <div className="toc">
           <div style={{fontSize:"9px",color:"#94a3b8",fontWeight:700,letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:"6px"}}>JL Advisory</div>
-          <h2 style={{color:"#1a2744",marginBottom:"28px"}}>Índice</h2>
+          <h2 style={{color:"#16243B",marginBottom:"28px"}}>Índice</h2>
 
           <div className="toc-parte">Parte I — Informe</div>
           {[
@@ -265,9 +265,9 @@ export default async function PrintPage({ params, searchParams }: {
                 <div style={{fontSize:"8px",fontWeight:700,color:semColor,textTransform:"uppercase"}}>{String(narrativa.semaforo)}</div>
               </div>
               <div style={{flex:1}}>
-                <h2 style={{color:"#1a2744",marginBottom:"8px"}}>{String(narrativa.recomendacion ?? "")}</h2>
+                <h2 style={{color:"#16243B",marginBottom:"8px"}}>{String(narrativa.recomendacion ?? "")}</h2>
                 <p style={{fontSize:"11px",color:"#374151",lineHeight:1.7,marginBottom:"10px"}}>{String(narrativa.resumen_ejecutivo ?? "")}</p>
-                <div style={{display:"inline-block",background:"#1a2744",borderRadius:"6px",padding:"8px 14px"}}>
+                <div style={{display:"inline-block",background:"#16243B",borderRadius:"6px",padding:"8px 14px"}}>
                   <span style={{color:"#f59e0b",fontSize:"9px",fontWeight:700}}>PRECIO MÁXIMO SUGERIDO: </span>
                   <span style={{color:"white",fontSize:"13px",fontWeight:800}}>{String(narrativa.precio_sugerido ?? "")}</span>
                 </div>
@@ -359,17 +359,17 @@ export default async function PrintPage({ params, searchParams }: {
 
           {/* 1. Puente EBITDA */}
           <div style={{border:"1px solid #e5e7eb",borderRadius:"8px",padding:"14px",marginBottom:"16px"}}>
-            <div style={{fontWeight:700,fontSize:"10px",marginBottom:"10px",color:"#1a2744"}}>1. Puente EBITDA — por qué el contable no refleja el negocio real</div>
+            <div style={{fontWeight:700,fontSize:"10px",marginBottom:"10px",color:"#16243B"}}>1. Puente EBITDA — por qué el contable no refleja el negocio real</div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"10px"}}>
               {[
                 {lbl:"EBITDA contable",val:fmtUSD(v.ebitda),sub:"último ejercicio cerrado",bg:"#f3f4f6",col:"#6b7280"},
                 {lbl:"Ajuste normalización",val:`+${fmtUSD(v.ebitdaNorm-v.ebitda)}`,sub:"retiros de accionistas eliminados",bg:"#f0fdf4",col:"#16a34a"},
-                {lbl:"EBITDA normalizado",val:fmtUSD(v.ebitdaNorm),sub:margen?`margen ${margen.toFixed(1)}%`:"",bg:"#1a2744",col:"#ffffff"},
+                {lbl:"EBITDA normalizado",val:fmtUSD(v.ebitdaNorm),sub:margen?`margen ${margen.toFixed(1)}%`:"",bg:"#16243B",col:"#ffffff"},
               ].map(({lbl,val,sub,bg,col})=>(
                 <div key={lbl} style={{background:bg,borderRadius:"6px",padding:"10px",textAlign:"center"}}>
-                  <div style={{fontSize:"8px",color:bg==="#1a2744"?"#bfdbfe":"#6b7280",marginBottom:"3px"}}>{lbl}</div>
+                  <div style={{fontSize:"8px",color:bg==="#16243B"?"#bfdbfe":"#6b7280",marginBottom:"3px"}}>{lbl}</div>
                   <div style={{fontSize:"12px",fontWeight:800,color:col}}>{val}</div>
-                  <div style={{fontSize:"7px",color:bg==="#1a2744"?"#bfdbfe":"#9ca3af",marginTop:"2px"}}>{sub}</div>
+                  <div style={{fontSize:"7px",color:bg==="#16243B"?"#bfdbfe":"#9ca3af",marginTop:"2px"}}>{sub}</div>
                 </div>
               ))}
             </div>
@@ -377,7 +377,7 @@ export default async function PrintPage({ params, searchParams }: {
 
           {/* 2. Resumen de valuación — tres métodos */}
           <div style={{border:"1px solid #e5e7eb",borderRadius:"8px",padding:"14px",marginBottom:"16px"}}>
-            <div style={{fontWeight:700,fontSize:"10px",marginBottom:"3px",color:"#1a2744"}}>2. Resumen de valuación — tres métodos</div>
+            <div style={{fontWeight:700,fontSize:"10px",marginBottom:"3px",color:"#16243B"}}>2. Resumen de valuación — tres métodos</div>
             <div style={{fontSize:"8px",color:"#6b7280",marginBottom:"10px"}}>Promedio de los tres métodos: <strong>{fmtUSD(v.promMetodos)}</strong></div>
             <table className="tabla" style={{width:"100%"}}>
               <thead><tr><th>Método</th><th style={{textAlign:"right"}}>Resultado</th><th>Fundamento</th></tr></thead>
@@ -399,7 +399,7 @@ export default async function PrintPage({ params, searchParams }: {
                 </tr>
                 <tr style={{background:"#f8fafc"}}>
                   <td style={{fontWeight:800}}>Promedio de los tres métodos</td>
-                  <td style={{textAlign:"right",fontWeight:800,color:"#1a2744"}}>{fmtUSD(v.promMetodos)}</td>
+                  <td style={{textAlign:"right",fontWeight:800,color:"#16243B"}}>{fmtUSD(v.promMetodos)}</td>
                   <td></td>
                 </tr>
               </tbody>
@@ -432,13 +432,13 @@ export default async function PrintPage({ params, searchParams }: {
             </table>
 
             <div style={{marginTop:"14px",paddingTop:"10px",borderTop:"1px dashed #e5e7eb"}}>
-              <div style={{fontWeight:700,fontSize:"9px",color:"#1a2744",marginBottom:"8px"}}>
+              <div style={{fontWeight:700,fontSize:"9px",color:"#16243B",marginBottom:"8px"}}>
                 Detalle y evidencia de cada riesgo — sustento completo, no solo el número
               </div>
               {[...v.riesgoAjustesLive].sort((a,b)=>b.monto-a.monto).map(r => (
                 <div key={r.id} style={{border:"1px solid #fecaca",borderRadius:"6px",padding:"10px",marginBottom:"8px",background:"#fffbfb",breakInside:"avoid"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"3px",gap:"10px"}}>
-                    <div style={{fontWeight:700,fontSize:"9px",color:"#1a2744"}}>{r.descripcion}</div>
+                    <div style={{fontWeight:700,fontSize:"9px",color:"#16243B"}}>{r.descripcion}</div>
                     <div style={{fontWeight:800,fontSize:"10px",color:"#dc2626",whiteSpace:"nowrap"}}>−{fmtUSD(r.monto)}</div>
                   </div>
                   <div style={{fontSize:"7px",color:"#6b7280",marginBottom:"5px"}}>
@@ -453,7 +453,7 @@ export default async function PrintPage({ params, searchParams }: {
           </div>
 
           {/* 4. Conclusión — oferta recomendada */}
-          <div style={{background:"#1a2744",borderRadius:"8px",padding:"16px",color:"white"}}>
+          <div style={{background:"#16243B",borderRadius:"8px",padding:"16px",color:"white"}}>
             <div style={{fontWeight:700,fontSize:"10px",marginBottom:"10px",color:"#93c5fd"}}>4. Conclusión — precio de oferta recomendado</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"12px",textAlign:"center"}}>
               <div>
@@ -506,7 +506,7 @@ export default async function PrintPage({ params, searchParams }: {
             </tbody>
           </table>
 
-          <h3 style={{color:"#1a2744",marginBottom:"10px"}}>Estado del Due Diligence por sección</h3>
+          <h3 style={{color:"#16243B",marginBottom:"10px"}}>Estado del Due Diligence por sección</h3>
           <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:"6px 20px"}}>
             {secciones.slice(0,10).map(sec => {
               const items = allReqs.filter(r=>String(r.seccion)===sec)
@@ -532,7 +532,7 @@ export default async function PrintPage({ params, searchParams }: {
 
           {narrativa ? (
             <>
-              <div style={{background:"#1a2744",borderRadius:"10px",padding:"20px",marginBottom:"20px"}}>
+              <div style={{background:"#16243B",borderRadius:"10px",padding:"20px",marginBottom:"20px"}}>
                 <div style={{color:"#f59e0b",fontSize:"9px",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:"8px"}}>Síntesis de cierre</div>
                 <p className="narrativa-txt" style={{color:"white",fontSize:"12px",lineHeight:1.8}}>
                   Sobre la base del análisis financiero, la valuación por tres métodos y el mapa de riesgos relevado,
@@ -546,7 +546,7 @@ export default async function PrintPage({ params, searchParams }: {
                 </div>
               </div>
 
-              <h3 style={{color:"#1a2744",marginBottom:"10px"}}>Hoja de ruta — condiciones por momento</h3>
+              <h3 style={{color:"#16243B",marginBottom:"10px"}}>Hoja de ruta — condiciones por momento</h3>
               <div className="grid3">
                 {[
                   {titulo:"Antes del cierre",sub:"condición precedente",estado:"Condición",color:"#dc2626",bg:"#fef2f2"},
@@ -575,7 +575,7 @@ export default async function PrintPage({ params, searchParams }: {
             </div>
           )}
 
-          <div style={{marginTop:"40px",paddingTop:"18px",borderTop:"2px solid #1a2744",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{marginTop:"40px",paddingTop:"18px",borderTop:"2px solid #16243B",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div>
               <img src="/logo.png" alt="JL Advisory" style={{height:"26px"}}/>
               <div style={{fontSize:"8px",color:"#9ca3af",marginTop:"4px"}}>JL Advisory — Estrategia · Negocios · Due Diligence</div>
@@ -608,7 +608,7 @@ export default async function PrintPage({ params, searchParams }: {
               {lbl:`CONFIRMADO (${allRisks.filter(r=>r.estado==="CONFIRMADO").length})`,val:fmtUSD(Math.abs(riesgoConf)),c:"#dc2626",bg:"#fef2f2"},
               {lbl:`IDENTIFICADO (${allRisks.filter(r=>r.estado==="IDENTIFICADO").length})`,val:fmtUSD(Math.abs(riesgoIden)),c:"#d97706",bg:"#fffbeb"},
               {lbl:`CONDICIONAL (${allRisks.filter(r=>r.estado==="CONDICIONAL").length})`,val:fmtUSD(Math.abs(riesgoCond)),c:"#7c3aed",bg:"#f5f3ff"},
-              {lbl:"TOTAL CUANTIFICADO",val:fmtUSD(Math.abs(riesgoTotal)),c:"#1a2744",bg:"#f8fafc"},
+              {lbl:"TOTAL CUANTIFICADO",val:fmtUSD(Math.abs(riesgoTotal)),c:"#16243B",bg:"#f8fafc"},
             ].map(({lbl,val,c:color,bg})=>(
               <div key={lbl} style={{background:bg,border:`1px solid ${color}30`,borderRadius:"8px",padding:"10px",textAlign:"center"}}>
                 <div style={{fontSize:"8px",fontWeight:700,color,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:"4px"}}>{lbl}</div>
@@ -628,7 +628,7 @@ export default async function PrintPage({ params, searchParams }: {
                   <td><span className="badge" style={{background:r.estado==="CONFIRMADO"?"#fee2e2":r.estado==="IDENTIFICADO"?"#fef3c7":"#f5f3ff",color:r.estado==="CONFIRMADO"?"#991b1b":r.estado==="IDENTIFICADO"?"#92400e":"#5b21b6"}}>{String(r.estado??"")}</span></td>
                 </tr>
               ))}
-              <tr style={{background:"#1a2744"}}>
+              <tr style={{background:"#16243B"}}>
                 <td colSpan={3} style={{fontWeight:700,color:"white"}}>TOTAL CUANTIFICADO</td>
                 <td style={{textAlign:"right",fontWeight:800,color:"#fbbf24"}}>{fmtUSD(riesgoTotal)}</td>
                 <td/>
@@ -642,7 +642,7 @@ export default async function PrintPage({ params, searchParams }: {
           <div className="grid4" style={{marginBottom:"16px"}}>
             {[
               {lbl:"Recibidos",n:recibidos,c:"#16a34a"},{lbl:"Parciales",n:parciales,c:"#d97706"},
-              {lbl:"Pendientes",n:allReqs.length-recibidos-parciales,c:"#dc2626"},{lbl:"Avance",n:`${avance}%`,c:"#1a2744"},
+              {lbl:"Pendientes",n:allReqs.length-recibidos-parciales,c:"#dc2626"},{lbl:"Avance",n:`${avance}%`,c:"#16243B"},
             ].map(({lbl,n,c:color})=>(
               <div key={lbl} className="box kpi">
                 <div className="val" style={{color}}>{n}</div>
@@ -672,7 +672,7 @@ export default async function PrintPage({ params, searchParams }: {
         {/* ════════ ANEXO C: SÍNTESIS AMBIENTAL ════════ */}
         <div className="section">
           <div className="anexo-header">Anexo C — Síntesis Ambiental y Habilitaciones</div>
-          <h3 style={{marginBottom:"8px",color:"#1a2744"}}>Certificados y Habilitaciones</h3>
+          <h3 style={{marginBottom:"8px",color:"#16243B"}}>Certificados y Habilitaciones</h3>
           <table style={{marginBottom:"16px"}}>
             <thead><tr><th>Habilitación</th><th>Número / Categoría</th><th>Vencimiento</th><th>Estado</th><th>Observaciones</th></tr></thead>
             <tbody>
@@ -688,11 +688,11 @@ export default async function PrintPage({ params, searchParams }: {
             </tbody>
           </table>
 
-          <h3 style={{marginBottom:"8px",color:"#1a2744"}}>Síntesis Regulatoria y Ambiental ({corrientes.length} ítems)</h3>
+          <h3 style={{marginBottom:"8px",color:"#16243B"}}>Síntesis Regulatoria y Ambiental ({corrientes.length} ítems)</h3>
           <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:"6px"}}>
             {corrientes.map((corr,i)=>(
               <div key={i} style={{border:"1px solid #e2e8f0",borderRadius:"5px",padding:"6px",background:corr.estado==="VIGENTE"?"#f8fafc":"#fef2f2"}}>
-                <div style={{fontWeight:700,fontSize:"9px",color:"#1a2744"}}>{String(corr.clave??"")}</div>
+                <div style={{fontWeight:700,fontSize:"9px",color:"#16243B"}}>{String(corr.clave??"")}</div>
                 <div style={{fontSize:"7px",color:"#6b7280",marginTop:"2px"}}>{String(corr.categoria??"").slice(0,35)}</div>
                 <span className="badge" style={{marginTop:"3px",background:corr.estado==="VIGENTE"?"#d1fae5":"#fee2e2",color:corr.estado==="VIGENTE"?"#065f46":"#991b1b",fontSize:"7px"}}>{String(corr.estado??"")}</span>
               </div>
@@ -732,20 +732,20 @@ export default async function PrintPage({ params, searchParams }: {
           <div className="anexo-header">Anexo E — Supuestos del Modelo de Valuación</div>
           <div className="grid2">
             <div>
-              <h3 style={{marginBottom:"8px",color:"#1a2744"}}>Supuestos Financieros</h3>
+              <h3 style={{marginBottom:"8px",color:"#16243B"}}>Supuestos Financieros</h3>
               {allSups.filter(s=>s.tipo==="financiero").map((s,i)=>(
                 <div key={i} className="row">
                   <span className="k">{String(s.label??"")}</span>
-                  <span className="v" style={{color:s.valor?"#1a2744":"#9ca3af",marginLeft:"8px"}}>{s.valor?String(s.valor).split("|")[0].trim().slice(0,28):"Pendiente"}</span>
+                  <span className="v" style={{color:s.valor?"#16243B":"#9ca3af",marginLeft:"8px"}}>{s.valor?String(s.valor).split("|")[0].trim().slice(0,28):"Pendiente"}</span>
                 </div>
               ))}
             </div>
             <div>
-              <h3 style={{marginBottom:"8px",color:"#1a2744"}}>Supuestos de Proceso</h3>
+              <h3 style={{marginBottom:"8px",color:"#16243B"}}>Supuestos de Proceso</h3>
               {allSups.filter(s=>s.tipo==="categorico"||s.tipo==="acumulativo").map((s,i)=>(
                 <div key={i} className="row">
                   <span className="k">{String(s.label??"")}</span>
-                  <span className="v" style={{color:s.valor?"#1a2744":"#9ca3af",marginLeft:"8px"}}>{s.valor?String(s.valor).slice(0,28):"Pendiente"}</span>
+                  <span className="v" style={{color:s.valor?"#16243B":"#9ca3af",marginLeft:"8px"}}>{s.valor?String(s.valor).slice(0,28):"Pendiente"}</span>
                 </div>
               ))}
             </div>
@@ -771,8 +771,8 @@ export default async function PrintPage({ params, searchParams }: {
             return (
               <div key={cat} style={{marginBottom:"14px"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"4px"}}>
-                  <h3 style={{color:"#1a2744",fontSize:"10px"}}>{cat}</h3>
-                  <span style={{fontSize:"10px",fontWeight:800,color:"#1a2744"}}>{fmtUSD(subtotal)}</span>
+                  <h3 style={{color:"#16243B",fontSize:"10px"}}>{cat}</h3>
+                  <span style={{fontSize:"10px",fontWeight:800,color:"#16243B"}}>{fmtUSD(subtotal)}</span>
                 </div>
                 <table>
                   <thead><tr><th>Activo</th><th>Estado</th><th style={{textAlign:"right"}}>Valor (USD)</th></tr></thead>
@@ -796,8 +796,8 @@ export default async function PrintPage({ params, searchParams }: {
           })}
 
           <div style={{background:"#f8fafc",borderRadius:"8px",padding:"12px 16px",display:"flex",justifyContent:"space-between",marginTop:"10px"}}>
-            <span style={{fontWeight:800,color:"#1a2744",fontSize:"11px"}}>Total activos revaluados</span>
-            <span style={{fontWeight:800,color:"#1a2744",fontSize:"13px"}}>{fmtUSD(v.activosRevalu)}</span>
+            <span style={{fontWeight:800,color:"#16243B",fontSize:"11px"}}>Total activos revaluados</span>
+            <span style={{fontWeight:800,color:"#16243B",fontSize:"13px"}}>{fmtUSD(v.activosRevalu)}</span>
           </div>
         </div>
       </body>

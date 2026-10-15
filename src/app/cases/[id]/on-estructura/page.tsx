@@ -38,7 +38,7 @@ function Input({ value, onChange, type="text", placeholder="" }: {
   return (
     <input type={type} value={value} placeholder={placeholder}
       onChange={e => onChange(e.target.value)}
-      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1a2744]"/>
+      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2051E0]"/>
   )
 }
 
@@ -47,7 +47,7 @@ function Select({ value, onChange, options }: {
 }) {
   return (
     <select value={value} onChange={e => onChange(e.target.value)}
-      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1a2744] bg-white">
+      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2051E0] bg-white">
       <option value="">-- Seleccionar --</option>
       {options.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
     </select>
@@ -102,7 +102,7 @@ export default function OnEstructuraPage({ params }: { params: { id: string } })
           <p className="text-sm text-gray-500">Términos y condiciones de la Obligación Negociable</p>
         </div>
         <button onClick={save} disabled={saving}
-          className="flex items-center gap-2 bg-[#1a2744] text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-[#0d1525] disabled:opacity-50">
+          className="flex items-center gap-2 bg-[#16243B] text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-[#2051E0] disabled:opacity-50">
           {saving ? <RefreshCw size={14} className="animate-spin"/> : <Save size={14}/>}
           {saved ? "✓ Guardado" : saving ? "Guardando..." : "Guardar"}
         </button>
@@ -226,19 +226,19 @@ export default function OnEstructuraPage({ params }: { params: { id: string } })
               <div className="text-xs font-semibold text-gray-600 mb-2">{d.label}</div>
               <input type="number" value={String(data[d.key])}
                 onChange={e => upd(d.key, parseFloat(e.target.value)||0)}
-                className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm font-bold text-right focus:outline-none focus:border-[#1a2744] mb-1"/>
+                className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm font-bold text-right focus:outline-none focus:border-[#2051E0] mb-1"/>
               <div className="text-xs text-gray-400 text-right">{d.pct}% del total</div>
             </div>
           ))}
         </div>
-        <div className="flex justify-between items-center text-sm bg-[#1a2744] text-white rounded-xl px-4 py-2.5">
+        <div className="flex justify-between items-center text-sm bg-[#16243B] text-white rounded-xl px-4 py-2.5">
           <span className="font-semibold">Total destino declarado</span>
           <span className="font-black font-mono">USD {totalDestino.toLocaleString("es-AR")}</span>
         </div>
         <Field label="Descripción adicional del destino">
           <textarea value={data.destino_notas} onChange={e => upd("destino_notas",e.target.value)}
             rows={3} placeholder="Detalle específico del uso de los fondos..."
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1a2744] resize-none mt-2"/>
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2051E0] resize-none mt-2"/>
         </Field>
       </div>
 
@@ -247,7 +247,7 @@ export default function OnEstructuraPage({ params }: { params: { id: string } })
         <h2 className="text-sm font-bold text-gray-700 mb-4 uppercase tracking-wide">Covenants propuestos</h2>
         <textarea value={data.covenants} onChange={e => upd("covenants",e.target.value)}
           rows={5} placeholder="Ej: DSCR mínimo 1.2x · Deuda/EBITDA máx 3x · Sin nueva deuda > USD 500K sin consentimiento · Mantenimiento de seguros · Informe trimestral a tenedores..."
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1a2744] resize-none"/>
+          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2051E0] resize-none"/>
       </div>
 
       {/* ── NOTAS ── */}
@@ -255,7 +255,7 @@ export default function OnEstructuraPage({ params }: { params: { id: string } })
         <h2 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">Notas del analista</h2>
         <textarea value={data.notas} onChange={e => upd("notas",e.target.value)}
           rows={4} placeholder="Observaciones, condiciones especiales, negociaciones con la ALYC..."
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1a2744] resize-none"/>
+          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2051E0] resize-none"/>
       </div>
     </div>
   )

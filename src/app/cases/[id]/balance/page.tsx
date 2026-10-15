@@ -210,7 +210,7 @@ export default function BalancePage({ params }: { params: { id: string } }) {
 
   function TotalRow({label,fn,dark}:{label:string;fn:(b:Bal)=>number;dark?:boolean}){
     return (
-      <tr className={dark?"bg-[#1a2744]":"bg-gray-100"}>
+      <tr className={dark?"bg-[#16243B]":"bg-gray-100"}>
         <td className={`py-1.5 px-3 text-xs font-black ${dark?"text-white":"text-gray-800"}`}>{label}</td>
         {sel.map(ej=>{
           const b=get(ej); const val=fn(b)
@@ -253,7 +253,7 @@ export default function BalancePage({ params }: { params: { id: string } }) {
           const hasData = !!data[ej]
           return (
             <button key={ej} onClick={()=>setSelected(p=>isOn?(p.length>1?p.filter(x=>x!==ej):p):[...p,ej])}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${isOn?"bg-[#1a2744] text-white border-[#1a2744]":"bg-white text-gray-600 border-gray-300 hover:border-[#1a2744]"}`}>
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${isOn?"bg-[#16243B] text-white border-[#16243B]":"bg-white text-gray-600 border-gray-300 hover:border-[#16243B]"}`}>
               {ej}
               <span className={`w-1.5 h-1.5 rounded-full ${hasData?(isOn?"bg-green-300":"bg-green-500"):"bg-gray-300"}`}/>
             </button>
@@ -263,14 +263,14 @@ export default function BalancePage({ params }: { params: { id: string } }) {
         <div className="flex items-center gap-1.5 ml-2">
           <input value={nuevoEj} onChange={e=>setNuevoEj(e.target.value)}
             placeholder="Ej: Ejercicio 2 (2024)"
-            className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#1a2744] w-40"/>
+            className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#2051E0] w-40"/>
           <button onClick={()=>{
             if (!nuevoEj.trim() || ejercicios.includes(nuevoEj.trim())) return
             const ej = nuevoEj.trim()
             setEjercicios(p=>[...p,ej].sort())
             setSelected(p=>[...p,ej])
             setNuevoEj("")
-          }} className="text-xs bg-gray-100 hover:bg-[#1a2744] hover:text-white px-2 py-1 rounded-lg border border-gray-200 transition-all">
+          }} className="text-xs bg-gray-100 hover:bg-[#16243B] hover:text-white px-2 py-1 rounded-lg border border-gray-200 transition-all">
             + Agregar
           </button>
         </div>
@@ -290,7 +290,7 @@ export default function BalancePage({ params }: { params: { id: string } }) {
                   <div className="text-xs text-gray-500">{b.fecha_cierre || "—"}</div>
                 </div>
                 <button onClick={()=>save(ej)} disabled={saving===ej}
-                  className="flex items-center gap-1 text-xs bg-[#1a2744] text-white px-2 py-1 rounded-lg hover:bg-[#0d1525] disabled:opacity-50">
+                  className="flex items-center gap-1 text-xs bg-[#16243B] text-white px-2 py-1 rounded-lg hover:bg-[#2051E0] disabled:opacity-50">
                   {saving===ej?<RefreshCw size={9} className="animate-spin"/>:saved===ej?<Check size={9}/>:null}
                   {saving===ej?"...":saved===ej?"✓":"Guardar"}
                 </button>
@@ -317,7 +317,7 @@ export default function BalancePage({ params }: { params: { id: string } }) {
       <div className="card overflow-hidden p-0">
         <table className="w-full">
           <thead>
-            <tr className="bg-[#1a2744] text-white text-xs">
+            <tr className="bg-[#16243B] text-white text-xs">
               <th className="text-left py-2 px-3 w-44">Cuenta</th>
               {sel.map(ej=>(
                 <th key={ej} className="py-2 px-1">
@@ -366,7 +366,7 @@ export default function BalancePage({ params }: { params: { id: string } }) {
 
             return (
               <div key={ej} className="space-y-2">
-                <div className="text-xs font-black text-[#1a2744] uppercase tracking-wide border-b border-gray-200 pb-1">{ej}</div>
+                <div className="text-xs font-black text-[#16243B] uppercase tracking-wide border-b border-gray-200 pb-1">{ej}</div>
 
                 <RatioCard
                   label="Liquidez corriente"
@@ -494,7 +494,7 @@ export default function BalancePage({ params }: { params: { id: string } }) {
         <div className="card overflow-hidden p-0">
           <table className="w-full text-xs">
             <thead>
-              <tr className="bg-[#1a2744] text-white">
+              <tr className="bg-[#16243B] text-white">
                 <th className="text-left py-2 px-3 w-44">Concepto</th>
                 {sel.map(ej => {
                   const b=get(ej)
@@ -545,7 +545,7 @@ export default function BalancePage({ params }: { params: { id: string } }) {
                 </tr>
               ))}
               {/* EBITDA */}
-              <tr className="bg-[#1a2744] text-white">
+              <tr className="bg-[#16243B] text-white">
                 <td className="py-2 px-3 text-xs font-black">= EBITDA</td>
                 {sel.map(ej=>{
                   const b=get(ej)
@@ -597,7 +597,7 @@ export default function BalancePage({ params }: { params: { id: string } }) {
                 )})}
               </tr>
               {/* Resultado neto */}
-              <tr className="bg-[#1a2744] text-white">
+              <tr className="bg-[#16243B] text-white">
                 <td className="py-2 px-3 text-xs font-black">= RESULTADO DEL EJERCICIO</td>
                 {sel.map(ej=>{const b=get(ej);const val=b.resultado_neto;const tc=b.tc_promedio||1;const m=b.ingresos>0?(val/b.ingresos*100):0;return(
                   <td key={ej} className="py-2 px-1">
@@ -623,7 +623,7 @@ export default function BalancePage({ params }: { params: { id: string } }) {
         <div className="card overflow-hidden p-0">
           <table className="w-full text-xs">
             <thead>
-              <tr className="bg-[#1a2744] text-white">
+              <tr className="bg-[#16243B] text-white">
                 <th className="text-left py-2 px-3">Concepto</th>
                 {ejercicios.map(ej => (
                   <th key={ej} className="text-right py-2 px-2 font-bold whitespace-nowrap">
@@ -643,7 +643,7 @@ export default function BalancePage({ params }: { params: { id: string } }) {
                 })}
               </tr>
               {/* EBITDA USD */}
-              <tr className="bg-[#1a2744] text-white">
+              <tr className="bg-[#16243B] text-white">
                 <td className="py-2 px-3 font-black">EBITDA</td>
                 {ejercicios.map(ej => {
                   const b = get(ej); const tc = b.tc_promedio || 1

@@ -24,7 +24,7 @@ export default function OnGarantiasPage({ params }: { params: { id: string } }) 
       <div className="grid grid-cols-3 gap-4">
         <div className="card p-4 text-center">
           <div className="text-xs text-gray-500 mb-1">Monto de la ON</div>
-          <div className="text-xl font-black text-[#1a2744]">
+          <div className="text-xl font-black text-[#16243B]">
             {monto ? `USD ${monto.toLocaleString("es-AR")}` : "—"}
           </div>
         </div>
@@ -64,7 +64,7 @@ export default function OnGarantiasPage({ params }: { params: { id: string } }) 
               "En caso de default, la SGR paga a los tenedores y subrroga contra la empresa",
             ].map((paso, i) => (
               <div key={i} className="flex items-start gap-3 text-sm text-gray-600">
-                <span className="w-6 h-6 bg-[#1a2744] text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">{i+1}</span>
+                <span className="w-6 h-6 bg-[#16243B] text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">{i+1}</span>
                 {paso}
               </div>
             ))}

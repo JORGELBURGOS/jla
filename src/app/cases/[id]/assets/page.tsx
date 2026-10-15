@@ -36,7 +36,7 @@ function EditNum({ val, onChange }: { val: number; onChange: (v:number)=>void })
   )
   return (
     <button onClick={() => { setText(String(val||"")); setEditing(true) }}
-      className={`font-bold text-right text-sm w-32 rounded px-2 py-1 hover:bg-blue-50 transition-colors ${val ? "text-[#1a2744]" : "text-gray-300"}`}>
+      className={`font-bold text-right text-sm w-32 rounded px-2 py-1 hover:bg-blue-50 transition-colors ${val ? "text-[#16243B]" : "text-gray-300"}`}>
       {val ? usdFmt(val) : "Clic para ingresar"}
     </button>
   )
@@ -124,16 +124,16 @@ export default function AssetsPage({ params }: { params: { id: string } }) {
           <p className="text-sm text-gray-500">{caseName} · NAV independiente del EECC — valor de mercado real</p>
         </div>
         <button onClick={addAsset} disabled={adding}
-          className="flex items-center gap-2 bg-[#1a2744] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#0d1525] disabled:opacity-50">
+          className="flex items-center gap-2 bg-[#16243B] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#2051E0] disabled:opacity-50">
           <Plus size={14}/> Agregar activo
         </button>
       </div>
 
       {/* ── Bridge de valuación ── */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="card p-4 border-l-4 border-l-[#1a2744]">
+        <div className="card p-4 border-l-4 border-l-[#16243B]">
           <div className="text-xs text-gray-500 mb-1 font-semibold uppercase tracking-wide">Valuación por flujos</div>
-          <div className="text-2xl font-black text-[#1a2744]">{usdFmt(ebitda*6)}</div>
+          <div className="text-2xl font-black text-[#16243B]">{usdFmt(ebitda*6)}</div>
           <div className="text-xs text-gray-400 mt-0.5">EBITDA {usdFmt(ebitda)} × 6× (múltiplo M&A)</div>
         </div>
         <div className={`card p-4 border-l-4 ${navEstimado > 0 ? "border-l-amber-400" : "border-l-red-400"}`}>
@@ -178,7 +178,7 @@ export default function AssetsPage({ params }: { params: { id: string } }) {
           <div key={cat}>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-black text-gray-700 uppercase tracking-wide">{cat}</h3>
-              {catTotal > 0 && <span className="text-sm font-bold text-[#1a2744]">{usdFmt(catTotal)}</span>}
+              {catTotal > 0 && <span className="text-sm font-bold text-[#16243B]">{usdFmt(catTotal)}</span>}
             </div>
             <div className="space-y-2">
               {catAssets.map(a => (
@@ -187,7 +187,7 @@ export default function AssetsPage({ params }: { params: { id: string } }) {
                     {/* Nombre editable */}
                     <div className="flex-1 min-w-0">
                       <input value={a.nombre} onChange={e => upd(a.id,"nombre",e.target.value)}
-                        className="text-sm font-bold text-gray-900 w-full border-0 border-b border-transparent hover:border-gray-300 focus:border-[#1a2744] focus:outline-none bg-transparent pb-0.5"/>
+                        className="text-sm font-bold text-gray-900 w-full border-0 border-b border-transparent hover:border-gray-300 focus:border-[#2051E0] focus:outline-none bg-transparent pb-0.5"/>
                       <input value={a.descripcion||""} onChange={e => upd(a.id,"descripcion",e.target.value)}
                         placeholder="Descripción del activo..."
                         className="text-xs text-gray-500 w-full mt-0.5 border-0 border-b border-transparent hover:border-gray-200 focus:border-gray-300 focus:outline-none bg-transparent"/>
@@ -211,14 +211,14 @@ export default function AssetsPage({ params }: { params: { id: string } }) {
                       <div className="text-xs font-semibold text-gray-500 mb-0.5">Metodología de valuación</div>
                       <textarea value={a.metodologia||""} onChange={e => upd(a.id,"metodologia",e.target.value)}
                         rows={2} placeholder="Cómo se calculó o estimó este valor..."
-                        className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 resize-none focus:outline-none focus:border-[#1a2744]"/>
+                        className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 resize-none focus:outline-none focus:border-[#2051E0]"/>
                     </div>
                     {/* Notas */}
                     <div>
                       <div className="text-xs font-semibold text-gray-500 mb-0.5">Notas del analista</div>
                       <textarea value={a.notas||""} onChange={e => upd(a.id,"notas",e.target.value)}
                         rows={2} placeholder="Observaciones, condicionantes, pendientes..."
-                        className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 resize-none focus:outline-none focus:border-[#1a2744]"/>
+                        className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 resize-none focus:outline-none focus:border-[#2051E0]"/>
                     </div>
                   </div>
 
@@ -228,10 +228,10 @@ export default function AssetsPage({ params }: { params: { id: string } }) {
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs text-gray-400">Ítem tracker:</span>
                         <input type="number" value={a.item_validante||""} onChange={e => upd(a.id,"item_validante",parseInt(e.target.value)||null)}
-                          placeholder="N°" className="w-14 text-xs border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none focus:border-[#1a2744]"/>
+                          placeholder="N°" className="w-14 text-xs border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none focus:border-[#2051E0]"/>
                         {a.item_validante && (
                           <Link href={`/cases/${caseId}/requirements?highlight=${a.item_validante}`}
-                            className="text-xs text-[#1a2744] underline decoration-dotted hover:decoration-solid">
+                            className="text-xs text-[#16243B] underline decoration-dotted hover:decoration-solid">
                             Ver N°{a.item_validante} →
                           </Link>
                         )}
@@ -245,7 +245,7 @@ export default function AssetsPage({ params }: { params: { id: string } }) {
 
                     <div className="flex items-center gap-2">
                       <button onClick={() => save(a)} disabled={saving===a.id}
-                        className="flex items-center gap-1 text-xs bg-[#1a2744] text-white px-2.5 py-1 rounded-lg hover:bg-[#0d1525] disabled:opacity-50">
+                        className="flex items-center gap-1 text-xs bg-[#16243B] text-white px-2.5 py-1 rounded-lg hover:bg-[#2051E0] disabled:opacity-50">
                         {saving===a.id ? <RefreshCw size={10} className="animate-spin"/> : <Save size={10}/>}
                         {saving===a.id ? "..." : "Guardar"}
                       </button>
@@ -263,7 +263,7 @@ export default function AssetsPage({ params }: { params: { id: string } }) {
       })}
 
       {/* Resumen NAV */}
-      <div className="bg-[#1a2744] text-white rounded-2xl p-5">
+      <div className="bg-[#16243B] text-white rounded-2xl p-5">
         <h3 className="font-bold text-sm mb-3 opacity-70 uppercase tracking-wide">Resumen NAV — Net Asset Value</h3>
         <div className="space-y-1.5 text-sm">
           <div className="flex justify-between">

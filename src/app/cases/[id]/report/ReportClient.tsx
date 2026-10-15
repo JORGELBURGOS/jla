@@ -43,7 +43,7 @@ const FAINT  = "#8a90a0"
 const PAPER  = "#f7f6f2"
 const CARD   = "#fffffe"
 const LINE   = "#e7e4dc"
-const NAVY   = "#1a2744"
+const NAVY   = "#16243B"
 const SEM = {
   ROJO:     { fg:"#b42318", bg:"#fdf1f0", line:"#f2c8c4", label:"Semáforo rojo" },
   AMARILLO: { fg:"#9a5b06", bg:"#fdf7e9", line:"#f0dcb0", label:"Semáforo amarillo" },

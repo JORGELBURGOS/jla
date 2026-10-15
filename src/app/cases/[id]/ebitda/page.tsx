@@ -132,7 +132,7 @@ export default function EbitdaPage({ params }: { params: { id: string } }) {
           ].map(({ label, val, sub }) => (
             <div key={label} className="bg-gray-50 rounded-xl p-3">
               <div className="text-xs text-gray-500 mb-0.5">{label}</div>
-              <div className={`text-sm font-black ${val.startsWith("-") ? "text-red-700" : "text-[#1a2744]"}`}>{val}</div>
+              <div className={`text-sm font-black ${val.startsWith("-") ? "text-red-700" : "text-[#16243B]"}`}>{val}</div>
               <div className="text-xs text-gray-400 mt-0.5">{sub}</div>
             </div>
           ))}
@@ -168,7 +168,7 @@ export default function EbitdaPage({ params }: { params: { id: string } }) {
           <div className="flex gap-2 py-1">
             <input placeholder="Ajuste de normalización (ej: Retiro directivos no recurrente)"
               value={nuevoAj.label} onChange={e => setNuevoAj(p => ({...p, label: e.target.value}))}
-              className="flex-1 border border-dashed border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-[#1a2744] bg-gray-50"/>
+              className="flex-1 border border-dashed border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-[#2051E0] bg-gray-50"/>
             <input type="number" placeholder="USD" value={nuevoAj.monto}
               onChange={e => setNuevoAj(p => ({...p, monto: e.target.value}))}
               onKeyDown={e => {
@@ -177,12 +177,12 @@ export default function EbitdaPage({ params }: { params: { id: string } }) {
                   setNuevoAj({label:"", monto:""})
                 }
               }}
-              className="w-28 border border-dashed border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-[#1a2744] bg-gray-50"/>
+              className="w-28 border border-dashed border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-[#2051E0] bg-gray-50"/>
             <button onClick={() => {
               if (!nuevoAj.label || !nuevoAj.monto) return
               setAjustes(p => [...p, {label: nuevoAj.label, monto: Number(nuevoAj.monto)}])
               setNuevoAj({label:"", monto:""})
-            }} className="bg-[#1a2744] text-white text-xs px-3 py-1.5 rounded-lg hover:bg-[#0d1525]">
+            }} className="bg-[#16243B] text-white text-xs px-3 py-1.5 rounded-lg hover:bg-[#2051E0]">
               + Agregar
             </button>
           </div>
@@ -196,10 +196,10 @@ export default function EbitdaPage({ params }: { params: { id: string } }) {
             </div>
           )}
 
-          <div className="flex justify-between items-center py-3 border-t-2 border-[#1a2744]">
+          <div className="flex justify-between items-center py-3 border-t-2 border-[#16243B]">
             <span className="text-sm font-bold text-gray-900">EBITDA Normalizado</span>
             <div className="text-right">
-              <div className="text-2xl font-black text-[#1a2744]">{usd(ebitdaNorm)}</div>
+              <div className="text-2xl font-black text-[#16243B]">{usd(ebitdaNorm)}</div>
               <div className={`text-xs font-semibold mt-0.5 ${margen >= 15 ? "text-green-600" : margen >= 8 ? "text-amber-600" : "text-red-600"}`}>
                 Margen {margen.toFixed(1)}%
                 {margen >= 20 ? " (muy bueno)" : margen >= 12 ? " (razonable)" : margen >= 8 ? " (bajo para el sector)" : " (⚠ muy bajo)"}
@@ -217,7 +217,7 @@ export default function EbitdaPage({ params }: { params: { id: string } }) {
             <span className="text-xs text-gray-500">Múltiplo base:</span>
             <input type="number" value={multiplo} min={1} max={20} step={0.5}
               onChange={e => setMultiplo(parseFloat(e.target.value) || 6)}
-              className="w-14 border border-gray-200 rounded px-2 py-1 text-sm font-bold text-center focus:outline-none focus:border-[#1a2744]"/>
+              className="w-14 border border-gray-200 rounded px-2 py-1 text-sm font-bold text-center focus:outline-none focus:border-[#2051E0]"/>
             <span className="text-xs text-gray-400">×</span>
           </div>
         </div>
@@ -225,7 +225,7 @@ export default function EbitdaPage({ params }: { params: { id: string } }) {
         <div className="grid grid-cols-3 gap-3 mb-4">
           {[
             { label:`${EV_MIN}× conservador`, ev: evMin,  cls:"border-gray-200 bg-gray-50", txt:"text-gray-800" },
-            { label:`${EV_BASE}× base`,       ev: evBase, cls:"border-[#1a2744] bg-blue-50", txt:"text-[#1a2744]" },
+            { label:`${EV_BASE}× base`,       ev: evBase, cls:"border-[#16243B] bg-blue-50", txt:"text-[#16243B]" },
             { label:`${EV_MAX}× optimista`,   ev: evMax,  cls:"border-gray-200 bg-gray-50", txt:"text-gray-800" },
           ].map(({ label, ev, cls, txt }) => (
             <div key={label} className={`rounded-xl p-3 text-center border-2 ${cls}`}>
@@ -291,7 +291,7 @@ export default function EbitdaPage({ params }: { params: { id: string } }) {
                     <span>Riesgos a descontar</span>
                     <span className="font-bold">{usd(riesgo)}</span>
                   </div>
-                  <div className={`flex justify-between font-black border-t pt-1.5 ${ev < 0 ? "text-red-700" : "text-[#1a2744]"}`}>
+                  <div className={`flex justify-between font-black border-t pt-1.5 ${ev < 0 ? "text-red-700" : "text-[#16243B]"}`}>
                     <span>EV ajustado</span>
                     <span className="text-base">{ev < 0 ? `−${usd(Math.abs(ev))}` : usd(ev)}</span>
                   </div>
@@ -308,7 +308,7 @@ export default function EbitdaPage({ params }: { params: { id: string } }) {
             ))}
           </div>
           <Link href={`/cases/${caseId}/valuation`}
-            className="mt-3 flex items-center gap-1.5 text-xs text-[#1a2744] font-semibold hover:underline">
+            className="mt-3 flex items-center gap-1.5 text-xs text-[#16243B] font-semibold hover:underline">
             Ver análisis completo de valuación con 4 escenarios de oferta →
           </Link>
         </div>
@@ -334,7 +334,7 @@ export default function EbitdaPage({ params }: { params: { id: string } }) {
                 <tr key={h.ej} className="hover:bg-gray-50">
                   <td className="py-2 font-semibold text-gray-700">EJ N°{h.ej}</td>
                   <td className="py-2 text-right font-mono text-gray-700">{usd(h.ingresos)}</td>
-                  <td className="py-2 text-right font-mono font-bold text-[#1a2744]">{h.ebitda ? usd(h.ebitda) : "—"}</td>
+                  <td className="py-2 text-right font-mono font-bold text-[#16243B]">{h.ebitda ? usd(h.ebitda) : "—"}</td>
                   <td className={`py-2 text-right font-bold ${h.margen != null && h.margen >= 10 ? "text-green-600" : h.margen != null && h.margen >= 5 ? "text-amber-600" : "text-red-600"}`}>
                     {h.margen != null ? `${h.margen}%` : "—"}
                   </td>
@@ -344,7 +344,7 @@ export default function EbitdaPage({ params }: { params: { id: string } }) {
                   </td>
                   <td className="py-2 pl-3">
                     <div className="flex items-center gap-1">
-                      <div className="h-3 bg-[#1a2744] rounded-sm opacity-80" style={{width: `${Math.round(h.ingresos/maxIngr*60)}px`}}/>
+                      <div className="h-3 bg-[#16243B] rounded-sm opacity-80" style={{width: `${Math.round(h.ingresos/maxIngr*60)}px`}}/>
                       {h.ebitda > 0 && <div className="h-3 bg-amber-400 rounded-sm" style={{width: `${Math.round(h.ebitda/maxIngr*60)}px`}}/>}
                     </div>
                   </td>
@@ -353,7 +353,7 @@ export default function EbitdaPage({ params }: { params: { id: string } }) {
             </tbody>
           </table>
           <div className="flex gap-4 mt-2 text-xs text-gray-400">
-            <span className="flex items-center gap-1"><span className="w-3 h-2 bg-[#1a2744] rounded-sm opacity-80 inline-block"/>Ingresos</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-2 bg-[#16243B] rounded-sm opacity-80 inline-block"/>Ingresos</span>
             <span className="flex items-center gap-1"><span className="w-3 h-2 bg-amber-400 rounded-sm inline-block"/>EBITDA</span>
             <span className="text-red-500">↓ Resultado neto negativo</span>
           </div>

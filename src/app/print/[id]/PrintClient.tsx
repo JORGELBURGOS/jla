@@ -171,15 +171,15 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
 
   // ── Estilos de documento ──────────────────────────────────────────
   const H = ({ n, t }: { n: string; t: string }) => (
-    <div style={{ borderBottom: "2px solid #1a2744", marginBottom: "14px", paddingBottom: "6px", display: "flex", alignItems: "baseline", gap: "10px" }}>
+    <div style={{ borderBottom: "2px solid #16243B", marginBottom: "14px", paddingBottom: "6px", display: "flex", alignItems: "baseline", gap: "10px" }}>
       <span style={{ fontFamily: "Georgia, serif", fontSize: "13px", fontWeight: 700, color: "#9ca3af" }}>{n}</span>
-      <span style={{ fontFamily: "Georgia, serif", fontSize: "16px", fontWeight: 700, color: "#1a2744", letterSpacing: "0.02em" }}>{t}</span>
+      <span style={{ fontFamily: "Georgia, serif", fontSize: "16px", fontWeight: 700, color: "#16243B", letterSpacing: "0.02em" }}>{t}</span>
     </div>
   )
   const P = ({ children }: { children: React.ReactNode }) => (
     <p style={{ fontFamily: "Georgia, serif", fontSize: "11px", lineHeight: 1.75, color: "#1f2937", textAlign: "justify", margin: "0 0 10px 0" }}>{children}</p>
   )
-  const th: React.CSSProperties = { textAlign: "left", padding: "6px 8px", fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.06em", color: "#6b7280", borderBottom: "1.5px solid #1a2744", fontFamily: "Inter, Arial, sans-serif" }
+  const th: React.CSSProperties = { textAlign: "left", padding: "6px 8px", fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.06em", color: "#6b7280", borderBottom: "1.5px solid #16243B", fontFamily: "Inter, Arial, sans-serif" }
   const td: React.CSSProperties = { padding: "6px 8px", fontSize: "10px", borderBottom: "0.5px solid #e5e7eb", color: "#1f2937", fontFamily: "Inter, Arial, sans-serif" }
   const tdNum: React.CSSProperties = { ...td, textAlign: "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }
   // Variantes compactas para la tabla de evolucion financiera, que tiene 9 columnas
@@ -204,7 +204,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
       {/* Barra (no se imprime) */}
       <div className="no-print" style={{ position: "sticky", top: 0, zIndex: 50, background: "white", borderBottom: "1px solid #e5e7eb", padding: "10px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span style={{ fontSize: "13px", fontWeight: 700, color: "#374151" }}>Informe de Due Diligence — versión para impresión</span>
-        <button onClick={() => window.print()} style={{ background: "#1a2744", color: "white", fontSize: "13px", fontWeight: 700, padding: "8px 18px", borderRadius: "8px", border: "none", cursor: "pointer" }}>
+        <button onClick={() => window.print()} style={{ background: "#16243B", color: "white", fontSize: "13px", fontWeight: 700, padding: "8px 18px", borderRadius: "8px", border: "none", cursor: "pointer" }}>
           🖨 Imprimir / Guardar como PDF
         </button>
       </div>
@@ -217,10 +217,10 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
             <div style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "0.25em", color: "#9ca3af", textTransform: "uppercase", marginBottom: "60px" }}>
               Estrictamente privado y confidencial
             </div>
-            <div style={{ fontFamily: "Georgia, serif", fontSize: "34px", fontWeight: 700, color: "#1a2744", lineHeight: 1.25, marginBottom: "18px" }}>
+            <div style={{ fontFamily: "Georgia, serif", fontSize: "34px", fontWeight: 700, color: "#16243B", lineHeight: 1.25, marginBottom: "18px" }}>
               Informe de Due Diligence
             </div>
-            <div style={{ width: "72px", height: "3px", background: "#1a2744", marginBottom: "24px" }} />
+            <div style={{ width: "72px", height: "3px", background: "#16243B", marginBottom: "24px" }} />
             <div style={{ fontFamily: "Georgia, serif", fontSize: "19px", color: "#374151", marginBottom: "6px" }}>{nombre}</div>
             {cuit && <div style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", color: "#9ca3af" }}>CUIT {cuit}</div>}
             <div style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", color: "#6b7280", marginTop: "14px", fontStyle: "italic" }}>
@@ -376,7 +376,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
                   <td style={td}>Precio pedido vs. valor central</td><td style={tdNum}>{gapPrecio ? `${gapPrecio.toLocaleString("es-AR", { maximumFractionDigits: 1 })}\u00d7` : "—"}</td></tr>
             </tbody>
           </table>
-          <div style={{ background: "#1a2744", borderRadius: "8px", padding: "16px 20px", marginTop: "8px" }}>
+          <div style={{ background: "#16243B", borderRadius: "8px", padding: "16px 20px", marginTop: "8px" }}>
             <div style={{ fontFamily: "Inter, sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "0.15em", color: "#f59e0b", textTransform: "uppercase", marginBottom: "6px" }}>Recomendación</div>
             <div style={{ fontFamily: "Georgia, serif", fontSize: "13px", color: "white", lineHeight: 1.6 }}>
               {semaforoTxt}{narrativa?.precio_sugerido ? ` — ${narrativa.precio_sugerido}` : ""}.
@@ -399,9 +399,9 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
              body:`La facturación de ${fmtUSDc(v.ingresos)} del último ejercicio fue contrastada con las declaraciones juradas de IVA presentadas ante ARCA (serie completa de 24 meses) y con el detalle de facturación real por cliente, que confirma una cartera diversificada de más de 130 clientes sin concentración relevante (ningún cliente supera el 10% de la facturación). Esta validación cruzada —independiente del vendedor y del auditor— confirma que los ingresos declarados en los estados contables son reales y sostenibles. El ritmo de facturación de 2026 es consistente con el ejercicio anterior.`},
           ].map((item,i)=>(
             <div key={i} style={{ display:"flex", gap:"12px", marginBottom:"12px" }}>
-              <span style={{ fontFamily:"Georgia,serif", fontSize:"12px", fontWeight:700, color:"#1a2744", flexShrink:0 }}>{item.n}</span>
+              <span style={{ fontFamily:"Georgia,serif", fontSize:"12px", fontWeight:700, color:"#16243B", flexShrink:0 }}>{item.n}</span>
               <div>
-                <div style={{ fontFamily:"Inter,sans-serif", fontSize:"10px", fontWeight:700, color:"#1a2744", marginBottom:"3px" }}>{item.titulo}</div>
+                <div style={{ fontFamily:"Inter,sans-serif", fontSize:"10px", fontWeight:700, color:"#16243B", marginBottom:"3px" }}>{item.titulo}</div>
                 <p style={{ fontFamily:"Georgia,serif", fontSize:"11px", lineHeight:1.75, color:"#1f2937", textAlign:"justify", margin:0 }}>{item.body}</p>
               </div>
             </div>
@@ -447,7 +447,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
                   <td style={{...tdCNum, color:b.resultadoNeto<0?"#dc2626":"#374151", fontWeight:600}}>{fmtNum(b.resultadoNeto)}</td>
                 </tr>
               ))}
-              <tr style={{ background:"#f1f5f9", borderTop:"1.5px solid #1a2744" }}>
+              <tr style={{ background:"#f1f5f9", borderTop:"1.5px solid #16243B" }}>
                 <td style={{...tdC, fontWeight:700}}>Acumulado</td>
                 <td style={tdCNum}>—</td>
                 <td style={{...tdCNum, fontWeight:800, color:"#16a34a"}}>{fmtNum(v.evolucionAcum.ebitda)}</td>
@@ -543,8 +543,8 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
           </P>
             {/* ── 5.1 Proyecciones y sensibilidad de precio ── */}
             <div style={{ marginTop:"24px" }}>
-              <div style={{ fontFamily:"Georgia,serif", fontSize:"11.5px", fontWeight:700, color:"#1a2744",
-                            marginBottom:"8px", borderBottom:"1.5px solid #1a2744", paddingBottom:"4px" }}>
+              <div style={{ fontFamily:"Georgia,serif", fontSize:"11.5px", fontWeight:700, color:"#16243B",
+                            marginBottom:"8px", borderBottom:"1.5px solid #16243B", paddingBottom:"4px" }}>
                 5.1 Proyecciones y sensibilidad de precio
               </div>
               <P>El valor del Método 2 (flujo de fondos descontado) es sensible a la variable cuya confirmación documental permanece pendiente: la materialización de contratos con clientes estratégicos de gran volumen. El horno de desorción térmica ya no forma parte de esta incertidumbre, porque está confirmado operativo y habilitado en el CAA vigente (Res. GDE N°49/2026), con su valor ya incorporado al Método 1. La siguiente tabla muestra los flujos proyectados bajo cada hipótesis y el precio implícito resultante, con el objetivo de brindar al inversor los elementos necesarios para anclar la discusión de precio en la negociación.</P>
@@ -557,7 +557,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
                   <col style={{width:"38%"}} /><col style={{width:"13%"}} /><col style={{width:"12%"}} />
                   <col style={{width:"12%"}} /><col style={{width:"12%"}} /><col style={{width:"13%"}} />
                 </colgroup>
-                <thead><tr style={{ background:"#1a2744" }}>
+                <thead><tr style={{ background:"#16243B" }}>
                   {["Escenario","Base (norm.)","Año 1","Año 2","Año 3","Año 4"].map((h,i)=>(
                     <th key={i} style={{ padding:"5px 6px", fontSize:"7.5px", color:"white", whiteSpace:"nowrap",
                       fontWeight:700, textAlign:i===0?"left":"right" }}>{h}</th>
@@ -591,7 +591,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
                   <col style={{width:"23%"}} /><col style={{width:"11%"}} /><col style={{width:"12%"}} />
                   <col style={{width:"11%"}} /><col style={{width:"12%"}} /><col style={{width:"31%"}} />
                 </colgroup>
-                <thead><tr style={{ background:"#1a2744" }}>
+                <thead><tr style={{ background:"#16243B" }}>
                   {["Escenario","M2 (DCF)","Prom. métodos","Oferta inicial","Precio máximo","Condición"].map((h,i)=>(
                     <th key={i} style={{ padding:"5px 6px", fontSize:"7.5px", color:"white", fontWeight:700,
                       whiteSpace:"nowrap", textAlign:i===0||i===5?"left":"right" }}>{h}</th>
@@ -609,9 +609,9 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
                     <tr key={i} style={{ background:row.bg, borderBottom:"0.5px solid #e5e7eb" }}>
                       <td style={{ padding:"5px 6px", fontSize:"8px", fontWeight:row.bold?700:400, lineHeight:1.25 }}>{row.lbl}</td>
                       <td style={{ padding:"5px 6px", textAlign:"right", fontSize:"8.5px", fontFamily:"Inter,sans-serif", fontVariantNumeric:"tabular-nums", whiteSpace:"nowrap", fontWeight:700 }}>{fmtNum(row.m2)}</td>
-                      <td style={{ padding:"5px 6px", textAlign:"right", fontSize:"8.5px", fontFamily:"Inter,sans-serif", fontVariantNumeric:"tabular-nums", whiteSpace:"nowrap", fontWeight:700, color:"#1a2744" }}>{fmtNum(row.prom)}</td>
-                      <td style={{ padding:"5px 6px", textAlign:"right", fontSize:"8.5px", fontFamily:"Inter,sans-serif", fontVariantNumeric:"tabular-nums", whiteSpace:"nowrap", fontWeight:700, color:row.bold?"#1a2744":"#6b7280" }}>{fmtNum(row.ofi)}</td>
-                      <td style={{ padding:"5px 6px", textAlign:"right", fontSize:"8.5px", fontFamily:"Inter,sans-serif", fontVariantNumeric:"tabular-nums", whiteSpace:"nowrap", fontWeight:700, color:row.bold?"#1a2744":"#6b7280" }}>{fmtNum(row.ofm)}</td>
+                      <td style={{ padding:"5px 6px", textAlign:"right", fontSize:"8.5px", fontFamily:"Inter,sans-serif", fontVariantNumeric:"tabular-nums", whiteSpace:"nowrap", fontWeight:700, color:"#16243B" }}>{fmtNum(row.prom)}</td>
+                      <td style={{ padding:"5px 6px", textAlign:"right", fontSize:"8.5px", fontFamily:"Inter,sans-serif", fontVariantNumeric:"tabular-nums", whiteSpace:"nowrap", fontWeight:700, color:row.bold?"#16243B":"#6b7280" }}>{fmtNum(row.ofi)}</td>
+                      <td style={{ padding:"5px 6px", textAlign:"right", fontSize:"8.5px", fontFamily:"Inter,sans-serif", fontVariantNumeric:"tabular-nums", whiteSpace:"nowrap", fontWeight:700, color:row.bold?"#16243B":"#6b7280" }}>{fmtNum(row.ofm)}</td>
                       <td style={{ padding:"5px 6px", fontSize:"7.5px", color:"#4b5563", lineHeight:1.25 }}>{row.cond}</td>
                     </tr>
                   ))}
@@ -655,21 +655,21 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
                 <td style={tdNum}>{fmtUSDc(v.valorM3mid)}</td>
                 <td style={{...td, fontSize:"9px", color:"#6b7280"}}>{multMinComp}×–{multMaxComp}× EBITDA normalizado. Rango habitual para operadores de residuos peligrosos en mercados regulados.</td>
               </tr>
-              <tr style={{ background:"#f8fafc", borderTop:"1.5px solid #1a2744" }}>
+              <tr style={{ background:"#f8fafc", borderTop:"1.5px solid #16243B" }}>
                 <td style={{...td, fontWeight:700, fontSize:"11px"}}>Valor central (promedio)</td>
-                <td style={{...tdNum, fontWeight:800, fontSize:"13px", color:"#1a2744"}}>{fmtUSDc(v.promMetodos)}</td>
+                <td style={{...tdNum, fontWeight:800, fontSize:"13px", color:"#16243B"}}>{fmtUSDc(v.promMetodos)}</td>
                 <td style={{...td, fontSize:"9px", color:"#6b7280"}}>Promedio simple de los tres métodos. Es una referencia, no un objetivo de precio.</td>
               </tr>
             </tbody>
           </table>
           <div style={{ display:"flex", gap:"16px", marginTop:"8px" }}>
-            <div style={{ flex:1, background:"#1a2744", borderRadius:"8px", padding:"16px 20px" }}>
+            <div style={{ flex:1, background:"#16243B", borderRadius:"8px", padding:"16px 20px" }}>
               <div style={{ fontFamily:"Inter,sans-serif", fontSize:"9px", fontWeight:700, letterSpacing:"0.15em", color:"#f59e0b", textTransform:"uppercase", marginBottom:"6px" }}>Oferta inicial recomendada</div>
               <div style={{ fontFamily:"Georgia,serif", fontSize:"22px", fontWeight:700, color:"white" }}>{fmtUSDc(v.ofertaInic)}</div>
             </div>
-            <div style={{ flex:1, background:"#f8fafc", border:"1.5px solid #1a2744", borderRadius:"8px", padding:"16px 20px" }}>
-              <div style={{ fontFamily:"Inter,sans-serif", fontSize:"9px", fontWeight:700, letterSpacing:"0.15em", color:"#1a2744", textTransform:"uppercase", marginBottom:"6px" }}>Precio máximo justificable</div>
-              <div style={{ fontFamily:"Georgia,serif", fontSize:"22px", fontWeight:700, color:"#1a2744" }}>{fmtUSDc(v.ofertaMax)}</div>
+            <div style={{ flex:1, background:"#f8fafc", border:"1.5px solid #16243B", borderRadius:"8px", padding:"16px 20px" }}>
+              <div style={{ fontFamily:"Inter,sans-serif", fontSize:"9px", fontWeight:700, letterSpacing:"0.15em", color:"#16243B", textTransform:"uppercase", marginBottom:"6px" }}>Precio máximo justificable</div>
+              <div style={{ fontFamily:"Georgia,serif", fontSize:"22px", fontWeight:700, color:"#16243B" }}>{fmtUSDc(v.ofertaMax)}</div>
             </div>
           </div>
         </div>
@@ -713,7 +713,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
                 <div key={g.campo} style={{ marginTop: gi===0?0:"16px", breakInside:"avoid" }}>
 
                   {/* Encabezado del campo con su peso en el ajuste total */}
-                  <div style={{ display:"flex", alignItems:"baseline", gap:"8px", background:"#1a2744",
+                  <div style={{ display:"flex", alignItems:"baseline", gap:"8px", background:"#16243B",
                                 padding:"5px 10px", borderRadius:"3px", marginBottom:"8px" }}>
                     <span style={{ fontFamily:"Inter,sans-serif", fontSize:"9px", fontWeight:800, letterSpacing:"0.1em",
                                    textTransform:"uppercase", color:"white" }}>{g.campo}</span>
@@ -780,8 +780,8 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
               ))
             })()}
             {/* Total */}
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginTop:"12px", borderTop:"2px solid #1a2744", paddingTop:"9px" }}>
-              <span style={{ fontFamily:"Inter,sans-serif", fontSize:"10px", fontWeight:700, color:"#1a2744" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginTop:"12px", borderTop:"2px solid #16243B", paddingTop:"9px" }}>
+              <span style={{ fontFamily:"Inter,sans-serif", fontSize:"10px", fontWeight:700, color:"#16243B" }}>
                 Total ajuste por riesgos llevados a valuación
                 <span style={{ fontWeight:400, color:"#9ca3af", marginLeft:"6px" }}>
                   {v.riesgoAjustesLive.length} de {nActivos} hallazgos activos
@@ -826,7 +826,7 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
           </P>
           {(narrativa && narrativa.condiciones_cierre.length > 0 ? narrativa.condiciones_cierre : pendCriticos.map(p => `Entrega y verificación de: ${String(p.documento)}.`)).map((c, i) => (
             <div key={i} style={{ display: "flex", gap: "10px", marginBottom: "8px" }}>
-              <span style={{ fontFamily: "Georgia, serif", fontSize: "11px", fontWeight: 700, color: "#1a2744", flexShrink: 0 }}>9.{i + 1}</span>
+              <span style={{ fontFamily: "Georgia, serif", fontSize: "11px", fontWeight: 700, color: "#16243B", flexShrink: 0 }}>9.{i + 1}</span>
               <p style={{ fontFamily: "Georgia, serif", fontSize: "11px", lineHeight: 1.7, color: "#1f2937", textAlign: "justify", margin: 0 }}>{c}</p>
             </div>
           ))}
@@ -855,14 +855,14 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
               </p>
             ))}
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline",
-                          marginTop:"10px", borderTop:"1.5px solid #1a2744", paddingTop:"8px" }}>
-              <span style={{ fontFamily:"Inter,sans-serif", fontSize:"10px", fontWeight:700, color:"#1a2744" }}>
+                          marginTop:"10px", borderTop:"1.5px solid #16243B", paddingTop:"8px" }}>
+              <span style={{ fontFamily:"Inter,sans-serif", fontSize:"10px", fontWeight:700, color:"#16243B" }}>
                 Total de exposición eliminada
                 <span style={{ fontWeight:400, color:"#9ca3af", marginLeft:"6px" }}>
                   {cerrados.filter((r:any)=>Number(r.impacto)<0).length} hallazgos cerrados con evidencia
                 </span>
               </span>
-              <span style={{ fontFamily:"Inter,sans-serif", fontSize:"13px", fontWeight:800, color:"#1a2744",
+              <span style={{ fontFamily:"Inter,sans-serif", fontSize:"13px", fontWeight:800, color:"#16243B",
                              fontVariantNumeric:"tabular-nums" }}>
                 {fmtNum(cerrados.filter((r:any)=>Number(r.impacto)<0).reduce((s:number,r:any)=>s+Math.abs(Number(r.impacto)),0))}
               </span>
@@ -904,22 +904,22 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
           </P>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "28px" }}>
             <div>
-              <div style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#1a2744", marginBottom: "8px" }}>Supuestos financieros</div>
+              <div style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#16243B", marginBottom: "8px" }}>Supuestos financieros</div>
               {sups.filter(s => s.tipo === "financiero").map((s, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: "8px", padding: "5px 0", borderBottom: "0.5px solid #f3f4f6" }}>
                   <span style={{ fontFamily: "Inter, sans-serif", fontSize: "9.5px", color: "#6b7280", flex: 1 }}>{String(s.label ?? "")}</span>
-                  <span style={{ fontFamily: "Inter, sans-serif", fontSize: "9.5px", fontWeight: 700, color: "#1a2744", whiteSpace: "nowrap" }}>
+                  <span style={{ fontFamily: "Inter, sans-serif", fontSize: "9.5px", fontWeight: 700, color: "#16243B", whiteSpace: "nowrap" }}>
                     {fmtSupuesto(String(s.label ?? ""), s.valor)}
                   </span>
                 </div>
               ))}
             </div>
             <div>
-              <div style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#1a2744", marginBottom: "8px" }}>Supuestos de proceso</div>
+              <div style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#16243B", marginBottom: "8px" }}>Supuestos de proceso</div>
               {sups.filter(s => s.tipo === "categorico" || s.tipo === "acumulativo").map((s, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: "8px", padding: "5px 0", borderBottom: "0.5px solid #f3f4f6" }}>
                   <span style={{ fontFamily: "Inter, sans-serif", fontSize: "9.5px", color: "#6b7280", flex: 1 }}>{String(s.label ?? "")}</span>
-                  <span style={{ fontFamily: "Inter, sans-serif", fontSize: "9.5px", fontWeight: 700, color: "#1a2744" }}>
+                  <span style={{ fontFamily: "Inter, sans-serif", fontSize: "9.5px", fontWeight: 700, color: "#16243B" }}>
                     {String(s.valor ?? "") || "Pendiente"}
                   </span>
                 </div>
@@ -965,9 +965,9 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
 
               {catsOrdenadas.map(({ cat, items, subtotal }, ci) => (
                 <div key={ci} style={{ marginBottom: "16px" }} className="avoid-break">
-                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", borderBottom:"2px solid #1a2744", paddingBottom:"4px", marginBottom:"6px" }}>
-                    <span style={{ fontFamily:"Inter, sans-serif", fontSize:"11px", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em", color:"#1a2744" }}>{cat}</span>
-                    <span style={{ fontFamily:"Inter, sans-serif", fontSize:"12px", fontWeight:700, color:"#1a2744", fontVariantNumeric:"tabular-nums" }}>{subtotal > 0 ? fmtUSDc(subtotal) : "—"}</span>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", borderBottom:"2px solid #16243B", paddingBottom:"4px", marginBottom:"6px" }}>
+                    <span style={{ fontFamily:"Inter, sans-serif", fontSize:"11px", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em", color:"#16243B" }}>{cat}</span>
+                    <span style={{ fontFamily:"Inter, sans-serif", fontSize:"12px", fontWeight:700, color:"#16243B", fontVariantNumeric:"tabular-nums" }}>{subtotal > 0 ? fmtUSDc(subtotal) : "—"}</span>
                   </div>
                   <table style={{ width:"100%", borderCollapse:"collapse" }}>
                     <thead>
@@ -993,9 +993,9 @@ export default function PrintClient({ caso, reqs, risks, sups, valid, valuation:
                 </div>
               ))}
 
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", borderTop:"2px solid #1a2744", marginTop:"6px", paddingTop:"8px" }}>
-                <span style={{ fontFamily:"Georgia, serif", fontSize:"13px", fontWeight:700, color:"#1a2744" }}>Total activos revaluados</span>
-                <span style={{ fontFamily:"Inter, sans-serif", fontSize:"15px", fontWeight:800, color:"#1a2744", fontVariantNumeric:"tabular-nums" }}>{fmtUSDc(totalGeneral)}</span>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", borderTop:"2px solid #16243B", marginTop:"6px", paddingTop:"8px" }}>
+                <span style={{ fontFamily:"Georgia, serif", fontSize:"13px", fontWeight:700, color:"#16243B" }}>Total activos revaluados</span>
+                <span style={{ fontFamily:"Inter, sans-serif", fontSize:"15px", fontWeight:800, color:"#16243B", fontVariantNumeric:"tabular-nums" }}>{fmtUSDc(totalGeneral)}</span>
               </div>
               <p style={{ fontFamily:"Georgia, serif", fontSize:"9px", fontStyle:"italic", color:"#9ca3af", marginTop:"8px", textAlign:"justify" }}>
                 Los valores se estiman sobre la base de la documentación disponible, precios de reposición de mercado y verificación en visita a planta. Una parte de las estimaciones —en particular inmueble, intangibles regulatorios y maquinaria de proceso— tiene carácter preliminar y está sujeta a tasación formal independiente y a la verificación documental pendiente; los importes pueden variar respecto de una valuación definitiva. El total aquí expuesto alimenta el método de activos netos revaluados (M1) descripto en la sección de valuación y representa el techo patrimonial de referencia, no un valor líquido de realización inmediata.

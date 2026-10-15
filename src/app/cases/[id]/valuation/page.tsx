@@ -69,7 +69,7 @@ function Num({ val, onChange, placeholder }: { val: number|null; onChange:(v:num
   )
   return (
     <button onClick={() => { setTxt(String(val??"")); setEd(true) }}
-      className={`text-sm font-bold text-right rounded px-2 py-1 hover:bg-blue-50 w-28 ${val!=null?"text-[#1a2744]":"text-gray-300"}`}>
+      className={`text-sm font-bold text-right rounded px-2 py-1 hover:bg-blue-50 w-28 ${val!=null?"text-[#16243B]":"text-gray-300"}`}>
       {val!=null ? val.toLocaleString("es-AR") : (placeholder??"—")}
     </button>
   )
@@ -102,7 +102,7 @@ function AssetRow({ a, onUpdate, onSave, onDelete, saving, caseId, defaultOpen }
         <div className="text-right flex-shrink-0 min-w-[110px]">
           {calculado!=null ? (
             <>
-              <div className="text-sm font-black text-[#1a2744]">{usd(calculado)}</div>
+              <div className="text-sm font-black text-[#16243B]">{usd(calculado)}</div>
               <div className="text-xs text-gray-400">{a.cantidad?.toLocaleString()} {a.unidad} × USD {a.precio_unitario?.toLocaleString()}</div>
             </>
           ) : (
@@ -111,7 +111,7 @@ function AssetRow({ a, onUpdate, onSave, onDelete, saving, caseId, defaultOpen }
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <button onClick={onSave} disabled={saving}
-            className="flex items-center gap-1 text-xs bg-[#1a2744] text-white px-2.5 py-1.5 rounded-lg hover:bg-[#0d1525] disabled:opacity-50">
+            className="flex items-center gap-1 text-xs bg-[#16243B] text-white px-2.5 py-1.5 rounded-lg hover:bg-[#2051E0] disabled:opacity-50">
             {saving ? <RefreshCw size={10} className="animate-spin"/> : <Save size={10}/>}
             {saving ? "..." : "Guardar"}
           </button>
@@ -131,21 +131,21 @@ function AssetRow({ a, onUpdate, onSave, onDelete, saving, caseId, defaultOpen }
                 <span className="text-gray-400 mt-3">×</span>
                 <div><div className="text-gray-400 mb-0.5">USD/{a.unidad||"u."}</div><Num val={a.precio_unitario} onChange={v=>onUpdate("precio_unitario",v)}/></div>
                 <span className="text-gray-400 mt-3">=</span>
-                <div><div className="text-gray-400 mb-0.5">Total</div><div className="text-sm font-black text-[#1a2744] pt-1">{calculado ? usd(calculado) : "—"}</div></div>
+                <div><div className="text-gray-400 mb-0.5">Total</div><div className="text-sm font-black text-[#16243B] pt-1">{calculado ? usd(calculado) : "—"}</div></div>
               </div>
               <input value={a.unidad||""} onChange={e => onUpdate("unidad",e.target.value)}
                 placeholder="m², unidad, etc."
-                className="w-full text-xs border border-gray-200 rounded px-2 py-1 mt-2 focus:outline-none focus:border-[#1a2744]"/>
+                className="w-full text-xs border border-gray-200 rounded px-2 py-1 mt-2 focus:outline-none focus:border-[#2051E0]"/>
             </div>
             <div>
               <div className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Metodología</div>
               <textarea value={a.metodologia||""} onChange={e => onUpdate("metodologia",e.target.value)}
-                rows={4} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 resize-none focus:outline-none focus:border-[#1a2744]"/>
+                rows={4} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 resize-none focus:outline-none focus:border-[#2051E0]"/>
             </div>
             <div>
               <div className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Notas del analista</div>
               <textarea value={a.notas||""} onChange={e => onUpdate("notas",e.target.value)}
-                rows={4} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 resize-none focus:outline-none focus:border-[#1a2744]"/>
+                rows={4} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 resize-none focus:outline-none focus:border-[#2051E0]"/>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -155,8 +155,8 @@ function AssetRow({ a, onUpdate, onSave, onDelete, saving, caseId, defaultOpen }
                 placeholder="N°" className="w-14 text-xs border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none"/>
               {a.item_validante && (
                 <Link href={`/cases/${caseId}/requirements?highlight=${a.item_validante}`}
-                  className="text-xs text-[#1a2744] underline decoration-dotted flex items-center gap-1">
-                  Ver N°{a.item_validante} <span className="bg-[#1a2744] text-white px-1.5 py-0.5 rounded">→</span>
+                  className="text-xs text-[#16243B] underline decoration-dotted flex items-center gap-1">
+                  Ver N°{a.item_validante} <span className="bg-[#16243B] text-white px-1.5 py-0.5 rounded">→</span>
                 </Link>
               )}
             </div>
@@ -166,7 +166,7 @@ function AssetRow({ a, onUpdate, onSave, onDelete, saving, caseId, defaultOpen }
             </select>
             <input value={a.nombre} onChange={e => onUpdate("nombre",e.target.value)} autoFocus={defaultOpen}
               onFocus={e => defaultOpen && e.target.select()}
-              className="flex-1 text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-[#1a2744]"/>
+              className="flex-1 text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-[#2051E0]"/>
           </div>
         </div>
       )}
@@ -206,11 +206,11 @@ function RiskAdjRow({ r, onUpdate, onSave, onDelete, saving, defaultOpen }: {
             <span className="text-gray-300">×</span>
             <div className="flex items-center gap-1">
               <input type="number" min={0} max={100} step={0.01} value={r.porcentaje} onChange={e => onUpdate("porcentaje",e.target.value)}
-                className="w-16 border border-gray-200 rounded px-1.5 py-1 text-right focus:outline-none focus:border-[#1a2744]"/>
+                className="w-16 border border-gray-200 rounded px-1.5 py-1 text-right focus:outline-none focus:border-[#2051E0]"/>
               <span className="text-gray-400">%</span>
             </div>
             <span className="text-gray-300">=</span>
-            <span className="font-bold text-[#1a2744]">−{usd(r.monto)}</span>
+            <span className="font-bold text-[#16243B]">−{usd(r.monto)}</span>
           </div>
           <p className="text-xs text-gray-400 italic">
             El monto se recalcula solo si el impacto de este riesgo cambia en el mapa — acá solo definís el % de implicancia.
@@ -226,7 +226,7 @@ function RiskAdjRow({ r, onUpdate, onSave, onDelete, saving, defaultOpen }: {
               <Trash2 size={12}/> Sacar de la valuación
             </button>
             <button onClick={onSave} disabled={saving}
-              className="flex items-center gap-1 text-xs bg-[#1a2744] text-white px-3 py-1.5 rounded-lg hover:bg-[#0d1525] disabled:opacity-50">
+              className="flex items-center gap-1 text-xs bg-[#16243B] text-white px-3 py-1.5 rounded-lg hover:bg-[#2051E0] disabled:opacity-50">
               {saving ? <RefreshCw size={10} className="animate-spin"/> : <Save size={10}/>}
               {saving ? "..." : "Guardar"}
             </button>
@@ -557,8 +557,8 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
         <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Valuación y recomendación de oferta</h2>
 
         {/* 1 · PUENTE EBITDA — calidad de resultados */}
-        <div className="card p-5 border-l-4 border-l-[#1a2744]">
-          <p className="text-xs font-black uppercase tracking-wide text-[#1a2744] mb-2">1. Puente EBITDA — por qué el contable no refleja el negocio real</p>
+        <div className="card p-5 border-l-4 border-l-[#16243B]">
+          <p className="text-xs font-black uppercase tracking-wide text-[#16243B] mb-2">1. Puente EBITDA — por qué el contable no refleja el negocio real</p>
           <p className="text-xs text-gray-500 mb-3">
             Los 4 accionistas retiraron USD {(ebitdaBase2 - ebitda).toLocaleString("es-AR")} anuales disfrazados de costos.
             Con la venta desaparecen. El EBITDA normalizado ya incluye la facturación real 2026 (USD {ingresos.toLocaleString("es-AR")} en ingresos).
@@ -576,7 +576,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                 <div className="text-xs text-green-500">salen con la venta</div>
               </div>
             </div>
-            <div className="bg-[#1a2744] rounded-xl p-3 text-center">
+            <div className="bg-[#16243B] rounded-xl p-3 text-center">
               <div className="text-xs text-blue-200 mb-1">EBITDA normalizado</div>
               <div className="text-xl font-black text-white">{usd(ebitdaBase2)}</div>
               <div className="text-xs text-blue-200">margen 25% · base 2026</div>
@@ -586,8 +586,8 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
 
         
         {/* 2 · RESUMEN DE VALUACIÓN */}
-        <div className="card p-5 border-l-4 border-l-[#1a2744]">
-          <p className="text-xs font-black uppercase tracking-wide text-[#1a2744] mb-1">2. Resumen de valuación</p>
+        <div className="card p-5 border-l-4 border-l-[#16243B]">
+          <p className="text-xs font-black uppercase tracking-wide text-[#16243B] mb-1">2. Resumen de valuación</p>
           <p className="text-xs text-gray-500 mb-4">
             Rango de valor según los tres métodos, comparado con la oferta recomendada y el precio pedido por el vendedor.
           </p>
@@ -615,7 +615,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
           </div>
           <div className="relative h-10 mt-4 border-t border-gray-100 pt-2">
             {[
-              {v:ofertaInic, label:"Oferta recomendada", cls:"text-[#1a2744]", bar:"bg-[#1a2744]"},
+              {v:ofertaInic, label:"Oferta recomendada", cls:"text-[#16243B]", bar:"bg-[#16243B]"},
               {v:precio,     label:"Precio pedido",       cls:"text-red-600",  bar:"bg-red-400"},
             ].map((mk,i) => {
               const pct = Math.min(98, mk.v/scaleMax*100)
@@ -628,15 +628,15 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
               )
             })}
           </div>
-          <div className="mt-3 bg-[#1a2744]/5 rounded-xl px-4 py-2.5 flex justify-between items-center">
+          <div className="mt-3 bg-[#16243B]/5 rounded-xl px-4 py-2.5 flex justify-between items-center">
             <span className="text-xs font-semibold text-gray-700">Promedio de los tres métodos</span>
-            <span className="text-lg font-black text-[#1a2744]">{usd(promMetodos)}</span>
+            <span className="text-lg font-black text-[#16243B]">{usd(promMetodos)}</span>
           </div>
         </div>
 
         {/* 2b · TRAZABILIDAD — generada por el modelo, no escrita a mano */}
-        <div className="card p-5 border-l-4 border-l-[#1a2744]">
-          <p className="text-xs font-black uppercase tracking-wide text-[#1a2744] mb-1">
+        <div className="card p-5 border-l-4 border-l-[#16243B]">
+          <p className="text-xs font-black uppercase tracking-wide text-[#16243B] mb-1">
             Trazabilidad del cálculo
           </p>
           <p className="text-xs text-gray-500 mb-4">
@@ -648,7 +648,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
               <div key={paso.clave} className="rounded-lg border border-gray-200 px-3 py-2">
                 <div className="flex justify-between items-baseline gap-3">
                   <span className="text-xs font-semibold text-gray-800">{paso.titulo}</span>
-                  <span className="text-sm font-mono font-bold text-[#1a2744] whitespace-nowrap">
+                  <span className="text-sm font-mono font-bold text-[#16243B] whitespace-nowrap">
                     {paso.clave === "multImpl" ? `${paso.resultado}×` : usd(paso.resultado)}
                   </span>
                 </div>
@@ -704,9 +704,9 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                   <div className="text-sm font-bold text-gray-800">Activos netos + Fondo de comercio</div>
                 </div>
                 <div className="flex items-baseline gap-2 flex-shrink-0">
-                  <div className="text-xl font-black text-[#1a2744]">{usd(valorM1Cont)}</div>
+                  <div className="text-xl font-black text-[#16243B]">{usd(valorM1Cont)}</div>
                   <div className="text-xs text-gray-400">a</div>
-                  <div className="text-xl font-black text-[#1a2744]">{usd(valorM1)}</div>
+                  <div className="text-xl font-black text-[#16243B]">{usd(valorM1)}</div>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-6">
@@ -725,7 +725,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                 <div className="text-xs text-gray-500 space-y-1">
                   <div className="font-semibold text-gray-600">Fondo de comercio ({multFondo}× EBITDA):</div>
                   <div>· Con EBITDA contable ({usd(ebitda)}): +{usd(fondoComercioCont)} → <strong className="text-gray-700">{usd(valorM1Cont)}</strong></div>
-                  <div>· Con EBITDA normalizado ({usd(ebitdaBase2)}): +{usd(fondoComercio)} → <strong className="text-[#1a2744]">{usd(valorM1)}</strong></div>
+                  <div>· Con EBITDA normalizado ({usd(ebitdaBase2)}): +{usd(fondoComercio)} → <strong className="text-[#16243B]">{usd(valorM1)}</strong></div>
                   <p className="text-gray-400 italic mt-2 border-t pt-2">
                     El fondo de comercio es el premio por comprar la empresa funcionando en lugar de los activos
                     por separado: clientes que ya facturan, habilitaciones activas, procesos armados y 40 años de reputación.
@@ -822,7 +822,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
           <div className="flex items-start justify-between gap-3 mb-1">
             <p className="text-xs font-black uppercase tracking-wide text-red-700">4. Ajustes por riesgos identificados</p>
             <button onClick={() => setShowTraerPicker(v=>!v)} disabled={riskAdding}
-              className="flex items-center gap-1 text-xs bg-[#1a2744] text-white px-2.5 py-1 rounded-lg hover:bg-[#0d1525] disabled:opacity-50 flex-shrink-0">
+              className="flex items-center gap-1 text-xs bg-[#16243B] text-white px-2.5 py-1 rounded-lg hover:bg-[#2051E0] disabled:opacity-50 flex-shrink-0">
               <Plus size={11}/> Traer riesgo del DD
             </button>
           </div>
@@ -842,7 +842,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                       <div className="text-gray-400 text-xs">{r.area}</div>
                     </div>
                     <span className="font-bold text-red-600 flex-shrink-0 whitespace-nowrap">−{usd(Math.abs(r.impacto))}</span>
-                    <Plus size={13} className="text-[#1a2744] flex-shrink-0"/>
+                    <Plus size={13} className="text-[#16243B] flex-shrink-0"/>
                   </button>
                 ))}
                 {disponibles.length===0 && <div className="text-xs text-gray-400 px-2.5 py-2">Ya trajiste todos los riesgos del mapa a esta lista.</div>}
@@ -852,7 +852,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
           <p className="text-xs text-gray-500 mb-1.5">
             Total riesgos activos: <strong>{usd(riesgosAbs)}</strong>
             <button onClick={() => setShowTotalRiesgos(v=>!v)}
-              className="inline-flex items-center gap-0.5 ml-1 text-[#1a2744] hover:underline font-semibold">
+              className="inline-flex items-center gap-0.5 ml-1 text-[#16243B] hover:underline font-semibold">
               <Info size={11}/> {riesgoDetalle.length} riesgos {showTotalRiesgos ? "▲" : "▼"}
             </button>
             {" "}· Ajustados con mitigantes: <strong>{usd(riesgosAjust)}</strong> ({riesgosAbs>0?Math.round(riesgosAjust/riesgosAbs*100):0}% del total).
@@ -890,10 +890,10 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
         </div>
 
       {/* 5 · CONCLUSIÓN — precio de oferta recomendado */}
-        <div className="card p-5 border-2 border-[#1a2744]">
+        <div className="card p-5 border-2 border-[#16243B]">
           <div className="flex items-start gap-6">
             <div className="flex-1">
-              <p className="text-xs font-black uppercase tracking-wide text-[#1a2744] mb-3">5. Conclusión — precio de oferta recomendado</p>
+              <p className="text-xs font-black uppercase tracking-wide text-[#16243B] mb-3">5. Conclusión — precio de oferta recomendado</p>
               <div className="space-y-1.5 text-xs">
                 {[
                   {l:"Método 1 — Activos netos + Fondo de comercio", v:`${usd(valorM1Cont)} − ${usd(valorM1)}`},
@@ -905,9 +905,9 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                     <span className="font-bold text-gray-700">{m.v}</span>
                   </div>
                 ))}
-                <div className="flex justify-between border-b-2 border-[#1a2744] pb-1">
+                <div className="flex justify-between border-b-2 border-[#16243B] pb-1">
                   <span className="font-bold">Promedio de los tres métodos</span>
-                  <span className="font-black text-[#1a2744]">{usd(promMetodos)}</span>
+                  <span className="font-black text-[#16243B]">{usd(promMetodos)}</span>
                 </div>
                 <div className="flex justify-between text-red-600 pt-1">
                   <span>Valor en liquidación de activos por separado (−{descLiq}%)</span>
@@ -920,7 +920,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                 </p>
               </div>
             </div>
-            <div className="flex-shrink-0 bg-[#1a2744] text-white rounded-2xl p-5 min-w-[175px] text-center">
+            <div className="flex-shrink-0 bg-[#16243B] text-white rounded-2xl p-5 min-w-[175px] text-center">
               <div className="text-xs opacity-70 mb-1">Oferta inicial</div>
               <div className="text-3xl font-black">{usd(ofertaInic)}</div>
               <div className="text-xs opacity-70 mb-3">{multImpl}× EBITDA normalizado</div>
@@ -954,7 +954,7 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
             </p>
           </div>
           <button onClick={() => addAsset()} disabled={adding}
-            className="flex items-center gap-1.5 bg-[#1a2744] text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-[#0d1525] disabled:opacity-50">
+            className="flex items-center gap-1.5 bg-[#16243B] text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-[#2051E0] disabled:opacity-50">
             <Plus size={12}/> Agregar activo
           </button>
         </div>
@@ -985,12 +985,12 @@ export default function ValuationPage({ params }: { params: { id: string } }) {
                   <span className="text-sm font-bold text-gray-800">{cat}</span>
                   <span className="text-xs text-gray-400">({catAssets.length} activos)</span>
                 </div>
-                <span className={`text-sm font-black ${catTotal?"text-[#1a2744]":"text-gray-300"}`}>
+                <span className={`text-sm font-black ${catTotal?"text-[#16243B]":"text-gray-300"}`}>
                   {catTotal ? usd(catTotal) : "Sin valor cargado"}
                 </span>
               </button>
               <button onClick={(e) => { e.stopPropagation(); addAsset(cat) }} disabled={adding}
-                className="text-xs text-[#1a2744] hover:text-[#0d1525] font-semibold flex items-center gap-1 mt-1 ml-1 disabled:opacity-50">
+                className="text-xs text-[#16243B] hover:text-[#0E1930] font-semibold flex items-center gap-1 mt-1 ml-1 disabled:opacity-50">
                 <Plus size={11}/> Agregar {cat.toLowerCase()}
               </button>
               {isOpen && (

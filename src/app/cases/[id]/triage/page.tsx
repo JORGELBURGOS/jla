@@ -339,7 +339,7 @@ export default function TriagePage({ params }: { params: { id: string } }) {
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-bold text-gray-700">{files.length} archivo{files.length > 1 ? "s" : ""} cargado{files.length > 1 ? "s" : ""}</span>
             <button onClick={analyze}
-              className="flex items-center gap-2 bg-[#1a2744] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#0d1525] transition-colors">
+              className="flex items-center gap-2 bg-[#16243B] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#2051E0] transition-colors">
               <RefreshCw size={13}/>
               Analizar con IA
             </button>
@@ -371,7 +371,7 @@ export default function TriagePage({ params }: { params: { id: string } }) {
       {analyzing && (
         <div className="card py-12 text-center">
           <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-4">
-            <Loader size={28} className="text-[#1a2744] animate-spin"/>
+            <Loader size={28} className="text-[#16243B] animate-spin"/>
           </div>
           <h3 className="font-bold text-gray-900 mb-2">{MENSAJES_ESPERA[msgEspera]}</h3>
           <p className="text-sm text-gray-500 mb-4">
@@ -380,7 +380,7 @@ export default function TriagePage({ params }: { params: { id: string } }) {
           </p>
           <div className="flex justify-center gap-1">
             {MENSAJES_ESPERA.map((_, i) => (
-              <div key={i} className={`w-2 h-2 rounded-full transition-colors ${i <= msgEspera ? "bg-[#1a2744]" : "bg-gray-200"}`}/>
+              <div key={i} className={`w-2 h-2 rounded-full transition-colors ${i <= msgEspera ? "bg-[#16243B]" : "bg-gray-200"}`}/>
             ))}
           </div>
           <p className="text-xs text-gray-400 mt-4">Archivos: {files.map(f => f.file.name).join(", ")}</p>
@@ -392,7 +392,7 @@ export default function TriagePage({ params }: { params: { id: string } }) {
         <div className="space-y-4">
           {/* Resumen */}
           {resultado.resumen && (
-            <div className="card bg-[#1a2744] text-white">
+            <div className="card bg-[#16243B] text-white">
               {resultado.tipo_documento && (
                 <div className="text-xs font-bold text-blue-300 mb-1 uppercase tracking-wide">
                   {resultado.tipo_documento}
@@ -588,7 +588,7 @@ export default function TriagePage({ params }: { params: { id: string } }) {
               ← Nuevo análisis
             </button>
             <button onClick={applySelected} disabled={applying || totalSel === 0}
-              className="flex items-center gap-2 bg-[#1a2744] text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-[#0d1525] disabled:opacity-40 transition-colors">
+              className="flex items-center gap-2 bg-[#16243B] text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-[#2051E0] disabled:opacity-40 transition-colors">
               {applying && <Loader size={13} className="animate-spin"/>}
               {applying ? "Guardando..." : `Guardar seleccionados (${totalSel})`}
             </button>

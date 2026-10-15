@@ -1,12 +1,73 @@
+/* 2026-10-15 — Rediseño visual de la plataforma. Lenguaje tomado de la app de
+   Planes de Negocio (Barlow + Barlow Condensed, fondo acero, tarjetas chatas con
+   borde fino, números tabulares condensados) aplicado con la paleta propia de
+   JL Advisory — navy del logotipo, azul de acción y teal para lo positivo.
+   El rediseño entra por acá y por tailwind.config.js; las páginas no cambian. */
+@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --bg: #EFF2F6;
+  --surface: #FFFFFF;
+  --ink: #16243B;
+  --line: #D5DDE6;
+  --navy: #16243B;
+  --blue: #2051E0;
+  --teal: #23A78A;
+}
+
+@layer base {
+  body {
+    background: var(--bg);
+    font-family: 'Barlow', 'Helvetica Neue', Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* La línea de marca — degradé azul a teal del logotipo, presente en toda la app */
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #2051E0 0%, #2BBD9B 100%);
+    z-index: 60;
+    pointer-events: none;
+  }
+  h1, h2, h3, h4 {
+    font-family: 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+    letter-spacing: 0.01em;
+  }
+  input, select, textarea, button {
+    font-family: 'Barlow', 'Helvetica Neue', Arial, sans-serif;
+  }
+  @media print {
+    body::before { display: none; }
+  }
+}
+
 @layer components {
-  .card { @apply bg-white rounded-xl border border-gray-200 p-5; }
-  .card-title { @apply text-sm font-bold text-gray-700 mb-3; }
-  .btn-primary { @apply px-4 py-2 bg-[#1a2744] text-white rounded-lg text-sm font-semibold hover:bg-[#0d1525] transition-colors; }
-  .btn-outline { @apply px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors; }
+  .card { @apply bg-white rounded-lg border border-gray-200 p-5; }
+  .card-title { @apply text-[15px] font-bold text-gray-700 mb-3; font-family: 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif; letter-spacing: 0.03em; }
+  .btn-primary { @apply px-4 py-2 bg-[#16243B] text-white rounded-lg text-sm font-semibold hover:bg-[#2051E0] transition-colors; }
+  .btn-outline { @apply px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:border-[#2051E0] hover:text-[#16243B] transition-colors; }
   .pill-pendiente { @apply inline-flex px-2 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-600; }
   .pill-parcial { @apply inline-flex px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700; }
   .pill-recibido { @apply inline-flex px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700; }
+}
+
+/* Los números protagonistas (font-black en las páginas) toman el estilo de KPI
+   de la plataforma de Planes — condensados, pesados y tabulares. */
+.font-black {
+  font-family: 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+/* Foco visible y consistente en toda la app */
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible {
+  outline: 2px solid #2051E0;
+  outline-offset: 2px;
 }

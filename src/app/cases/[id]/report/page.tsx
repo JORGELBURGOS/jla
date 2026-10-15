@@ -33,7 +33,7 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
     return (
       <div className="max-w-2xl mx-auto my-20 px-8 text-center">
         <div className="text-xs font-bold tracking-widest uppercase text-gray-400 mb-4">JL Advisory · Obligaciones Negociables</div>
-        <h1 className="text-2xl font-bold text-[#1a2744] mb-4 leading-snug">
+        <h1 className="text-2xl font-bold text-[#16243B] mb-4 leading-snug">
           {String((caso as Record<string,unknown> | null)?.nombre ?? "Este caso")} es un análisis de Obligación Negociable
         </h1>
         <p className="text-sm leading-relaxed text-gray-700 mb-3">

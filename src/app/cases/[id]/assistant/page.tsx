@@ -185,7 +185,7 @@ export default function AssistantPage({ params }: { params: { id: string } }) {
         {messages.map((m, msgIdx) => (
           <div key={msgIdx} className={`flex gap-3 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
             {/* Avatar */}
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${m.role === "assistant" ? "bg-[#1a2744]" : "bg-gray-300"}`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${m.role === "assistant" ? "bg-[#16243B]" : "bg-gray-300"}`}>
               {m.role === "assistant"
                 ? <Bot size={15} className="text-white"/>
                 : <User size={15} className="text-gray-600"/>}
@@ -195,7 +195,7 @@ export default function AssistantPage({ params }: { params: { id: string } }) {
             <div className="max-w-2xl flex-1 min-w-0">
               <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
                 m.role === "user"
-                  ? "bg-[#1a2744] text-white rounded-tr-sm"
+                  ? "bg-[#16243B] text-white rounded-tr-sm"
                   : "bg-white border border-gray-200 text-gray-800 rounded-tl-sm shadow-sm"
               }`}>
                 {m.content}
@@ -203,7 +203,7 @@ export default function AssistantPage({ params }: { params: { id: string } }) {
 
               {m.role === "assistant" && !!m.criterios && (
                 <div className="mt-1.5 inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded-full" title="La respuesta se apoyó en criterios de trabajo de JL Advisory">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#1a2744]"/> {m.criterios} criterio{m.criterios > 1 ? "s" : ""} de la casa aplicado{m.criterios > 1 ? "s" : ""}
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#16243B]"/> {m.criterios} criterio{m.criterios > 1 ? "s" : ""} de la casa aplicado{m.criterios > 1 ? "s" : ""}
                 </div>
               )}
 
@@ -275,7 +275,7 @@ export default function AssistantPage({ params }: { params: { id: string } }) {
                       <button
                         onClick={() => aplicarSeleccionados(msgIdx, m.acciones!)}
                         disabled={applying || seleccion.size === 0}
-                        className="flex items-center gap-2 bg-[#1a2744] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#0d1525] disabled:opacity-50 transition-colors"
+                        className="flex items-center gap-2 bg-[#16243B] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#2051E0] disabled:opacity-50 transition-colors"
                       >
                         {applying && <RefreshCw size={13} className="animate-spin"/>}
                         {applying ? "Guardando..." : `Guardar cambios${seleccion.size > 0 ? ` (${seleccion.size})` : ""}`}
@@ -290,7 +290,7 @@ export default function AssistantPage({ params }: { params: { id: string } }) {
 
         {loading && (
           <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#1a2744] flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-full bg-[#16243B] flex items-center justify-center flex-shrink-0">
               <Bot size={15} className="text-white"/>
             </div>
             <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
@@ -332,12 +332,12 @@ export default function AssistantPage({ params }: { params: { id: string } }) {
             onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send() } }}
             placeholder="Contame lo que descubriste o preguntame lo que necesitás... (Enter para enviar)"
             rows={2}
-            className="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#1a2744] focus:border-transparent"
+            className="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#16243B] focus:border-transparent"
           />
           <button
             onClick={send}
             disabled={loading || !input.trim()}
-            className="bg-[#1a2744] text-white px-4 rounded-xl hover:bg-[#0d1525] disabled:opacity-40 transition-colors self-end pb-2.5 pt-2.5 flex items-center gap-1.5 font-medium text-sm"
+            className="bg-[#16243B] text-white px-4 rounded-xl hover:bg-[#2051E0] disabled:opacity-40 transition-colors self-end pb-2.5 pt-2.5 flex items-center gap-1.5 font-medium text-sm"
           >
             {loading ? <RefreshCw size={14} className="animate-spin"/> : <Send size={14}/>}
           </button>

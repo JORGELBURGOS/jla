@@ -127,7 +127,7 @@ export default function FinancialPage({ params }: { params: { id: string } }) {
                   <div className="text-xs text-gray-500 mb-1">{label}</div>
                   <input type="number" value={val} step="0.5"
                     onChange={e => set(parseFloat(e.target.value) || 0)}
-                    className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm font-bold text-center focus:outline-none focus:ring-2 focus:ring-[#1a2744]"/>
+                    className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm font-bold text-center focus:outline-none focus:ring-2 focus:ring-[#16243B]"/>
                 </div>
               ))}
             </div>
@@ -221,7 +221,7 @@ export default function FinancialPage({ params }: { params: { id: string } }) {
           ))}
 
           {/* Resumen ejecutivo */}
-          <div className="card border-l-4 border-l-[#1a2744]">
+          <div className="card border-l-4 border-l-[#16243B]">
             <h2 className="font-bold text-sm text-gray-900 mb-3">Resumen de valuación — {new Date().toLocaleDateString("es-AR")}</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
@@ -230,7 +230,7 @@ export default function FinancialPage({ params }: { params: { id: string } }) {
                 { label: "Rango Optimista", val: opt ? fmtUSD(opt.equity) : "—", sub: `${crecOpt}% crec.` },
                 { label: "Precio pedido", val: fmtUSD(precio), sub: base ? (precio <= base.equity ? "✓ en rango" : "✗ sobre rango") : "" },
               ].map(({ label, val, sub, highlight }) => (
-                <div key={label} className={`rounded-xl p-3 text-center ${highlight ? "bg-[#1a2744] text-white" : "bg-gray-50"}`}>
+                <div key={label} className={`rounded-xl p-3 text-center ${highlight ? "bg-[#16243B] text-white" : "bg-gray-50"}`}>
                   <div className={`text-xs mb-1 ${highlight ? "text-blue-200" : "text-gray-500"}`}>{label}</div>
                   <div className={`text-lg font-black ${highlight ? "text-white" : "text-gray-900"}`}>{val}</div>
                   <div className={`text-xs mt-0.5 ${highlight ? "text-blue-200" : "text-gray-400"}`}>{sub}</div>
@@ -240,7 +240,7 @@ export default function FinancialPage({ params }: { params: { id: string } }) {
             {riesgoTot < 0 && base && (
               <div className="mt-3 pt-3 border-t border-gray-100 text-sm">
                 <span className="text-gray-600">Precio de oferta sugerido (base ajustado por riesgos): </span>
-                <span className="font-black text-[#1a2744] text-base">{fmtUSD(base.equity + riesgoTot)}</span>
+                <span className="font-black text-[#16243B] text-base">{fmtUSD(base.equity + riesgoTot)}</span>
                 <span className="text-xs text-gray-400 ml-2">= EV base {fmtUSD(base.equity)} − ajustes por riesgo {fmtUSD(Math.abs(riesgoTot))}</span>
                 <div className="text-xs text-gray-400 mt-1">
                   Los ajustes por riesgo son la suma ponderada por probabilidad de los riesgos incorporados a la oferta,

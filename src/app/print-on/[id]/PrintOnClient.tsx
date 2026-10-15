@@ -24,7 +24,7 @@ function fDsc(d: number) { return d.toLocaleString("es-AR", { maximumFractionDig
 const H = ({ n, t }: { n: string; t: string }) => (
   <div style={{ marginBottom: "12px" }}>
     {n && <div style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#9ca3af" }}>{n}</div>}
-    <div style={{ fontFamily: "Georgia, serif", fontSize: "20px", fontWeight: 700, color: "#1a2744", borderBottom: "2px solid #1a2744", paddingBottom: "6px", marginTop: "2px" }}>{t}</div>
+    <div style={{ fontFamily: "Georgia, serif", fontSize: "20px", fontWeight: 700, color: "#16243B", borderBottom: "2px solid #16243B", paddingBottom: "6px", marginTop: "2px" }}>{t}</div>
   </div>
 )
 const P = ({ children }: { children: React.ReactNode }) => (
@@ -95,9 +95,9 @@ export default function PrintOnClient({ caso, structure, repago, riesgos, reqsCn
       `}</style>
 
       {/* Botón de impresión (no sale en PDF) */}
-      <div className="no-print" style={{ position: "sticky", top: 0, background: "#1a2744", padding: "12px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 10 }}>
+      <div className="no-print" style={{ position: "sticky", top: 0, background: "#16243B", padding: "12px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 10 }}>
         <span style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", color: "#fff", fontWeight: 600 }}>Informe ON · {nombre}</span>
-        <button onClick={() => window.print()} style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", fontWeight: 700, color: "#1a2744", background: "#fff", border: "none", borderRadius: "6px", padding: "8px 16px", cursor: "pointer" }}>
+        <button onClick={() => window.print()} style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", fontWeight: 700, color: "#16243B", background: "#fff", border: "none", borderRadius: "6px", padding: "8px 16px", cursor: "pointer" }}>
           Descargar PDF
         </button>
       </div>
@@ -105,12 +105,12 @@ export default function PrintOnClient({ caso, structure, repago, riesgos, reqsCn
       {/* ══════ PORTADA ══════ */}
       <div style={{ padding: "80px 50px 60px", minHeight: "84vh", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
         <div>
-          <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 800, fontSize: "15px", letterSpacing: "0.14em", color: "#1a2744" }}>JL<span style={{ color: "#b42318" }}>·</span>ADVISORY</div>
+          <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 800, fontSize: "15px", letterSpacing: "0.14em", color: "#16243B" }}>JL<span style={{ color: "#b42318" }}>·</span>ADVISORY</div>
           <div style={{ fontFamily: "Inter, sans-serif", fontSize: "9px", letterSpacing: "0.18em", textTransform: "uppercase", color: "#6b7280", marginTop: "3px" }}>Mercado de Capitales · Obligaciones Negociables</div>
         </div>
         <div>
-          <div style={{ fontFamily: "Georgia, serif", fontSize: "34px", fontWeight: 700, color: "#1a2744", lineHeight: 1.25, marginBottom: "18px" }}>Informe de Obligación Negociable</div>
-          <div style={{ width: "72px", height: "3px", background: "#1a2744", marginBottom: "24px" }} />
+          <div style={{ fontFamily: "Georgia, serif", fontSize: "34px", fontWeight: 700, color: "#16243B", lineHeight: 1.25, marginBottom: "18px" }}>Informe de Obligación Negociable</div>
+          <div style={{ width: "72px", height: "3px", background: "#16243B", marginBottom: "24px" }} />
           <div style={{ fontFamily: "Georgia, serif", fontSize: "19px", color: "#374151", marginBottom: "6px" }}>{nombre}</div>
           {cuit && <div style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", color: "#9ca3af" }}>CUIT {cuit}</div>}
           <div style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", color: "#6b7280", marginTop: "14px", fontStyle: "italic" }}>Análisis de colocabilidad para banco colocador / ALyC</div>
@@ -128,7 +128,7 @@ export default function PrintOnClient({ caso, structure, repago, riesgos, reqsCn
         <div style={{ display: "flex", gap: "10px", marginBottom: "6px" }}>
           {[[fDsc(dscrBaseProm), "DSCR promedio · base"], [fDsc(dscrEstresMin), "DSCR mínimo · estrés"], [fmtUSDc(monto), "Monto de la emisión"]].map(([v, l], i) => (
             <div key={i} style={{ flex: 1, border: "1px solid #e5e7eb", borderRadius: "7px", padding: "10px 12px", background: "#fcfbf8" }}>
-              <div style={{ fontFamily: "Inter, sans-serif", fontSize: "17px", fontWeight: 800, color: "#1a2744" }}>{v}</div>
+              <div style={{ fontFamily: "Inter, sans-serif", fontSize: "17px", fontWeight: 800, color: "#16243B" }}>{v}</div>
               <div style={{ fontFamily: "Inter, sans-serif", fontSize: "8px", letterSpacing: "0.04em", textTransform: "uppercase", color: "#6b7280", marginTop: "2px" }}>{l}</div>
             </div>
           ))}
@@ -186,7 +186,7 @@ export default function PrintOnClient({ caso, structure, repago, riesgos, reqsCn
           if (!filas.length) return null
           return (
             <div key={esc} style={{ marginBottom: "14px" }} className="avoid-break">
-              <div style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#1a2744", marginBottom: "4px" }}>Escenario {esc}</div>
+              <div style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#16243B", marginBottom: "4px" }}>Escenario {esc}</div>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead><tr>
                   <th style={th}>Año</th><th style={{ ...th, textAlign: "right" }}>Ingresos</th><th style={{ ...th, textAlign: "right" }}>EBITDA</th><th style={{ ...th, textAlign: "right" }}>Servicio</th><th style={{ ...th, textAlign: "right" }}>DSCR</th><th style={{ ...th, textAlign: "center" }}>Estado</th>
@@ -249,7 +249,7 @@ export default function PrintOnClient({ caso, structure, repago, riesgos, reqsCn
               {[["Capital de trabajo", dCT], ["Inversión en activos físicos", dAC], ["Refinanciación de pasivos", dRF]].map(([k, v], i) => (
                 num(v) > 0 ? (<tr key={i}><td style={td}>{k as string}</td><td style={tdNum}>{fmtUSDc(num(v))}</td><td style={tdNum}>{Math.round(num(v) / dTotal * 100)}%</td></tr>) : null
               ))}
-              <tr><td style={{ ...td, fontWeight: 700, borderTop: "2px solid #1a2744" }}>Total</td><td style={{ ...tdNum, fontWeight: 700, borderTop: "2px solid #1a2744" }}>{fmtUSDc(dTotal)}</td><td style={{ ...tdNum, borderTop: "2px solid #1a2744" }}>100%</td></tr>
+              <tr><td style={{ ...td, fontWeight: 700, borderTop: "2px solid #16243B" }}>Total</td><td style={{ ...tdNum, fontWeight: 700, borderTop: "2px solid #16243B" }}>{fmtUSDc(dTotal)}</td><td style={{ ...tdNum, borderTop: "2px solid #16243B" }}>100%</td></tr>
             </tbody>
           </table>
           {str(s.destino_notas, "") !== "—" && <P>{str(s.destino_notas)}</P>}
@@ -278,7 +278,7 @@ export default function PrintOnClient({ caso, structure, repago, riesgos, reqsCn
             return (
               <div key={i} style={{ marginBottom: "10px", paddingBottom: "8px", borderBottom: "0.5px solid #e5e7eb" }} className="avoid-break">
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "3px" }}>
-                  <span style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", fontWeight: 700, color: "#1a2744" }}>{str(r.titulo)}</span>
+                  <span style={{ fontFamily: "Inter, sans-serif", fontSize: "10px", fontWeight: 700, color: "#16243B" }}>{str(r.titulo)}</span>
                   <span style={{ fontFamily: "Inter, sans-serif", fontSize: "8px", fontWeight: 700, color: sev.fg, background: sev.bg, padding: "2px 7px", borderRadius: "4px" }}>{str(r.severidad)}</span>
                 </div>
                 <div style={{ fontFamily: "Inter, sans-serif", fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.05em", color: "#9ca3af", marginBottom: "3px" }}>{str(r.categoria)}</div>

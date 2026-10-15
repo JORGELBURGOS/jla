@@ -45,7 +45,7 @@ export default async function PrintPage({
     return (
       <div style={{ fontFamily: "Georgia, serif", maxWidth: "640px", margin: "80px auto", padding: "40px", textAlign: "center", color: "#1f2937" }}>
         <div style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#9ca3af", marginBottom: "16px" }}>JL Advisory · Obligaciones Negociables</div>
-        <h1 style={{ fontSize: "24px", fontWeight: 700, color: "#1a2744", marginBottom: "16px", lineHeight: 1.3 }}>
+        <h1 style={{ fontSize: "24px", fontWeight: 700, color: "#16243B", marginBottom: "16px", lineHeight: 1.3 }}>
           {String((caso as Record<string,unknown> | null)?.nombre ?? "Este caso")} es un análisis de Obligación Negociable
         </h1>
         <p style={{ fontSize: "14px", lineHeight: 1.6, color: "#374151", marginBottom: "12px" }}>

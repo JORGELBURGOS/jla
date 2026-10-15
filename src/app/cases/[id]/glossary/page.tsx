@@ -49,7 +49,7 @@ function TermCard({ t, open, onToggle, highlight }: {
     <div className={`${open ? "bg-blue-50/30" : "hover:bg-gray-50"} transition-colors`}>
       <button onClick={onToggle} className="w-full flex items-center gap-3 px-4 py-3 text-left">
         <div className="flex-1 min-w-0">
-          <span className="text-sm font-bold text-[#1a2744]"
+          <span className="text-sm font-bold text-[#16243B]"
             dangerouslySetInnerHTML={{ __html: hl(t.termino) }}/>
           {!open && (
             <span className="text-xs text-gray-400 ml-2">
@@ -148,7 +148,7 @@ export default function GlossaryPage({ params }: { params: { id: string } }) {
             </span>
           )}
           <button onClick={actualizarConIA} disabled={generando}
-            className="bg-[#1a2744] text-white text-xs px-3 py-2 rounded-xl hover:bg-[#0d1525] disabled:opacity-50 font-medium">
+            className="bg-[#16243B] text-white text-xs px-3 py-2 rounded-xl hover:bg-[#2051E0] disabled:opacity-50 font-medium">
             {generando ? "Analizando..." : "Actualizar con IA"}
           </button>
         </div>
@@ -159,7 +159,7 @@ export default function GlossaryPage({ params }: { params: { id: string } }) {
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
         <input type="text" value={query} onChange={e => setQuery(e.target.value)}
           placeholder="Buscar por termino, definicion o categoria..."
-          className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#1a2744] bg-white"/>
+          className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#2051E0] bg-white"/>
         {query && (
           <button onClick={() => setQuery("")}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs">
@@ -174,7 +174,7 @@ export default function GlossaryPage({ params }: { params: { id: string } }) {
           {cats.map(cat => (
             <button key={cat}
               onClick={() => document.getElementById(`cat-${cat}`)?.scrollIntoView({ behavior:"smooth", block:"start" })}
-              className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-white border border-gray-200 rounded-full hover:border-[#1a2744] hover:text-[#1a2744] transition-colors">
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-white border border-gray-200 rounded-full hover:border-[#16243B] hover:text-[#16243B] transition-colors">
               <span>{CAT_ICON[cat] ?? "📌"}</span>
               {cat}
               <span className="text-gray-400">({terms.filter(t => t.categoria === cat).length})</span>

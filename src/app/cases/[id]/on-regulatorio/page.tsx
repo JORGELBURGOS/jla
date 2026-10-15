@@ -43,7 +43,7 @@ export default function OnRegulatorioPage({ params }: { params: { id: string } }
       <div className="grid grid-cols-2 gap-4">
         <div className="card p-4 text-center">
           <div className="text-xs text-gray-500 mb-1">Requisitos obligatorios</div>
-          <div className="text-2xl font-black text-[#1a2744]">{obligCompletados}/{obligatorios}</div>
+          <div className="text-2xl font-black text-[#16243B]">{obligCompletados}/{obligatorios}</div>
           <div className="w-full bg-gray-100 rounded-full h-1.5 mt-2">
             <div className="bg-green-500 h-1.5 rounded-full" style={{width:`${obligatorios?obligCompletados/obligatorios*100:0}%`}}/>
           </div>
