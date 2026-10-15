@@ -155,6 +155,20 @@ export default function PropuestasPage() {
     if (okUpd) { setEditId(null); setOk("Propuesta actualizada.") }
   }
 
+  async function eliminar(p: Propuesta) {
+    if (!window.confirm(`¿Eliminar la propuesta ${p.referencia}? Esta acción no se puede deshacer.`)) return
+    setError(""); setOk("")
+    const r = await fetch("/api/propuestas/eliminar", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: p.id }),
+    })
+    if (!r.ok) { const j = await r.json().catch(() => ({})); setError(j.error ?? "No se pudo eliminar."); return }
+    if (editId === p.id) setEditId(null)
+    if (regenId === p.id) { setRegenId(null); setRegenRef(""); setShowForm(false) }
+    setOk(`Propuesta ${p.referencia} eliminada.`)
+    cargar()
+  }
+
   async function generar() {
     setError(""); setOk("")
     const consultora = marcaKey === "otra"
@@ -225,7 +239,7 @@ export default function PropuestasPage() {
         <div className="mb-5">
           <h2 className="text-lg font-bold text-gray-900">Propuestas comerciales</h2>
           <p className="text-sm text-gray-500">
-            {rows.length} propuesta{rows.length !== 1 ? "s" : ""} · también podés generarlas y actualizarlas desde Claude
+            {rows.length} propuesta{rows.length !== 1 ? "s" : ""}
           </p>
         </div>
 
@@ -313,7 +327,7 @@ export default function PropuestasPage() {
           <div className="card text-center py-16">
             <div className="text-4xl mb-3">📄</div>
             <h3 className="font-semibold text-gray-700 mb-1">Sin propuestas todavía</h3>
-            <p className="text-sm text-gray-500">Generá una con el botón o pedísela a Claude.</p>
+            <p className="text-sm text-gray-500">Generá la primera con el botón de arriba.</p>
           </div>
         ) : (
           <div className="grid gap-4">
@@ -360,6 +374,10 @@ export default function PropuestasPage() {
                             ↻ Regenerar
                           </button>
                         )}
+                        <button onClick={() => eliminar(p)}
+                          className="text-xs text-red-600 hover:bg-red-50 border border-red-200 px-2.5 py-1 rounded-full">
+                          🗑 Eliminar
+                        </button>
                       </div>
                     </div>
                   </div>
