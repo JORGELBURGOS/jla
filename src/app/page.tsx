@@ -142,6 +142,11 @@ export default function HomePage() {
         <div className="flex items-center gap-3">
           <span className="text-xs text-gray-400">{email}</span>
           {isAdmin && (
+            <Link href="/propuestas" className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full font-bold hover:bg-blue-100">
+              📄 Propuestas
+            </Link>
+          )}
+          {isAdmin && (
             <Link href="/admin" className="text-xs bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full font-bold hover:bg-amber-200">
               ⚙ Admin
             </Link>
