@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
+import AppShell, { Kpis } from "@/components/layout/AppShell"
 
 
 const ADMIN_EMAIL = "jorgeleonburgos@gmail.com"
@@ -135,33 +136,30 @@ export default function HomePage() {
     </div>
   )
 
+  const totValor  = cases.reduce((s, c) => s + (c.precio_pedido || 0), 0)
+  const totRiesgo = cases.reduce((s, c) => s + Math.abs(Math.min(c.totalRiesgo, 0)), 0)
+  const avgAvance = cases.length ? Math.round(cases.reduce((s, c) => s + c.avance, 0) / cases.length) : 0
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white/90 backdrop-blur border-b border-gray-200 px-6 py-3.5 flex items-center justify-between sticky top-0 z-40">
-        <img src="/logo.png" alt="JL Advisory" className="h-12 w-auto"/>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-400">{email}</span>
-          {isAdmin && (
-            <Link href="/propuestas" className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full font-bold hover:bg-blue-100">
-              📄 Propuestas
-            </Link>
-          )}
-          {isAdmin && (
-            <Link href="/admin" className="text-xs bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full font-bold hover:bg-amber-200">
-              ⚙ Admin
-            </Link>
-          )}
-          <button onClick={changeUser} className="text-xs text-gray-400 hover:text-gray-600 border border-gray-200 px-2.5 py-1 rounded-full">
-            Cambiar usuario
-          </button>
+    <AppShell active="/" email={email} onChangeUser={changeUser}>
+      <main className="max-w-5xl mx-auto px-6 py-7">
+        <div className="flex items-end justify-between gap-4 flex-wrap mb-4">
+          <div>
+            <h2 className="font-cond font-bold text-[26px] leading-tight text-gray-900">Casos activos</h2>
+            <p className="text-sm text-gray-500">{cases.length} caso{cases.length!==1?"s":""} disponible{cases.length!==1?"s":""}</p>
+          </div>
           {(isAdmin || canCreate) && <Link href="/cases/new" className="btn-primary">+ Nuevo caso</Link>}
         </div>
-      </header>
-      <main className="max-w-5xl mx-auto px-6 py-8">
-        <div className="mb-5">
-          <h2 className="text-lg font-bold text-gray-900">Casos activos</h2>
-          <p className="text-sm text-gray-500">{cases.length} caso{cases.length!==1?"s":""} disponible{cases.length!==1?"s":""}</p>
-        </div>
+        {cases.length > 0 && (
+          <div className="mb-6">
+            <Kpis items={[
+              { label: "Casos en cartera", value: String(cases.length) },
+              { label: "Avance promedio", value: `${avgAvance}%`, hi: true },
+              { label: "Riesgo detectado", value: totRiesgo > 0 ? `USD ${(totRiesgo/1e6).toFixed(1)}M` : "—", neg: totRiesgo > 0 },
+              { label: "Valor de cartera", value: `USD ${(totValor/1e6).toFixed(1)}M` },
+            ]}/>
+          </div>
+        )}
         {cases.length === 0 ? (
           <div className="card text-center py-16">
             <div className="text-4xl mb-3">📋</div>
@@ -200,6 +198,6 @@ export default function HomePage() {
           </div>
         )}
       </main>
-    </div>
+    </AppShell>
   )
 }

@@ -5,6 +5,7 @@
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
+import AppShell, { Kpis } from "@/components/layout/AppShell"
 
 const ADMIN_EMAIL = "jorgeleonburgos@gmail.com"
 const EMAIL_KEY   = "jla_user_email"
@@ -222,26 +223,35 @@ export default function PropuestasPage() {
   const fmt = (n: number | null) => n == null ? "—" : `USD ${n.toLocaleString("es-AR")}`
   const inputCls = "w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#2051E0]"
 
+  const activas    = rows.filter(p => p.estado === "borrador" || p.estado === "enviada")
+  const aceptadas  = rows.filter(p => p.estado === "aceptada")
+  const usd = (n: number) => n >= 1e6 ? `USD ${(n/1e6).toFixed(1)}M` : `USD ${Math.round(n/1000)}k`
+  const pipelineUsd = activas.reduce((s, p) => s + (p.honorarios_usd ?? 0), 0)
+  const ganadoUsd   = aceptadas.reduce((s, p) => s + (p.honorarios_usd ?? 0), 0)
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white/90 backdrop-blur border-b border-gray-200 px-6 py-3.5 flex items-center justify-between sticky top-0 z-40">
-        <img src="/logo.png" alt="JL Advisory" className="h-12 w-auto"/>
-        <div className="flex items-center gap-3">
+    <AppShell active="/propuestas" email={email}
+      onChangeUser={() => { localStorage.removeItem(EMAIL_KEY); window.location.href = "/" }}>
+      <main className="max-w-5xl mx-auto px-6 py-7">
+        <div className="flex items-end justify-between gap-4 flex-wrap mb-4">
+          <div>
+            <h2 className="font-cond font-bold text-[26px] leading-tight text-gray-900">Propuestas comerciales</h2>
+            <p className="text-sm text-gray-500">{rows.length} propuesta{rows.length !== 1 ? "s" : ""}</p>
+          </div>
           <button onClick={nuevaPropuesta} className="btn-primary">
             {showForm ? "Cerrar" : "+ Nueva propuesta"}
           </button>
-          <Link href="/" className="text-xs text-gray-400 hover:text-gray-600 border border-gray-200 px-2.5 py-1 rounded-full">
-            ← Casos
-          </Link>
         </div>
-      </header>
-      <main className="max-w-5xl mx-auto px-6 py-8">
-        <div className="mb-5">
-          <h2 className="text-lg font-bold text-gray-900">Propuestas comerciales</h2>
-          <p className="text-sm text-gray-500">
-            {rows.length} propuesta{rows.length !== 1 ? "s" : ""}
-          </p>
-        </div>
+        {rows.length > 0 && (
+          <div className="mb-6">
+            <Kpis items={[
+              { label: "En juego", value: String(activas.length), hint: "borrador + enviadas" },
+              { label: "Pipeline activo", value: pipelineUsd > 0 ? usd(pipelineUsd) : "—", hi: true },
+              { label: "Aceptadas", value: String(aceptadas.length) },
+              { label: "Honorarios ganados", value: ganadoUsd > 0 ? usd(ganadoUsd) : "—" },
+            ]}/>
+          </div>
+        )}
 
         {ok && <div className="mb-4 text-sm text-green-800 bg-green-50 border border-green-200 rounded-xl px-4 py-3">{ok}</div>}
         {error && !showForm && <div className="mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{error}</div>}
@@ -406,6 +416,6 @@ export default function PropuestasPage() {
           </div>
         )}
       </main>
-    </div>
+    </AppShell>
   )
 }

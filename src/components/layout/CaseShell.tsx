@@ -160,7 +160,7 @@ export default function CaseShell({ children, caseData, caseId }: {
 
   // ── Modal de identificación ────────────────────────────────────
   if (showPrompt) return (
-    <div className="flex h-screen items-center justify-center bg-[#1a2744]">
+    <div className="flex h-screen items-center justify-center bg-[#16243B]">
       <div className="bg-white rounded-2xl p-8 w-80 shadow-2xl">
         <img src="/logo.png" alt="JL Advisory" className="h-10 mx-auto mb-6"/>
         <h2 className="text-base font-bold text-gray-900 mb-1 text-center">Due Diligence M&A</h2>
@@ -170,16 +170,16 @@ export default function CaseShell({ children, caseData, caseId }: {
             onChange={e => setEmailInput(e.target.value)}
             onKeyDown={e => e.key === "Enter" && confirmEmail()}
             placeholder="tu@email.com"
-            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1a2744]"/>
+            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#2051E0]"/>
           <input type="password" value={passInput}
             onChange={e => setPassInput(e.target.value)}
             onKeyDown={e => e.key === "Enter" && confirmEmail()}
             placeholder="Clave"
-            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1a2744]"/>
+            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#2051E0]"/>
         </div>
         {error && <p className="text-xs text-red-600 mb-2">{error}</p>}
         <button onClick={confirmEmail} disabled={!emailInput || !passInput}
-          className="w-full bg-[#1a2744] text-white font-bold py-2.5 rounded-xl text-sm hover:bg-[#0d1525] disabled:opacity-40">
+          className="w-full bg-[#16243B] text-white font-bold py-2.5 rounded-xl text-sm hover:bg-[#2051E0] disabled:opacity-40">
           Ingresar →
         </button>
         <p className="text-xs text-gray-400 text-center mt-3">
@@ -192,79 +192,79 @@ export default function CaseShell({ children, caseData, caseId }: {
   return (
     <PermissionsContext.Provider value={{ canEdit, userEmail }}>
       <div className="flex h-screen overflow-hidden bg-gray-50">
-        <aside className="w-48 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col">
-          <div className="p-4 border-b border-gray-100">
-            <Link href="/" className="text-xs text-gray-500 hover:text-gray-700 mb-3 block">← Todos los casos</Link>
-            <img src="/logo.png" alt="JL Advisory" className="h-9 w-auto"/>
+        <aside className="w-[218px] flex-shrink-0 bg-[#16243B] text-[#C7D2E2] flex flex-col">
+          <div className="px-4 pt-4 pb-3">
+            <Link href="/" className="text-xs text-[#8FA3B6] hover:text-white mb-3 block transition-colors">← Todos los casos</Link>
+            <div className="bg-white rounded-lg p-1.5 w-fit"><img src="/logo.png" alt="JL Advisory" className="h-8 w-auto"/></div>
           </div>
-          <div className="px-4 py-3 border-b border-gray-100">
-            <div className="text-xs font-bold text-gray-900 line-clamp-2">{caseData.nombre as string}</div>
-            {industry   && <div className="text-xs text-gray-500 mt-0.5">{industry.icono} {industry.nombre}</div>}
-            {subSector  && <div className="text-xs text-gray-400">{subSector.nombre}</div>}
+          <div className="px-4 pb-3 border-b border-white/10">
+            <div className="font-cond font-bold text-white text-[17px] leading-tight line-clamp-2">{caseData.nombre as string}</div>
+            {industry   && <div className="text-xs text-[#8FA3B6] mt-1">{industry.icono} {industry.nombre}</div>}
+            {subSector  && <div className="text-xs text-[#6E84A3]">{subSector.nombre}</div>}
           </div>
 
           <nav className="flex-1 overflow-y-auto py-2">
             {visibleNav.map(([href, label]) => {
               if (href === "---") return (
                 <div key={label} className="px-4 pt-4 pb-1">
-                  <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{label}</div>
+                  <div className="font-cond font-semibold text-[10.5px] text-[#6E84A3] uppercase tracking-[0.2em]">{label}</div>
                 </div>
               )
               const full = base + href
               const active = href === "" ? pathname === base || pathname === base + "/" : pathname.startsWith(full)
               return (
                 <Link key={href} href={full}
-                  className={`flex items-center px-4 py-2 text-xs font-medium transition-colors ${
-                    active ? "bg-blue-50 text-[#1a2744] border-r-2 border-[#1a2744]" : "text-gray-600 hover:bg-gray-50"}`}>
+                  className={`flex items-center mx-2 px-2.5 py-[6.5px] rounded-md text-[12.5px] font-medium transition-colors ${
+                    active ? "bg-[#2051E0] text-white font-semibold" : "text-[#C7D2E2] hover:bg-white/10 hover:text-white"}`}>
                   {label}
                 </Link>
               )
             })}
           </nav>
 
-          <div className="border-t border-gray-100">
-            <div className="p-4">
-              <div className="text-xs text-gray-500 mb-1">Precio pedido</div>
+          <div className="border-t border-white/10">
+            <div className="px-4 py-3">
+              <div className="text-xs text-[#8FA3B6] mb-0.5">Precio pedido</div>
               {editingPrecio ? (
                 <div className="flex gap-1">
                   <input ref={inputRef} type="number" value={precioVal}
                     onChange={e => setPrecioVal(e.target.value)}
                     onKeyDown={e => { if (e.key==="Enter") savePrecio(); if (e.key==="Escape") setEditingPrecio(false) }}
-                    autoFocus className="w-full border border-[#1a2744] rounded px-2 py-1 text-xs font-bold focus:outline-none"/>
+                    autoFocus className="w-full bg-white/10 border border-[#2051E0] text-white rounded px-2 py-1 text-xs font-bold focus:outline-none"/>
                   <button onClick={savePrecio} disabled={savingPrecio}
-                    className="bg-[#1a2744] text-white rounded px-2 text-xs font-bold disabled:opacity-50">
+                    className="bg-[#2051E0] text-white rounded px-2 text-xs font-bold disabled:opacity-50">
                     {savingPrecio ? "..." : "✓"}
                   </button>
                 </div>
               ) : (
                 <button onClick={() => { setPrecioVal(String(caseData.precio_pedido ?? 0)); setEditingPrecio(true) }}
-                  className="text-sm font-bold text-[#1a2744] hover:opacity-70 text-left w-full group">
+                  className="font-cond font-bold text-white text-[20px] tabular-nums hover:opacity-80 text-left w-full group leading-tight">
                   USD {((Number(caseData.precio_pedido)||0)/1e6).toFixed(1)}M
-                  <span className="ml-1 text-xs text-gray-400 opacity-0 group-hover:opacity-100">✎</span>
+                  <span className="ml-1 text-xs text-[#8FA3B6] opacity-0 group-hover:opacity-100">✎</span>
                 </button>
               )}
             </div>
 
-            <div className="px-4 pb-3 border-t border-gray-50 pt-2 space-y-1.5">
-              <div className="text-xs text-gray-400 truncate" title={userEmail}>{userEmail}</div>
+            <div className="px-4 pb-3 pt-1 space-y-1.5">
+              <div className="text-xs text-[#6E84A3] truncate" title={userEmail}>{userEmail}</div>
               <div className="flex items-center gap-2">
                 {isAdmin && (
                   <Link href="/admin"
-                    className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold hover:bg-amber-200">
+                    className="text-xs bg-white/10 text-[#C7D2E2] px-2 py-0.5 rounded-full font-bold hover:bg-white/20 hover:text-white">
                     ⚙ Admin
                   </Link>
                 )}
                 {!canEdit && !isAdmin && (
-                  <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Solo lectura</span>
+                  <span className="text-xs bg-white/10 text-[#8FA3B6] px-2 py-0.5 rounded-full">Solo lectura</span>
                 )}
-                <button onClick={changeUser} className="text-xs text-gray-400 hover:text-gray-600 ml-auto">
+                <button onClick={changeUser} className="text-xs text-[#8FA3B6] hover:text-white ml-auto transition-colors">
                   Cambiar
                 </button>
               </div>
             </div>
           </div>
         </aside>
-        <main className="flex-1 overflow-y-auto">{children}</main>
+        <main className="flex-1 overflow-y-auto min-w-0">{children}</main>
       </div>
     </PermissionsContext.Provider>
   )
