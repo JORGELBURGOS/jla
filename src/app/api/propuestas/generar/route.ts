@@ -124,6 +124,7 @@ Reglas de redacción obligatorias:
 - La sección de contexto debe demostrar conocimiento real del sector del prospecto, con los riesgos y drivers de valor típicos de ese rubro en Argentina.
 - No menciones marcas de herramientas ni proveedores de tecnología.
 - Nunca inventes nombres propios de personas o empresas. Si no te dieron el nombre del prospecto, redactá sin nombres.
+- No menciones la referencia del documento, códigos internos ni frases administrativas sobre la propuesta; la referencia ya figura en la portada y el pie de página.
 
 Respondé ÚNICAMENTE con un JSON válido, sin texto antes ni después, con exactamente esta estructura:
 ${ESQUEMA}`
@@ -229,21 +230,22 @@ function armarDoc(c: Contenido, marca: { nombre: string; tagline: string }, refe
 
 // ===================== referencia automática =====================
 // 2026-10-15 — La sigla de la consultora y el prefijo sectorial se infieren solos (pedido de Jorge).
+// Siglas de DOS letras, únicas por industria (no puede haber dos industrias con la misma).
 const PREFIJO_INDUSTRIA: Record<string, string> = {
-  "Agro e Industria Rural": "AGR", "Alimentos y Bebidas": "ALI", "Comercio y Distribución": "COM",
-  "Construcción e Inmobiliario": "CON", "Deporte y Bienestar": "DEP", "Educación": "EDU",
-  "Energía y Utilities": "ENE", "Fintech y Finanzas": "FIN", "Gastronomía y Hotelería": "GAS",
-  "Industria y Manufactura": "IND", "Medios y Entretenimiento": "MED", "Minería": "MIN",
-  "Otros Sectores": "OTR", "Salud y Farmacia": "SAL", "Servicios Ambientales": "AMB",
-  "Servicios Profesionales": "PRO", "Tecnología": "TEC", "Telecomunicaciones": "TEL",
-  "Transporte y Logística": "LOG", "Turismo y Recreación": "TUR",
+  "Agro e Industria Rural": "AG", "Alimentos y Bebidas": "AL", "Comercio y Distribución": "CO",
+  "Construcción e Inmobiliario": "CI", "Deporte y Bienestar": "DE", "Educación": "ED",
+  "Energía y Utilities": "EN", "Fintech y Finanzas": "FI", "Gastronomía y Hotelería": "GA",
+  "Industria y Manufactura": "IN", "Medios y Entretenimiento": "ME", "Minería": "MI",
+  "Otros Sectores": "OT", "Salud y Farmacia": "SA", "Servicios Ambientales": "AM",
+  "Servicios Profesionales": "SP", "Tecnología": "TE", "Telecomunicaciones": "TL",
+  "Transporte y Logística": "TR", "Turismo y Recreación": "TU",
 }
 function sinAcentos(s: string) { return s.normalize("NFD").replace(/[̀-ͯ]/g, "") }
 function prefijoDe(industria: string) {
   const fijo = PREFIJO_INDUSTRIA[industria]
   if (fijo) return fijo
   const limpio = sinAcentos(industria).toUpperCase().replace(/[^A-Z]/g, "")
-  return (limpio.slice(0, 3) || "OTR").padEnd(2, "X")
+  return (limpio.slice(0, 2) || "OT").padEnd(2, "X")
 }
 function siglaDe(consultora: string) {
   const palabras = sinAcentos(consultora).trim().split(/\s+/).filter(Boolean)
@@ -308,7 +310,7 @@ Servicio y etapas a proponer — ${servicio.trim()}.
 ${detalles?.trim() ? `Detalles adicionales del caso — ${detalles.trim()}.` : ""}
 Honorarios — ${honorarios?.trim() || "no definidos, proponé valores tentativos razonables"}.
 
-La referencia del documento es ${referencia}. Armá un plan en 2 a 4 etapas según el servicio pedido, con entregables concretos, cronograma realista en semanas y honorarios por etapa con un paquete completo bonificado.`
+Armá un plan en 2 a 4 etapas según el servicio pedido, con entregables concretos, cronograma realista en semanas y honorarios por etapa con un paquete completo bonificado.`
 
     const r = await anthropic.messages.create({ max_tokens: 6000, system: sistema(marca.nombre), messages: [{ role: "user", content: pedido }] })
     const contenido = extraerJSON(r.content[0]?.text ?? "")
