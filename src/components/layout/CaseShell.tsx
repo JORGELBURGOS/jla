@@ -214,14 +214,55 @@ export default function CaseShell({ children, caseData, caseId }: {
     <PermissionsContext.Provider value={{ canEdit, userEmail }}>
       <div className="flex h-screen overflow-hidden bg-gray-50">
         <aside className="w-[198px] flex-shrink-0 bg-[#16243B] text-[#C7D2E2] flex flex-col">
-          <div className="px-3.5 pt-3.5 pb-2.5">
-            <Link href="/" className="text-xs text-[#8FA3B6] hover:text-white mb-2 block transition-colors">← Todos los casos</Link>
-            <div className="bg-white rounded-lg p-1 w-fit"><img src="/logo.png" alt="JL Advisory" className="h-7 w-auto"/></div>
-          </div>
-          <div className="px-3.5 pb-2.5 border-b border-white/10">
-            <div className="font-cond font-bold text-white text-[15px] leading-tight line-clamp-2">{caseData.nombre as string}</div>
-            {industry   && <div className="text-[11px] text-[#8FA3B6] mt-0.5">{industry.icono} {industry.nombre}</div>}
-            {subSector  && <div className="text-[11px] text-[#6E84A3]">{subSector.nombre}</div>}
+          {/* Cabecera compacta — todo lo contextual arriba, el resto del panel es menú */}
+          <div className="px-3 pt-2.5 pb-2 border-b border-white/10">
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <Link href="/" className="text-[10px] text-[#8FA3B6] hover:text-white transition-colors">← Todos los casos</Link>
+              <div className="bg-white rounded p-0.5"><img src="/logo.png" alt="JL Advisory" className="h-5 w-auto"/></div>
+            </div>
+            <div className="font-cond font-bold text-white text-[13px] leading-tight line-clamp-2">{caseData.nombre as string}</div>
+            {(industry || subSector) && (
+              <div className="text-[10px] text-[#8FA3B6] truncate mt-0.5"
+                title={[industry?.nombre, subSector?.nombre].filter(Boolean).join(" · ")}>
+                {industry?.icono} {[industry?.nombre, subSector?.nombre].filter(Boolean).join(" · ")}
+              </div>
+            )}
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-[10px] text-[#8FA3B6]">Precio pedido</span>
+              {editingPrecio ? (
+                <span className="flex gap-1 flex-1">
+                  <input ref={inputRef} type="number" value={precioVal}
+                    onChange={e => setPrecioVal(e.target.value)}
+                    onKeyDown={e => { if (e.key==="Enter") savePrecio(); if (e.key==="Escape") setEditingPrecio(false) }}
+                    autoFocus className="w-full bg-white/10 border border-[#2051E0] text-white rounded px-1.5 py-0.5 text-[11px] font-bold focus:outline-none"/>
+                  <button onClick={savePrecio} disabled={savingPrecio}
+                    className="bg-[#2051E0] text-white rounded px-1.5 text-[11px] font-bold disabled:opacity-50">
+                    {savingPrecio ? "..." : "✓"}
+                  </button>
+                </span>
+              ) : (
+                <button onClick={() => { setPrecioVal(String(caseData.precio_pedido ?? 0)); setEditingPrecio(true) }}
+                  className="font-cond font-bold text-white text-[14px] tabular-nums hover:opacity-80 text-left group leading-tight">
+                  USD {((Number(caseData.precio_pedido)||0)/1e6).toFixed(1)}M
+                  <span className="ml-1 text-[10px] text-[#8FA3B6] opacity-0 group-hover:opacity-100">✎</span>
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 mt-1">
+              <span className="text-[9.5px] text-[#6E84A3] truncate flex-1" title={userEmail}>{userEmail}</span>
+              {isAdmin && (
+                <Link href="/admin"
+                  className="text-[9.5px] bg-white/10 text-[#C7D2E2] px-1.5 py-px rounded-full font-bold hover:bg-white/20 hover:text-white">
+                  ⚙ Admin
+                </Link>
+              )}
+              {!canEdit && !isAdmin && (
+                <span className="text-[9.5px] bg-white/10 text-[#8FA3B6] px-1.5 py-px rounded-full">Solo lectura</span>
+              )}
+              <button onClick={changeUser} className="text-[9.5px] text-[#8FA3B6] hover:text-white transition-colors">
+                Cambiar
+              </button>
+            </div>
           </div>
 
           <nav className="flex-1 overflow-y-auto py-1.5">
@@ -256,47 +297,6 @@ export default function CaseShell({ children, caseData, caseId }: {
             })}
           </nav>
 
-          <div className="border-t border-white/10">
-            <div className="px-3.5 py-2.5">
-              <div className="text-[11px] text-[#8FA3B6] mb-0.5">Precio pedido</div>
-              {editingPrecio ? (
-                <div className="flex gap-1">
-                  <input ref={inputRef} type="number" value={precioVal}
-                    onChange={e => setPrecioVal(e.target.value)}
-                    onKeyDown={e => { if (e.key==="Enter") savePrecio(); if (e.key==="Escape") setEditingPrecio(false) }}
-                    autoFocus className="w-full bg-white/10 border border-[#2051E0] text-white rounded px-2 py-1 text-xs font-bold focus:outline-none"/>
-                  <button onClick={savePrecio} disabled={savingPrecio}
-                    className="bg-[#2051E0] text-white rounded px-2 text-xs font-bold disabled:opacity-50">
-                    {savingPrecio ? "..." : "✓"}
-                  </button>
-                </div>
-              ) : (
-                <button onClick={() => { setPrecioVal(String(caseData.precio_pedido ?? 0)); setEditingPrecio(true) }}
-                  className="font-cond font-bold text-white text-[17px] tabular-nums hover:opacity-80 text-left w-full group leading-tight">
-                  USD {((Number(caseData.precio_pedido)||0)/1e6).toFixed(1)}M
-                  <span className="ml-1 text-xs text-[#8FA3B6] opacity-0 group-hover:opacity-100">✎</span>
-                </button>
-              )}
-            </div>
-
-            <div className="px-3.5 pb-2.5 pt-1 space-y-1.5">
-              <div className="text-[11px] text-[#6E84A3] truncate" title={userEmail}>{userEmail}</div>
-              <div className="flex items-center gap-2">
-                {isAdmin && (
-                  <Link href="/admin"
-                    className="text-xs bg-white/10 text-[#C7D2E2] px-2 py-0.5 rounded-full font-bold hover:bg-white/20 hover:text-white">
-                    ⚙ Admin
-                  </Link>
-                )}
-                {!canEdit && !isAdmin && (
-                  <span className="text-xs bg-white/10 text-[#8FA3B6] px-2 py-0.5 rounded-full">Solo lectura</span>
-                )}
-                <button onClick={changeUser} className="text-xs text-[#8FA3B6] hover:text-white ml-auto transition-colors">
-                  Cambiar
-                </button>
-              </div>
-            </div>
-          </div>
         </aside>
         <main className="flex-1 overflow-y-auto min-w-0">{children}</main>
       </div>
