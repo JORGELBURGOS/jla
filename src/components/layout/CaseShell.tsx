@@ -88,6 +88,7 @@ export default function CaseShell({ children, caseData, caseId }: {
   const navItems = tipoCaso === 'on' ? NAV_ON : NAV_DD
   const [showPrompt, setShowPrompt] = useState(false)
   const [error, setError] = useState("")
+  const [openGroups, setOpenGroups] = useState<string[]>([])
 
   useEffect(() => {
     const saved = localStorage.getItem(EMAIL_KEY) ?? ""
@@ -158,6 +159,26 @@ export default function CaseShell({ children, caseData, caseId }: {
     href === "---" || href === "" || !hiddenNav.includes(href)
   )
 
+  // ── Grupos desplegables del menú (como la app de Planes) ────────
+  // El menú entero entra sin scroll — solo se despliega el grupo que
+  // el usuario necesita, y el grupo de la pantalla activa se abre solo.
+  const isActive = (href: string) =>
+    href === "" ? pathname === base || pathname === base + "/" : pathname.startsWith(base + href)
+  const grupos: { label: string | null; items: [string, string][] }[] = []
+  visibleNav.forEach(([href, label]) => {
+    if (href === "---") grupos.push({ label, items: [] })
+    else if (grupos.length === 0) grupos.push({ label: null, items: [[href, label]] })
+    else grupos[grupos.length - 1].items.push([href, label])
+  })
+  useEffect(() => {
+    const g = grupos.find(g => g.label && g.items.some(([h]) => isActive(h)))
+    if (g?.label) setOpenGroups(prev => prev.includes(g.label!) ? prev : [...prev, g.label!])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, tipoCaso])
+  function toggleGroup(label: string) {
+    setOpenGroups(prev => prev.includes(label) ? prev.filter(l => l !== label) : [...prev, label])
+  }
+
   // ── Modal de identificación ────────────────────────────────────
   if (showPrompt) return (
     <div className="flex h-screen items-center justify-center bg-[#16243B]">
@@ -203,21 +224,34 @@ export default function CaseShell({ children, caseData, caseId }: {
             {subSector  && <div className="text-[11px] text-[#6E84A3]">{subSector.nombre}</div>}
           </div>
 
-          <nav className="flex-1 overflow-y-auto py-2">
-            {visibleNav.map(([href, label]) => {
-              if (href === "---") return (
-                <div key={label} className="px-3.5 pt-3 pb-0.5">
-                  <div className="font-cond font-semibold text-[10px] text-[#6E84A3] uppercase tracking-[0.2em]">{label}</div>
-                </div>
-              )
-              const full = base + href
-              const active = href === "" ? pathname === base || pathname === base + "/" : pathname.startsWith(full)
+          <nav className="flex-1 overflow-y-auto py-1.5">
+            {grupos.map((g, gi) => {
+              const items = g.items.map(([href, label]) => {
+                const active = isActive(href)
+                return (
+                  <Link key={href} href={base + href}
+                    className={`flex items-center mx-2 px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors ${
+                      active ? "bg-[#2051E0] text-white font-semibold" : "text-[#C7D2E2] hover:bg-white/10 hover:text-white"}`}>
+                    {label}
+                  </Link>
+                )
+              })
+              if (!g.label) return <div key={gi}>{items}</div>
+              const open = openGroups.includes(g.label)
+              const tieneActiva = g.items.some(([h]) => isActive(h))
               return (
-                <Link key={href} href={full}
-                  className={`flex items-center mx-2 px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors ${
-                    active ? "bg-[#2051E0] text-white font-semibold" : "text-[#C7D2E2] hover:bg-white/10 hover:text-white"}`}>
-                  {label}
-                </Link>
+                <div key={g.label}>
+                  <button type="button" onClick={() => toggleGroup(g.label!)}
+                    className="w-full flex items-center justify-between px-3.5 pt-2 pb-1 group/g cursor-pointer">
+                    <span className={`font-cond font-semibold text-[10px] uppercase tracking-[0.2em] transition-colors ${
+                      tieneActiva ? "text-[#8FA3B6]" : "text-[#6E84A3]"} group-hover/g:text-white`}>
+                      {g.label}
+                      {!open && tieneActiva && <span className="ml-1.5 inline-block w-1.5 h-1.5 rounded-full bg-[#2051E0] align-middle"/>}
+                    </span>
+                    <span className={`text-[#6E84A3] text-[8px] transition-transform group-hover/g:text-white ${open ? "rotate-90" : ""}`}>▶</span>
+                  </button>
+                  {open && items}
+                </div>
               )
             })}
           </nav>
