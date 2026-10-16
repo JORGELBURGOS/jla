@@ -170,13 +170,15 @@ export default function CaseShell({ children, caseData, caseId }: {
     else if (grupos.length === 0) grupos.push({ label: null, items: [[href, label]] })
     else grupos[grupos.length - 1].items.push([href, label])
   })
+  // Acordeón — hay a lo sumo UN grupo abierto; abrir uno colapsa el resto,
+  // y al navegar queda abierto solo el grupo de la pantalla activa.
   useEffect(() => {
     const g = grupos.find(g => g.label && g.items.some(([h]) => isActive(h)))
-    if (g?.label) setOpenGroups(prev => prev.includes(g.label!) ? prev : [...prev, g.label!])
+    setOpenGroups(g?.label ? [g.label] : [])
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, tipoCaso])
   function toggleGroup(label: string) {
-    setOpenGroups(prev => prev.includes(label) ? prev.filter(l => l !== label) : [...prev, label])
+    setOpenGroups(prev => prev.includes(label) ? [] : [label])
   }
 
   // ── Modal de identificación ────────────────────────────────────
