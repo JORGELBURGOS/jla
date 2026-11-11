@@ -1,3 +1,4 @@
+// 2026-11-11 — BSC360v2 migró a Neon: se quita; se agrega Vetta, que sigue en Supabase gratis.
 // 2026-11-11 — Planes de Negocio migró a Neon: se quita del latido.
 // 2026-11-11 — Due Diligence migró a Neon (no se pausa): se quita del latido.
 // 2026-10-20 — Latido de actividad para los proyectos Supabase del plan
@@ -16,11 +17,12 @@ export const maxDuration = 30
 
 const PROYECTOS: { nombre: string; ref: string; tabla: string; anon: string }[] = [
   {
-    nombre: "BSC360v2",
-    ref: "odfzteupdoosmhhspckq",
-    tabla: "bsc_perspectivas",
-    anon: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9kZnp0ZXVwZG9vc21oaHNwY2txIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyMjczMzUsImV4cCI6MjA5OTgwMzMzNX0.WC6cdTNmIsJq_Qm5SJEIlO2WXOa0mFfpCRXSTNrlFto",
+    nombre: "Vetta",
+    ref: "pdwekmgmrnivjczrmlnt",
+    tabla: "webhooks",
+    anon: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBkd2VrbWdtcm5pdmpjenJtbG50Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2ODM4ODAsImV4cCI6MjEwODI1OTg4MH0.FN2BXOMSoX6vnaWfjpW825pIMit6JWgWQzF-_icH3RM",
   },
+
 ]
 
 export async function GET() {
