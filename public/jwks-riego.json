@@ -1,0 +1,12 @@
+{
+  "keys": [
+    {
+      "kty": "RSA",
+      "n": "uHXv1VXc7RDcfs4jpkL5-LITLAuXrW0y8lcC2xiXLAbJoi526TsrhLWtcU4MduDQYmFACKY1-d4Zq-RvX4iblM8-b-w809vgnD0HrLtfEl0lU2JHLYyFlLsj8heXS0TvglSKfip34Bcf_Ah6YYJ3uJtIri0QdZWvKaGtZcb0NwOQKG13U46_XaClUJ6CxgZB_4-IcF-hw7NJfWwrDfx-4m7fUyBWMQehf3gmsyGlosytv5M7OA5Ds3PH5aBxvYjbWRjohVRHdeZW24PmhLvcPl5WmMY6k2DEIsl0tUZiXJMd0QsNsByx_yg9-InXiTC1nEwL9BMr-xT3EmB8xmFviQ",
+      "e": "AQAB",
+      "alg": "RS256",
+      "use": "sig",
+      "kid": "riego-ddc95e86"
+    }
+  ]
+}
