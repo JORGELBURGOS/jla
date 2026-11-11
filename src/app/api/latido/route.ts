@@ -1,3 +1,4 @@
+// 2026-11-11 — Due Diligence migró a Neon (no se pausa): se quita del latido.
 // 2026-10-20 — Latido de actividad para los proyectos Supabase del plan
 // gratuito, que se pausan tras 7 días sin uso. Un cron de Vercel (ver
 // vercel.json) llama a esta ruta una vez por día; cada llamada ejecuta una
@@ -24,12 +25,6 @@ const PROYECTOS: { nombre: string; ref: string; tabla: string; anon: string }[] 
     ref: "odfzteupdoosmhhspckq",
     tabla: "bsc_perspectivas",
     anon: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9kZnp0ZXVwZG9vc21oaHNwY2txIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyMjczMzUsImV4cCI6MjA5OTgwMzMzNX0.WC6cdTNmIsJq_Qm5SJEIlO2WXOa0mFfpCRXSTNrlFto",
-  },
-  {
-    nombre: "Due Diligence",
-    ref: "ulgnqrqvzrxnokhiqfji",
-    tabla: "dd_industries",
-    anon: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVsZ25xcnF2enJ4bm9raGlxZmppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwMDIzMjUsImV4cCI6MjA5ODU3ODMyNX0.0yXawHrMZm5l6ShKE-uJg4IeDZD3RTysM7L8bjiVVPw",
   },
 ]
 
