@@ -1,0 +1,12 @@
+{
+  "keys": [
+    {
+      "kty": "RSA",
+      "n": "o3lE-Wys7e44umf1nDZ2Lu2yJn8nebtwKiA8Rn4VCfHAyitywDthgSE3qXT_yehRyl4bKT2lnD5oYuxvBp-BJRIlWFuowFBEhw0AuJaix20PYWJ4T9WtUcKxClUfsMCp1EzQoeMsTf1jVKWcWgANgKjjplmfKsAZ6qk34awcK2jnWwjCItknFaVG33B21YlUOF_9HcIydiJDspZuXFXKykPWPMRQ-RGn8HCXiTcVNNCOEuhzbLyL7R4-PDTIfGiZvYaPZJqo4uBFGmUS5wRKhs1mbxiHYFfLZZUBRQSbd6zckbeievQ0rpRDeX4g-LcVzuHjnfKA_jti5HT_6CVaNQ",
+      "e": "AQAB",
+      "kid": "areneras-4ede4c78",
+      "alg": "RS256",
+      "use": "sig"
+    }
+  ]
+}
