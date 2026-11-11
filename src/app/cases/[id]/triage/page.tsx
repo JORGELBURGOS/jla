@@ -146,15 +146,10 @@ export default function TriagePage({ params }: { params: { id: string } }) {
     if (!files.length || !caseId) return
     setAnalyzing(true); setResultado(null)
     try {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-      const res = await fetch(`${supabaseUrl}/functions/v1/triage`, {
+      // 2026-11-11 — Migración a Neon: el análisis corre en la propia app (/api/triage), no en Supabase
+      const res = await fetch("/api/triage", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${supabaseKey}`,
-          "apikey": supabaseKey ?? ""
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ caseId, files: files.map(f => ({ name: f.file.name, base64: f.base64, mediaType: f.mediaType })) })
       })
 

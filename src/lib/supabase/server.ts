@@ -1,25 +1,26 @@
-import { createClient as createSupabaseClient } from "@supabase/supabase-js"
-import { createServerClient } from "@supabase/ssr"
+// 2026-11-11 — Migración a Neon: mismo query builder (PostgREST), apuntando a la Data API de Neon.
+// Se mantienen los nombres createClient/createServiceClient para no tocar las rutas.
+import { PostgrestClient } from "@supabase/postgrest-js"
 import { cookies } from "next/headers"
+import { neonDataApiUrl, neonToken } from "@/lib/neon/jwt"
+import { readSession, SESSION_COOKIE } from "@/lib/session"
+
+function neonClient() {
+  return new PostgrestClient(neonDataApiUrl(), {
+    headers: { Authorization: `Bearer ${neonToken()}` },
+  })
+}
 
 export async function createClient() {
-  const cookieStore = await cookies()
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll() },
-        setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
-          try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options as never)) } catch {}
-        }
-      }
-    }
-  )
+  return neonClient()
 }
 
 export function createServiceClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  return createSupabaseClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } })
+  return neonClient()
+}
+
+/** Email del usuario logueado (cookie de sesión), o null. */
+export async function getSessionEmail(): Promise<string | null> {
+  const store = await cookies()
+  return readSession(store.get(SESSION_COOKIE)?.value)
 }

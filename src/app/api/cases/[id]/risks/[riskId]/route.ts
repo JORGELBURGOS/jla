@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getSessionEmail } from "@/lib/supabase/server";
 
 const SUMMING = ["IDENTIFICADO", "CONFIRMADO", "CONDICIONAL"] as const;
 const ESTADOS = [...SUMMING, "CERRADO", "DUPLICADO", "RECLASIFICADO"] as const;
@@ -41,11 +41,8 @@ export async function PATCH(
 
   const supabase = await createClient();
 
-  let actor = "plataforma";
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) actor = user.email ?? user.id;
-  } catch {}
+  // 2026-11-11 — Migración a Neon: el actor sale de la cookie de sesión
+  const actor = (await getSessionEmail()) ?? "plataforma";
 
   const { data, error } = await supabase.rpc("dd_update_risk", {
     p_risk_id: riskId,

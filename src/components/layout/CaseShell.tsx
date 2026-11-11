@@ -123,14 +123,13 @@ export default function CaseShell({ children, caseData, caseId }: {
     const p = passInput.trim()
     if (!e || !e.includes("@") || !p) return
     setError("")
-    const { data: perm } = await db.from("dd_user_permissions")
-      .select("is_enabled,password").eq("email", e).single()
-    if (!perm || !perm.is_enabled) {
-      setError("Este email no tiene acceso."); return
-    }
-    if (perm.password !== p) {
-      setError("Clave incorrecta."); return
-    }
+    // 2026-11-11 — La clave se verifica en el servidor (/api/login), que deja una cookie de sesión
+    const res = await fetch("/api/login", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: e, password: p })
+    })
+    const perm = await res.json().catch(() => ({ ok: false, error: "Error de conexión." }))
+    if (!perm.ok) { setError(perm.error ?? "No se pudo ingresar."); return }
     localStorage.setItem(EMAIL_KEY, e)
     setEmailInput(""); setPassInput("")
     loadPermissions(e)
@@ -138,6 +137,7 @@ export default function CaseShell({ children, caseData, caseId }: {
 
   function changeUser() {
     localStorage.removeItem(EMAIL_KEY)
+    fetch("/api/login", { method: "DELETE" }).catch(() => {})
     setUserEmail(""); setShowPrompt(true)
   }
 
