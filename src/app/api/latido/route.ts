@@ -1,3 +1,4 @@
+// 2026-11-11 — Planes de Negocio migró a Neon: se quita del latido.
 // 2026-11-11 — Due Diligence migró a Neon (no se pausa): se quita del latido.
 // 2026-10-20 — Latido de actividad para los proyectos Supabase del plan
 // gratuito, que se pausan tras 7 días sin uso. Un cron de Vercel (ver
@@ -14,12 +15,6 @@ export const dynamic = "force-dynamic"
 export const maxDuration = 30
 
 const PROYECTOS: { nombre: string; ref: string; tabla: string; anon: string }[] = [
-  {
-    nombre: "Planes de Negocio",
-    ref: "ombgpgdsjiqyvnectlip",
-    tabla: "app_assets",
-    anon: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9tYmdwZ2RzamlxeXZuZWN0bGlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2OTEyMTksImV4cCI6MjEwNjI2NzIxOX0.LgEyNEl6srSWoysUN2eKwSi0k6uM3DbiEATdWRy29m8",
-  },
   {
     nombre: "BSC360v2",
     ref: "odfzteupdoosmhhspckq",
